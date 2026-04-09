@@ -1,0 +1,892 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Humi - Duyệt phiếu nghỉ</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="db.js"></script>
+  <script src="theme.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/vn.js"></script>
+  <style>
+    :root { --primary:#5D87FF; --primary-dark:#4570EA; --primary-rgb:93,135,255; }
+    * { font-family: 'Plus Jakarta Sans', sans-serif; box-sizing: border-box; }
+    body { background: #F2F6FA; margin: 0; }
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #DFE5EF; border-radius: 4px; }
+
+    .layout { display:grid; grid-template-columns:240px 1fr; grid-template-rows:64px 1fr; min-height:100vh; }
+    .sidebar { grid-column:1; grid-row:1/3; background:white; border-right:1px solid #e5eaef; display:flex; flex-direction:column; }
+    .topbar  { grid-column:2; grid-row:1; background:white; border-bottom:1px solid #e5eaef; box-shadow:0 1px 3px rgba(0,0,0,0.04); display:flex; align-items:center; padding:0 24px; justify-content:space-between; z-index:10; }
+    .main-content { grid-column:2; grid-row:2; overflow:hidden; display:flex; flex-direction:column; }
+
+    .sidebar-item { display:flex; align-items:center; gap:12px; padding:10px 12px; border-radius:7px; cursor:pointer; font-size:13px; font-weight:500; color:#5A6A85; text-decoration:none; transition:all 0.15s; margin-bottom:2px; }
+    .sidebar-item:hover { background:#F2F6FA; }
+    .sidebar-item.active { background:rgba(var(--primary-rgb),0.1); color:var(--primary); font-weight:600; }
+    .sidebar-item.active svg { stroke:var(--primary); }
+    .logo-mark { background:linear-gradient(135deg,var(--primary),var(--primary-dark)); }
+    @keyframes fadeInUp { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+    .fade-in { animation:fadeInUp 0.35s ease forwards; }
+
+    .filter-input { width:100%; border:1px solid #e5eaef; border-radius:7px; padding:8px 12px; font-size:13px; color:#2A3547; font-family:inherit; outline:none; background:white; transition:border-color 0.15s; }
+    .filter-input:focus { border-color:var(--primary); box-shadow:0 0 0 3px rgba(var(--primary-rgb),0.08); }
+    .filter-input::placeholder { color:#7C8FAC; }
+    .filter-select { width:100%; appearance:none; -webkit-appearance:none; border:1px solid #e5eaef; border-radius:7px; padding:8px 32px 8px 12px; font-size:13px; color:#2A3547; font-family:inherit; outline:none; background:white url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E") no-repeat right 10px center; cursor:pointer; transition:border-color 0.15s; }
+    .filter-select:focus { border-color:var(--primary); }
+
+    .data-table { width:100%; border-collapse:collapse; }
+    .data-table thead tr { background:#F2F6FA; border-bottom:1px solid #e5eaef; }
+    .data-table th { padding:11px 14px; font-size:11px; font-weight:700; color:#5A6A85; text-align:left; white-space:nowrap; text-transform:uppercase; letter-spacing:0.04em; }
+    .data-table td { padding:0 14px; font-size:13px; color:#2A3547; border-bottom:1px solid #EAEFF4; height:72px; vertical-align:middle; }
+    .data-table tbody tr:hover td { background:#fafafa; }
+    .data-table tbody tr:last-child td { border-bottom:none; }
+
+    .badge { display:inline-flex; align-items:center; gap:5px; padding:4px 10px; border-radius:20px; font-size:11px; font-weight:700; white-space:nowrap; }
+    .badge-pending  { background:#fef3c7; color:#d97706; }
+    .badge-approved { background:#dcfce7; color:#16a34a; }
+    .badge-rejected { background:#fee2e2; color:#ef4444; }
+    .badge-dot { width:5px; height:5px; border-radius:50%; flex-shrink:0; }
+
+    .cb-table { width:16px; height:16px; accent-color:var(--primary); cursor:pointer; }
+    .btn-icon { display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px; border-radius:8px; border:none; cursor:pointer; background:transparent; transition:background 0.15s; }
+    .btn-icon:hover { background:#EAEFF4; }
+    .summary-card { background:white; border-radius:7px; padding:16px 20px; box-shadow:0 2px 8px rgba(0,0,0,0.05); }
+    .page-btn { display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px; border-radius:8px; border:1px solid #e5eaef; background:white; font-size:13px; font-weight:600; color:#2A3547; cursor:pointer; transition:all 0.15s; }
+    .page-btn:hover { border-color:var(--primary); color:var(--primary); }
+    .page-btn.active { background:var(--primary); border-color:var(--primary); color:white; }
+    .btn-primary { display:flex; align-items:center; gap:6px; background:linear-gradient(135deg,var(--primary),var(--primary-dark)); border:none; border-radius:7px; padding:8px 16px; font-size:13px; font-weight:600; color:white; cursor:pointer; font-family:inherit; white-space:nowrap; }
+    .btn-primary:hover { opacity:0.9; }
+    .btn-outline { display:flex; align-items:center; gap:6px; background:white; border:1px solid #e5eaef; border-radius:7px; padding:8px 14px; font-size:13px; font-weight:500; color:#2A3547; cursor:pointer; font-family:inherit; white-space:nowrap; }
+    .btn-outline:hover { background:#F2F6FA; }
+
+    /* Modal */
+    .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.45); z-index:200; display:flex; align-items:center; justify-content:center; padding:20px; }
+    .modal-box { background:white; border-radius:16px; width:580px; max-width:95vw; box-shadow:0 20px 60px rgba(0,0,0,0.2); max-height:92vh; overflow-y:auto; display:flex; flex-direction:column; }
+    .modal-hd { padding:20px 24px 16px; border-bottom:1px solid #EAEFF4; display:flex; align-items:center; justify-content:space-between; flex-shrink:0; }
+    .modal-bd { padding:20px 24px; flex:1; overflow-y:auto; }
+    .modal-ft { padding:14px 24px; border-top:1px solid #EAEFF4; display:flex; gap:10px; justify-content:flex-end; flex-shrink:0; }
+    .form-label { font-size:12px; font-weight:700; color:#2A3547; margin-bottom:5px; display:block; }
+    .form-row { margin-bottom:14px; }
+    .form-input { width:100%; border:1px solid #e5eaef; border-radius:7px; padding:9px 13px; font-size:13px; color:#2A3547; font-family:inherit; outline:none; transition:border 0.15s; background:white; }
+    .form-input:focus { border-color:var(--primary); box-shadow:0 0 0 3px rgba(var(--primary-rgb),0.1); }
+    select.form-input, textarea.form-input { cursor:pointer; }
+    textarea.form-input { resize:vertical; min-height:90px; cursor:auto; }
+
+    .info-row { display:flex; align-items:flex-start; margin-bottom:12px; }
+    .info-label { font-size:11px; font-weight:700; color:#7C8FAC; text-transform:uppercase; letter-spacing:0.04em; width:130px; flex-shrink:0; padding-top:2px; }
+    .info-val { font-size:13px; color:#2A3547; font-weight:500; flex:1; }
+
+    .toast { position:fixed; bottom:28px; right:28px; background:#2A3547; color:white; padding:12px 20px; border-radius:7px; font-size:13px; font-weight:600; box-shadow:0 8px 24px rgba(0,0,0,0.18); opacity:0; transform:translateY(8px); transition:all 0.25s; z-index:9999; pointer-events:none; }
+    .toast.show { opacity:1; transform:translateY(0); }
+  </style>
+</head>
+<body>
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div style="display:flex;align-items:center;gap:10px;padding:20px;border-bottom:1px solid #f5f5f8;">
+      <div class="logo-mark" style="width:32px;height:32px;border-radius:7px;display:flex;align-items:center;justify-content:center;">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+      </div>
+      <span style="font-size:22px;font-weight:800;letter-spacing:-0.5px;color:#2A3547;">Humi</span>
+    </div>
+    <div style="padding:16px;border-bottom:1px solid #f5f5f8;">
+      <div style="display:flex;align-items:center;gap:12px;padding:8px;border-radius:7px;">
+        <div style="position:relative;">
+          <img id="sidebarAvatar" src="https://i.pravatar.cc/40?img=47" alt="" style="width:40px;height:40px;border-radius:50%;border:2px solid #ECF2FF;" />
+          <div style="position:absolute;bottom:0;right:0;width:10px;height:10px;background:#34d399;border-radius:50%;border:2px solid white;"></div>
+        </div>
+        <div style="flex:1;"><p id="sidebarName" style="font-size:13px;font-weight:700;color:#2A3547;margin:0;">—</p><p id="sidebarRole" style="font-size:11px;color:#7C8FAC;margin:0;">—</p></div>
+      </div>
+    </div>
+    <nav style="padding:12px;overflow-y:auto;">
+      <p style="font-size:10px;font-weight:600;color:#7C8FAC;letter-spacing:0.1em;text-transform:uppercase;padding:0 12px 8px;margin:0;">Menu</p>
+      <a href="index.html" class="sidebar-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Trang chủ</a>
+      <a href="duyet-cong.html" class="sidebar-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>Duyệt công</a>
+      <a href="danh-sach-phieu-nghi.html" class="sidebar-item active"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><polyline points="9 15 11 17 15 13"/></svg>Duyệt phép</a>
+      <a href="danh-sach-nhan-vien.html" class="sidebar-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>Nhân viên</a>
+      <a href="lich-lam-viec.html" class="sidebar-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Lịch làm việc</a>
+      <a href="chia-ca.html" class="sidebar-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Đăng ký ca</a>
+      <div style="margin:8px 4px;border-top:1px solid #EAEFF4;"></div>
+      <a href="xem-phep-ton.html" class="sidebar-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Xem phép tồn</a>
+      <a href="xem-thu-nhap.html" class="sidebar-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>Xem thu nhập</a>
+      <a href="hop-thu.html" class="sidebar-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>Hộp thư</a>
+    </nav>
+    <div style="padding:12px;border-top:1px solid #f5f5f8;">
+      <a href="cai-dat.html" class="sidebar-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>Cài đặt</a>
+      <a onclick="doLogout();return false;" href="#" class="sidebar-item" style="color:#ef4444;margin-top:4px;">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>Đăng xuất
+      </a>
+    </div>
+  </aside>
+
+  <!-- TOPBAR -->
+  <header class="topbar">
+    <div style="flex:1;max-width:460px;">
+      <div style="display:flex;align-items:center;gap:10px;background:#F2F6FA;border:1px solid #e5eaef;border-radius:7px;padding:9px 16px;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7C8FAC" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input id="globalSearch" placeholder="Tìm kiếm nhân viên..." oninput="filterTable()" style="background:transparent;border:none;outline:none;font-size:13px;color:#2A3547;flex:1;font-family:inherit;" />
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <button style="position:relative;padding:10px;border-radius:7px;background:transparent;border:none;cursor:pointer;" onclick="location.href='hop-thu.html'">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2A3547" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+      </button>
+      <div style="width:1px;height:32px;background:#e5eaef;"></div>
+      <div style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:6px 10px;border-radius:7px;">
+        <img id="topbarAvatar" src="https://i.pravatar.cc/32?img=47" alt="" style="width:32px;height:32px;border-radius:50%;border:2px solid #ECF2FF;" />
+        <div><p id="topbarName" style="font-size:13px;font-weight:600;color:#2A3547;margin:0;line-height:1.2;">—</p><p id="topbarRole" style="font-size:11px;color:#7C8FAC;margin:0;">—</p></div>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7C8FAC" stroke-width="2" style="margin-left:4px;"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN -->
+  <main class="main-content fade-in">
+
+    <!-- Title -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 24px;background:white;border-bottom:1px solid #e5eaef;flex-shrink:0;">
+      <h1 style="font-size:18px;font-weight:700;color:#2A3547;margin:0;">Danh sách phiếu nghỉ, phép</h1>
+      <div style="display:flex;gap:10px;">
+        <button class="btn-outline" onclick="exportCSV()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Xuất CSV
+        </button>
+        <button class="btn-primary" onclick="openCreateModal()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Tạo phiếu nghỉ
+        </button>
+      </div>
+    </div>
+
+    <!-- Summary cards -->
+    <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:14px;padding:16px 24px;flex-shrink:0;">
+      <div class="summary-card" style="border-left:4px solid var(--primary);">
+        <p style="font-size:11px;font-weight:600;color:#7C8FAC;margin:0 0 6px;text-transform:uppercase;letter-spacing:0.05em;">Tổng phiếu</p>
+        <p style="font-size:26px;font-weight:800;color:#2A3547;margin:0;" id="sumTotal">0</p>
+      </div>
+      <div class="summary-card" style="border-left:4px solid #d97706;">
+        <p style="font-size:11px;font-weight:600;color:#7C8FAC;margin:0 0 6px;text-transform:uppercase;letter-spacing:0.05em;">Chờ duyệt</p>
+        <p style="font-size:26px;font-weight:800;color:#d97706;margin:0;" id="sumPending">0</p>
+      </div>
+      <div class="summary-card" style="border-left:4px solid #16a34a;">
+        <p style="font-size:11px;font-weight:600;color:#7C8FAC;margin:0 0 6px;text-transform:uppercase;letter-spacing:0.05em;">Đã duyệt</p>
+        <p style="font-size:26px;font-weight:800;color:#16a34a;margin:0;" id="sumApproved">0</p>
+      </div>
+      <div class="summary-card" style="border-left:4px solid #ef4444;">
+        <p style="font-size:11px;font-weight:600;color:#7C8FAC;margin:0 0 6px;text-transform:uppercase;letter-spacing:0.05em;">Từ chối</p>
+        <p style="font-size:26px;font-weight:800;color:#ef4444;margin:0;" id="sumRejected">0</p>
+      </div>
+    </div>
+
+    <!-- Filters -->
+    <div style="background:white;border-top:1px solid #e5eaef;border-bottom:1px solid #e5eaef;padding:14px 24px;flex-shrink:0;">
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;margin-bottom:12px;">
+        <div>
+          <label style="font-size:11px;font-weight:600;color:#5A6A85;display:block;margin-bottom:5px;">Khoảng thời gian</label>
+          <input id="filterDate" type="text" placeholder="Chọn khoảng thời gian" class="filter-input" style="font-size:12px;" readonly />
+        </div>
+        <div>
+          <label style="font-size:11px;font-weight:600;color:#5A6A85;display:block;margin-bottom:5px;">Nhân viên</label>
+          <div style="display:flex;align-items:center;gap:6px;border:1px solid #e5eaef;border-radius:7px;padding:7px 12px;background:white;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#7C8FAC" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+            <input id="searchEmp" type="text" placeholder="Tìm kiếm" oninput="filterTable()" style="border:none;outline:none;font-size:13px;color:#2A3547;font-family:inherit;flex:1;background:transparent;" />
+          </div>
+        </div>
+        <div>
+          <label style="font-size:11px;font-weight:600;color:#5A6A85;display:block;margin-bottom:5px;">Đơn vị</label>
+          <select class="filter-select" id="filterUnit" onchange="filterTable()">
+            <option value="">Tất cả đơn vị</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:11px;font-weight:600;color:#5A6A85;display:block;margin-bottom:5px;">Trạng thái</label>
+          <select class="filter-select" id="filterStatus" onchange="filterTable()">
+            <option value="">Tất cả</option>
+            <option value="pending">Chờ duyệt</option>
+            <option value="approved">Đã duyệt</option>
+            <option value="rejected">Từ chối</option>
+          </select>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;align-items:flex-end;">
+        <div>
+          <label style="font-size:11px;font-weight:600;color:#5A6A85;display:block;margin-bottom:5px;">Loại phép</label>
+          <select class="filter-select" id="filterType" onchange="filterTable()">
+            <option value="">Chọn loại phép</option>
+            <option value="annual">Nghỉ phép năm</option>
+            <option value="sick">Nghỉ ốm</option>
+            <option value="unpaid">Nghỉ không lương</option>
+            <option value="maternity">Nghỉ thai sản</option>
+          </select>
+        </div>
+        <div>
+          <label style="font-size:11px;font-weight:600;color:#5A6A85;display:block;margin-bottom:5px;">Sắp xếp</label>
+          <select class="filter-select" id="sortBy" onchange="filterTable()">
+            <option value="newest">Mới nhất</option>
+            <option value="oldest">Cũ nhất</option>
+            <option value="days_desc">Số ngày: Nhiều → Ít</option>
+            <option value="days_asc">Số ngày: Ít → Nhiều</option>
+          </select>
+        </div>
+        <div></div>
+        <div style="display:flex;justify-content:flex-end;gap:8px;">
+          <button class="btn-outline" onclick="resetFilters()">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="1 4 1 10 7 10"/><path d="M3.51 15a9 9 0 102.13-9.36L1 10"/></svg>
+            Đặt lại
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div style="flex:1;overflow:auto;padding:20px 24px;">
+      <div style="background:white;border-radius:7px;box-shadow:0 2px 12px rgba(0,0,0,0.06);overflow:hidden;">
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-bottom:1px solid #EAEFF4;">
+          <div style="display:flex;align-items:center;gap:10px;">
+            <span style="font-size:13px;font-weight:600;color:#2A3547;" id="resultCount">Hiển thị 0 kết quả</span>
+            <div id="bulkActions" style="display:none;gap:8px;align-items:center;">
+              <button class="btn-outline" style="padding:5px 12px;font-size:12px;" onclick="bulkApprove()">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+                Duyệt đã chọn
+              </button>
+              <button class="btn-outline" style="padding:5px 12px;font-size:12px;color:#ef4444;" onclick="openBulkRejectModal()">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+                Từ chối đã chọn
+              </button>
+            </div>
+          </div>
+        </div>
+        <div style="overflow-x:auto;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th style="width:44px;"><input type="checkbox" class="cb-table" id="checkAll" onchange="toggleAll(this)" /></th>
+                <th>Nhân viên</th>
+                <th>Loại phép</th>
+                <th>Đơn vị</th>
+                <th>Thời gian tạo</th>
+                <th>Trạng thái</th>
+                <th>Từ ngày</th>
+                <th>Đến ngày</th>
+                <th>Số ngày</th>
+                <th style="width:100px;text-align:center;">Thao tác</th>
+              </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+          </table>
+        </div>
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-top:1px solid #EAEFF4;">
+          <span style="font-size:13px;color:#5A6A85;" id="pageInfo">Trang 1 / 1</span>
+          <div style="display:flex;gap:6px;" id="pagination"></div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+<!-- ═══════════════ MODAL: CHI TIẾT ═══════════════ -->
+<div id="detailModal" class="modal-overlay" style="display:none;" onclick="if(event.target===this)closeDetail()">
+  <div class="modal-box">
+    <div class="modal-hd">
+      <h2 style="font-size:16px;font-weight:700;color:#2A3547;margin:0;">Chi tiết phiếu nghỉ</h2>
+      <button onclick="closeDetail()" style="background:none;border:none;cursor:pointer;color:#7C8FAC;padding:4px;border-radius:8px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="modal-bd" id="detailContent"></div>
+    <div class="modal-ft" id="detailActions"></div>
+  </div>
+</div>
+
+<!-- ═══════════════ MODAL: TẠO PHIẾU ═══════════════ -->
+<div id="createModal" class="modal-overlay" style="display:none;" onclick="if(event.target===this)closeCreateModal()">
+  <div class="modal-box">
+    <div class="modal-hd">
+      <h2 style="font-size:16px;font-weight:700;color:#2A3547;margin:0;">Tạo phiếu nghỉ mới</h2>
+      <button onclick="closeCreateModal()" style="background:none;border:none;cursor:pointer;color:#7C8FAC;padding:4px;border-radius:8px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="modal-bd">
+      <div class="form-row">
+        <label class="form-label">Nhân viên <span style="color:#ef4444;">*</span></label>
+        <select id="createEmpId" class="form-input" onchange="updateLeaveBalance()">
+          <option value="">— Chọn nhân viên —</option>
+        </select>
+      </div>
+      <div id="leaveBalanceInfo" style="display:none;background:#F2F6FA;border-radius:8px;padding:12px 14px;margin-bottom:14px;font-size:12.5px;">
+        <p style="margin:0 0 6px;font-weight:700;color:#2A3547;font-size:12px;">Phép tồn hiện tại:</p>
+        <div style="display:flex;gap:16px;flex-wrap:wrap;" id="balanceDisplay"></div>
+      </div>
+      <div class="form-row">
+        <label class="form-label">Loại phép <span style="color:#ef4444;">*</span></label>
+        <select id="createLeaveType" class="form-input">
+          <option value="">— Chọn loại phép —</option>
+          <option value="annual">Nghỉ phép năm</option>
+          <option value="sick">Nghỉ ốm</option>
+          <option value="unpaid">Nghỉ không lương</option>
+          <option value="maternity">Nghỉ thai sản</option>
+        </select>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;" class="form-row">
+        <div>
+          <label class="form-label">Từ ngày <span style="color:#ef4444;">*</span></label>
+          <input id="createStartDate" type="text" class="form-input" placeholder="dd/mm/yyyy" readonly />
+        </div>
+        <div>
+          <label class="form-label">Đến ngày <span style="color:#ef4444;">*</span></label>
+          <input id="createEndDate" type="text" class="form-input" placeholder="dd/mm/yyyy" readonly />
+        </div>
+      </div>
+      <div class="form-row" style="display:flex;align-items:center;gap:10px;">
+        <div style="background:#ECF2FF;border-radius:8px;padding:10px 16px;font-size:13px;font-weight:700;color:var(--primary);">
+          Số ngày nghỉ: <span id="calcDays">0</span> ngày
+        </div>
+      </div>
+      <div class="form-row">
+        <label class="form-label">Lý do</label>
+        <textarea id="createReason" class="form-input" placeholder="Nhập lý do xin nghỉ..."></textarea>
+      </div>
+      <div class="form-row">
+        <label style="display:flex;align-items:center;gap:8px;font-size:13px;cursor:pointer;">
+          <input type="checkbox" id="createAutoApprove" style="accent-color:var(--primary);width:15px;height:15px;" />
+          <span>Duyệt ngay sau khi tạo</span>
+        </label>
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn-outline" onclick="closeCreateModal()">Hủy</button>
+      <button class="btn-primary" onclick="submitCreate()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+        Tạo phiếu nghỉ
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- ═══════════════ MODAL: TỪ CHỐI VỚI LÝ DO ═══════════════ -->
+<div id="rejectModal" class="modal-overlay" style="display:none;" onclick="if(event.target===this)closeRejectModal()">
+  <div class="modal-box" style="width:460px;">
+    <div class="modal-hd">
+      <h2 style="font-size:16px;font-weight:700;color:#2A3547;margin:0;">Từ chối phiếu nghỉ</h2>
+      <button onclick="closeRejectModal()" style="background:none;border:none;cursor:pointer;color:#7C8FAC;padding:4px;border-radius:8px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div class="modal-bd">
+      <div id="rejectTarget" style="background:#fef2f2;border-radius:8px;padding:12px 16px;margin-bottom:14px;font-size:13px;color:#dc2626;"></div>
+      <div class="form-row">
+        <label class="form-label">Lý do từ chối <span style="color:#ef4444;">*</span></label>
+        <textarea id="rejectReason" class="form-input" placeholder="Nhập lý do từ chối phiếu nghỉ này..." style="min-height:100px;"></textarea>
+      </div>
+    </div>
+    <div class="modal-ft">
+      <button class="btn-outline" onclick="closeRejectModal()">Hủy</button>
+      <button onclick="confirmReject()" style="padding:9px 20px;border-radius:7px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;background:linear-gradient(135deg,#ef4444,#dc2626);border:none;color:white;">
+        Xác nhận từ chối
+      </button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ─── Auth ────────────────────────────────────────────────
+const _s = DB.auth.requireAuth(); if(!_s) throw 0;
+const currentUser = _s.user;
+
+// ─── Dynamic user info ───────────────────────────────────
+(function() {
+  var emp = (DB.employees.getAll()||[]).find(function(e){ return e.id === currentUser.id; });
+  var name   = (emp && emp.name)     || currentUser.name     || '—';
+  var role   = (emp && emp.position) || currentUser.position || '—';
+  var avatar = (emp && emp.avatar)   || 'https://i.pravatar.cc/40?img=47';
+  document.getElementById('sidebarName').textContent = name;
+  document.getElementById('sidebarRole').textContent = role;
+  document.getElementById('topbarName').textContent  = name;
+  document.getElementById('topbarRole').textContent  = role;
+  document.getElementById('sidebarAvatar').src = avatar;
+  document.getElementById('topbarAvatar').src  = avatar;
+})();
+
+// ─── Constants ───────────────────────────────────────────
+const STATUS_LABEL = { pending:'Chưa duyệt', approved:'Đã duyệt', rejected:'Từ chối' };
+const TYPE_LABEL   = { annual:'Nghỉ phép năm', sick:'Nghỉ ốm', unpaid:'Nghỉ không lương', maternity:'Nghỉ thai sản' };
+const PAGE_SIZE = 10;
+let currentPage = 1;
+let filteredData = [];
+let selectedIds = new Set();
+let _dateRange = null;  // { from: Date, to: Date }
+let _rejectIds = [];    // IDs being rejected (single or bulk)
+
+// ─── Populate unit filter ────────────────────────────────
+(function() {
+  var emps = DB.employees.getAll() || [];
+  var units = [...new Set(emps.map(function(e){ return e.unit; }).filter(Boolean))].sort();
+  var sel = document.getElementById('filterUnit');
+  units.forEach(function(u) {
+    var opt = document.createElement('option'); opt.value = u; opt.textContent = u; sel.appendChild(opt);
+  });
+})();
+
+// ─── Helper: format date ─────────────────────────────────
+function fmtDate(iso) { if(!iso) return '—'; var p=iso.split('-'); return p[2]+'/'+p[1]+'/'+p[0]; }
+function fmtDateTime(iso) {
+  if (!iso) return '—';
+  var d = new Date(iso);
+  return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear()
+    +' '+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0');
+}
+function calcDays(start, end) {
+  if (!start || !end) return 0;
+  var s = new Date(start), e = new Date(end);
+  return Math.max(1, Math.round((e - s) / 86400000) + 1);
+}
+
+// ─── Load data ───────────────────────────────────────────
+function loadData() {
+  var emps = DB.employees.getAll() || [];
+  return DB.leaves.getAll().map(function(l) {
+    var emp = emps.find(function(e){ return e.id === l.employeeId; }) || {};
+    var approver = l.approverId ? (emps.find(function(e){ return e.id === l.approverId; }) || {}) : null;
+    return {
+      _raw: l,  // giữ raw để dùng trong sendMsg
+      id: l.id,
+      employeeId: l.employeeId,
+      empName:  emp.name   || l.employeeId,
+      empCode:  emp.code   || l.employeeId,
+      empUnit:  emp.unit   || '—',
+      empRole:  emp.position || '—',
+      avatar:   emp.avatar || ('https://i.pravatar.cc/36?img='+(Math.abs(((l.employeeId||'x').charCodeAt(2)||5)%50)+1)),
+      leaveType: l.leaveType,
+      type:     l.leaveTypeName || TYPE_LABEL[l.leaveType] || l.leaveType,
+      status:   l.status,
+      startDate: l.startDate,
+      endDate:   l.endDate,
+      totalDays: l.totalDays,
+      reason:    l.reason || '—',
+      createdAt: l.createdAt,
+      approverName: approver ? approver.name : (l.approverId || null),
+      approvedAt:   l.approvedAt,
+      rejectedAt:   l.rejectedAt,
+      rejectReason: l.rejectReason
+    };
+  });
+}
+
+var DATA = loadData();
+
+// ─── Status badge ────────────────────────────────────────
+function statusBadge(status) {
+  if (status === 'approved') return '<span class="badge badge-approved"><span class="badge-dot" style="background:#16a34a;"></span>Đã duyệt</span>';
+  if (status === 'rejected') return '<span class="badge badge-rejected"><span class="badge-dot" style="background:#ef4444;"></span>Từ chối</span>';
+  return '<span class="badge badge-pending"><span class="badge-dot" style="background:#d97706;"></span>Chờ duyệt</span>';
+}
+
+// ─── Render table ────────────────────────────────────────
+function renderTable() {
+  var start = (currentPage - 1) * PAGE_SIZE;
+  var pageData = filteredData.slice(start, start + PAGE_SIZE);
+  var tbody = document.getElementById('tableBody');
+  if (!pageData.length) {
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;padding:40px;color:#7C8FAC;font-size:13px;">Không có dữ liệu</td></tr>';
+    updateSummary(); renderPagination(); return;
+  }
+  tbody.innerHTML = pageData.map(function(r) {
+    var checked = selectedIds.has(r.id) ? 'checked' : '';
+    var actBtns = r.status === 'pending' ? (
+      '<button class="btn-icon" title="Duyệt" onclick="approveOne(\''+r.id+'\')">'
+        +'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#16a34a" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg></button>'
+      +'<button class="btn-icon" title="Từ chối" onclick="openRejectModal([\''+r.id+'\'])">'
+        +'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>'
+    ) : '';
+    return '<tr>'
+      +'<td><input type="checkbox" class="cb-table row-cb" value="'+r.id+'" onchange="onRowCheck()" '+checked+'></td>'
+      +'<td><div style="display:flex;align-items:center;gap:10px;">'
+        +'<img src="'+r.avatar+'" style="width:36px;height:36px;border-radius:50%;object-fit:cover;flex-shrink:0;">'
+        +'<div><p style="font-size:13px;font-weight:700;color:#2A3547;margin:0 0 1px;">'+r.empName+'</p>'
+        +'<p style="font-size:11px;color:#7C8FAC;margin:0;">'+r.empCode+'</p></div></div></td>'
+      +'<td><span style="font-size:12px;font-weight:600;color:#4338ca;background:#ECF2FF;padding:3px 8px;border-radius:6px;">'+r.type+'</span></td>'
+      +'<td style="font-size:12px;color:#5A6A85;max-width:160px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+r.empUnit+'</td>'
+      +'<td style="font-size:12px;color:#5A6A85;white-space:nowrap;">'+fmtDateTime(r.createdAt)+'</td>'
+      +'<td>'+statusBadge(r.status)+'</td>'
+      +'<td style="font-size:12px;font-weight:600;color:#2A3547;white-space:nowrap;">'+fmtDate(r.startDate)+'</td>'
+      +'<td style="font-size:12px;font-weight:600;color:#2A3547;white-space:nowrap;">'+fmtDate(r.endDate)+'</td>'
+      +'<td style="text-align:center;"><span style="font-size:12px;font-weight:700;color:var(--primary);background:#ECF2FF;padding:3px 10px;border-radius:6px;">'+r.totalDays+' ngày</span></td>'
+      +'<td><div style="display:flex;align-items:center;justify-content:center;gap:2px;">'
+        +'<button class="btn-icon" title="Xem chi tiết" onclick="openDetail(\''+r.id+'\')">'
+          +'<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg></button>'
+        +actBtns
+      +'</div></td></tr>';
+  }).join('');
+  updateSummary(); renderPagination();
+}
+
+function updateSummary() {
+  var all = DATA;
+  document.getElementById('sumTotal').textContent    = all.length;
+  document.getElementById('sumPending').textContent  = all.filter(function(r){ return r.status==='pending'; }).length;
+  document.getElementById('sumApproved').textContent = all.filter(function(r){ return r.status==='approved'; }).length;
+  document.getElementById('sumRejected').textContent = all.filter(function(r){ return r.status==='rejected'; }).length;
+  document.getElementById('resultCount').textContent = 'Hiển thị '+filteredData.length+' kết quả';
+}
+
+function renderPagination() {
+  var total = Math.ceil(filteredData.length / PAGE_SIZE) || 1;
+  document.getElementById('pageInfo').textContent = 'Trang '+currentPage+' / '+total;
+  var html = '<button class="page-btn" onclick="goPage('+(currentPage-1)+')" '+(currentPage===1?'disabled style="opacity:0.4;cursor:not-allowed;"':'')+'>‹</button>';
+  for (var i = 1; i <= total; i++) html += '<button class="page-btn '+(i===currentPage?'active':'')+'" onclick="goPage('+i+')">'+i+'</button>';
+  html += '<button class="page-btn" onclick="goPage('+(currentPage+1)+')" '+(currentPage===total?'disabled style="opacity:0.4;cursor:not-allowed;"':'')+'>›</button>';
+  document.getElementById('pagination').innerHTML = html;
+}
+
+function goPage(p) {
+  var total = Math.ceil(filteredData.length / PAGE_SIZE) || 1;
+  if (p < 1 || p > total) return;
+  currentPage = p; renderTable();
+}
+
+// ─── Filter ──────────────────────────────────────────────
+function filterTable() {
+  var empQ    = (document.getElementById('searchEmp').value || document.getElementById('globalSearch').value || '').toLowerCase();
+  var unit    = document.getElementById('filterUnit').value;
+  var status  = document.getElementById('filterStatus').value;
+  var type    = document.getElementById('filterType').value;
+  var sortBy  = document.getElementById('sortBy').value;
+
+  filteredData = DATA.filter(function(r) {
+    if (empQ && !r.empName.toLowerCase().includes(empQ) && !r.empCode.toLowerCase().includes(empQ)) return false;
+    if (unit   && r.empUnit    !== unit)   return false;
+    if (status && r.status     !== status) return false;
+    if (type   && r.leaveType  !== type)   return false;
+    if (_dateRange) {
+      var start = new Date(r.startDate);
+      if (start < _dateRange.from || start > _dateRange.to) return false;
+    }
+    return true;
+  });
+
+  filteredData.sort(function(a, b) {
+    if (sortBy === 'oldest')    return new Date(a.createdAt) - new Date(b.createdAt);
+    if (sortBy === 'days_desc') return b.totalDays - a.totalDays;
+    if (sortBy === 'days_asc')  return a.totalDays - b.totalDays;
+    return new Date(b.createdAt) - new Date(a.createdAt); // newest
+  });
+
+  currentPage = 1;
+  renderTable();
+}
+
+function resetFilters() {
+  document.getElementById('searchEmp').value   = '';
+  document.getElementById('globalSearch').value = '';
+  document.getElementById('filterUnit').value   = '';
+  document.getElementById('filterStatus').value = '';
+  document.getElementById('filterType').value   = '';
+  document.getElementById('sortBy').value = 'newest';
+  _dateRange = null;
+  if (window._fpInstance) window._fpInstance.clear();
+  DATA = loadData(); filterTable();
+}
+
+// ─── Checkbox ────────────────────────────────────────────
+function onRowCheck() {
+  selectedIds = new Set();
+  document.querySelectorAll('.row-cb:checked').forEach(function(cb){ selectedIds.add(cb.value); });
+  var page = filteredData.slice((currentPage-1)*PAGE_SIZE, currentPage*PAGE_SIZE);
+  document.getElementById('checkAll').checked = selectedIds.size > 0 && selectedIds.size === page.length;
+  document.getElementById('bulkActions').style.display = selectedIds.size > 0 ? 'flex' : 'none';
+}
+
+function toggleAll(cb) {
+  var page = filteredData.slice((currentPage-1)*PAGE_SIZE, currentPage*PAGE_SIZE);
+  if (cb.checked) page.forEach(function(r){ selectedIds.add(r.id); });
+  else page.forEach(function(r){ selectedIds.delete(r.id); });
+  renderTable();
+  document.getElementById('checkAll').checked = cb.checked;
+  document.getElementById('bulkActions').style.display = selectedIds.size > 0 ? 'flex' : 'none';
+}
+
+// ─── Send notification ───────────────────────────────────
+function _sendLeaveMsg(raw, approved, reason) {
+  if (!raw) return;
+  var emps = DB.employees.getAll() || [];
+  var emp = emps.find(function(e){ return e.id === raw.employeeId; });
+  var empName = emp ? emp.name : raw.employeeId;
+  var color = approved ? '#16a34a' : '#ef4444';
+  var statusText = approved ? 'PHÊ DUYỆT' : 'TỪ CHỐI';
+  DB.messages.sendSystem(
+    raw.employeeId,
+    'Đơn nghỉ phép ' + (approved ? 'đã được duyệt ✓' : 'bị từ chối ✗'),
+    '<p>Kính gửi <strong>' + empName + '</strong>,</p>'
+      + '<p>Đơn nghỉ phép <strong>' + (raw.leaveTypeName || TYPE_LABEL[raw.leaveType] || raw.leaveType) + '</strong>'
+      + ' từ ngày <strong>' + fmtDate(raw.startDate) + '</strong>'
+      + ' đến <strong>' + fmtDate(raw.endDate) + '</strong>'
+      + ' (<strong>' + raw.totalDays + ' ngày</strong>)'
+      + ' đã được <span style="color:' + color + ';font-weight:700;">' + statusText + '</span>.</p>'
+      + (reason ? '<p style="background:#fef2f2;border-radius:8px;padding:10px 14px;font-size:12.5px;">Lý do từ chối: <em>' + reason + '</em></p>' : '')
+      + '<p style="font-size:12px;color:#7C8FAC;">Xử lý bởi: ' + currentUser.name + ' – ' + new Date().toLocaleDateString('vi-VN') + '</p>',
+    'leave'
+  );
+}
+
+// ─── Approve ─────────────────────────────────────────────
+function approveOne(id) {
+  var r = DATA.find(function(x){ return x.id===id; });
+  DB.leaves.approve(id, currentUser.id);
+  DB.utils.showToast('Đã duyệt phiếu nghỉ');
+  if (r) _sendLeaveMsg(r._raw, true, null);
+  DATA = loadData(); filterTable();
+}
+
+function bulkApprove() {
+  var ids = Array.from(selectedIds);
+  ids.forEach(function(id) {
+    var r = DATA.find(function(x){ return x.id===id; });
+    if (r && r.status === 'pending') {
+      DB.leaves.approve(id, currentUser.id);
+      if (r) _sendLeaveMsg(r._raw, true, null);
+    }
+  });
+  selectedIds.clear();
+  DB.utils.showToast('Đã duyệt ' + ids.length + ' phiếu');
+  DATA = loadData(); filterTable();
+}
+
+// ─── Reject modal ────────────────────────────────────────
+function openRejectModal(ids) {
+  _rejectIds = ids;
+  var names = ids.map(function(id) {
+    var r = DATA.find(function(x){ return x.id===id; });
+    return r ? r.empName + ' (' + (r.type) + ', ' + fmtDate(r.startDate) + ')' : id;
+  });
+  document.getElementById('rejectTarget').innerHTML =
+    '<strong>Đang từ chối:</strong><br>' + names.join('<br>');
+  document.getElementById('rejectReason').value = '';
+  document.getElementById('rejectModal').style.display = 'flex';
+  setTimeout(function(){ document.getElementById('rejectReason').focus(); }, 100);
+}
+
+function openBulkRejectModal() {
+  openRejectModal(Array.from(selectedIds).filter(function(id) {
+    var r = DATA.find(function(x){ return x.id===id; });
+    return r && r.status === 'pending';
+  }));
+}
+
+function closeRejectModal() {
+  document.getElementById('rejectModal').style.display = 'none';
+  _rejectIds = [];
+}
+
+function confirmReject() {
+  var reason = document.getElementById('rejectReason').value.trim();
+  if (!reason) { DB.utils.showToast('Vui lòng nhập lý do từ chối', 'error'); return; }
+  _rejectIds.forEach(function(id) {
+    var r = DATA.find(function(x){ return x.id===id; });
+    if (r && r.status === 'pending') {
+      DB.leaves.reject(id, currentUser.id, reason);
+      if (r) _sendLeaveMsg(r._raw, false, reason);
+    }
+  });
+  DB.utils.showToast('Đã từ chối ' + _rejectIds.length + ' phiếu');
+  closeRejectModal();
+  selectedIds.clear();
+  DATA = loadData(); filterTable();
+}
+
+// ─── Detail modal ────────────────────────────────────────
+function openDetail(id) {
+  var r = DATA.find(function(x){ return x.id===id; });
+  if (!r) return;
+
+  var approvalSection = '';
+  if (r.status === 'approved') {
+    approvalSection = '<div style="background:#f0fdf4;border-radius:8px;padding:14px 16px;margin-top:14px;">'
+      + '<p style="font-size:12px;font-weight:700;color:#16a34a;margin:0 0 6px;">✓ ĐÃ DUYỆT</p>'
+      + '<div class="info-row"><span class="info-label">Người duyệt</span><span class="info-val">'+(r.approverName||'—')+'</span></div>'
+      + '<div class="info-row" style="margin-bottom:0;"><span class="info-label">Thời điểm</span><span class="info-val">'+fmtDateTime(r.approvedAt)+'</span></div>'
+      + '</div>';
+  } else if (r.status === 'rejected') {
+    approvalSection = '<div style="background:#fef2f2;border-radius:8px;padding:14px 16px;margin-top:14px;">'
+      + '<p style="font-size:12px;font-weight:700;color:#ef4444;margin:0 0 6px;">✗ ĐÃ TỪ CHỐI</p>'
+      + '<div class="info-row"><span class="info-label">Người từ chối</span><span class="info-val">'+(r.approverName||'—')+'</span></div>'
+      + '<div class="info-row"><span class="info-label">Thời điểm</span><span class="info-val">'+fmtDateTime(r.rejectedAt)+'</span></div>'
+      + '<div class="info-row" style="margin-bottom:0;"><span class="info-label">Lý do</span><span class="info-val" style="color:#ef4444;">'+(r.rejectReason||'Không có lý do')+'</span></div>'
+      + '</div>';
+  }
+
+  document.getElementById('detailContent').innerHTML =
+    '<div style="display:flex;align-items:center;gap:14px;margin-bottom:20px;padding-bottom:16px;border-bottom:1px solid #EAEFF4;">'
+      +'<img src="'+r.avatar+'" style="width:52px;height:52px;border-radius:50%;object-fit:cover;flex-shrink:0;">'
+      +'<div style="flex:1;">'
+        +'<p style="font-size:15px;font-weight:700;color:#2A3547;margin:0 0 3px;">'+r.empName+'</p>'
+        +'<p style="font-size:12px;color:#7C8FAC;margin:0;">'+r.empCode+' · '+r.empRole+'</p>'
+        +'<p style="font-size:12px;color:#7C8FAC;margin:2px 0 0;">'+r.empUnit+'</p>'
+      +'</div>'
+      +'<div>'+statusBadge(r.status)+'</div>'
+    +'</div>'
+    +'<div class="info-row"><span class="info-label">Loại phép</span><span class="info-val"><strong>'+r.type+'</strong></span></div>'
+    +'<div class="info-row"><span class="info-label">Từ ngày</span><span class="info-val">'+fmtDate(r.startDate)+'</span></div>'
+    +'<div class="info-row"><span class="info-label">Đến ngày</span><span class="info-val">'+fmtDate(r.endDate)+'</span></div>'
+    +'<div class="info-row"><span class="info-label">Số ngày nghỉ</span><span class="info-val"><strong style="color:var(--primary);font-size:15px;">'+r.totalDays+' ngày</strong></span></div>'
+    +'<div class="info-row"><span class="info-label">Ngày tạo</span><span class="info-val">'+fmtDateTime(r.createdAt)+'</span></div>'
+    +'<div class="info-row" style="margin-bottom:0;"><span class="info-label">Lý do</span><span class="info-val" style="background:#F2F6FA;padding:8px 12px;border-radius:7px;display:block;">'+r.reason+'</span></div>'
+    + approvalSection;
+
+  var actions = document.getElementById('detailActions');
+  actions.innerHTML = '<button onclick="closeDetail()" class="btn-outline">Đóng</button>';
+  if (r.status === 'pending') {
+    actions.innerHTML +=
+      '<button onclick="openRejectModal([\''+r.id+'\']);closeDetail();" style="padding:9px 20px;border-radius:7px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;background:#fee2e2;border:none;color:#ef4444;">Từ chối</button>'
+      +'<button onclick="approveOne(\''+r.id+'\');closeDetail();" style="padding:9px 20px;border-radius:7px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;background:linear-gradient(135deg,#16a34a,#15803d);border:none;color:white;">Duyệt phép</button>';
+  }
+  document.getElementById('detailModal').style.display = 'flex';
+}
+
+function closeDetail() { document.getElementById('detailModal').style.display = 'none'; }
+
+// ─── Create modal ─────────────────────────────────────────
+function openCreateModal() {
+  // Populate employee dropdown
+  var emps = (DB.employees.getAll()||[]).filter(function(e){ return e.status !== 'inactive'; });
+  var sel = document.getElementById('createEmpId');
+  sel.innerHTML = '<option value="">— Chọn nhân viên —</option>'
+    + emps.map(function(e){ return '<option value="'+e.id+'">'+e.name+' ('+e.code+')</option>'; }).join('');
+
+  document.getElementById('createLeaveType').value = '';
+  document.getElementById('createReason').value = '';
+  document.getElementById('createAutoApprove').checked = false;
+  document.getElementById('calcDays').textContent = '0';
+  document.getElementById('leaveBalanceInfo').style.display = 'none';
+
+  if (window._fpStart) { window._fpStart.clear(); window._fpEnd.clear(); }
+  document.getElementById('createModal').style.display = 'flex';
+}
+
+function closeCreateModal() { document.getElementById('createModal').style.display = 'none'; }
+
+function updateLeaveBalance() {
+  var empId = document.getElementById('createEmpId').value;
+  if (!empId) { document.getElementById('leaveBalanceInfo').style.display = 'none'; return; }
+  var bal = DB.leaves.getBalance(empId);
+  var items = [
+    { label:'Phép năm', key:'annual', color:'#5D87FF' },
+    { label:'Nghỉ ốm',  key:'sick',   color:'#16a34a' },
+    { label:'Thai sản', key:'maternity', color:'#a855f7' },
+    { label:'Không lương', key:'unpaid', color:'#f59e0b' },
+  ];
+  document.getElementById('balanceDisplay').innerHTML = items.map(function(item) {
+    var days = bal[item.key] !== undefined ? bal[item.key] : '—';
+    return '<div style="text-align:center;">'
+      +'<div style="font-size:18px;font-weight:800;color:'+item.color+';">'+days+'</div>'
+      +'<div style="font-size:11px;color:#7C8FAC;">'+item.label+'</div>'
+      +'</div>';
+  }).join('');
+  document.getElementById('leaveBalanceInfo').style.display = 'block';
+}
+
+function updateCalcDays() {
+  var s = document.getElementById('createStartDate').value;
+  var e = document.getElementById('createEndDate').value;
+  if (!s || !e) return;
+  // Convert dd/mm/yyyy → yyyy-mm-dd
+  function toISO(ddmmyyyy) { var p=ddmmyyyy.split('/'); return p[2]+'-'+p[1]+'-'+p[0]; }
+  var days = calcDays(toISO(s), toISO(e));
+  document.getElementById('calcDays').textContent = days;
+}
+
+function submitCreate() {
+  var empId   = document.getElementById('createEmpId').value;
+  var type    = document.getElementById('createLeaveType').value;
+  var startS  = document.getElementById('createStartDate').value;
+  var endS    = document.getElementById('createEndDate').value;
+  var reason  = document.getElementById('createReason').value.trim();
+  var autoApp = document.getElementById('createAutoApprove').checked;
+
+  if (!empId)  { DB.utils.showToast('Vui lòng chọn nhân viên', 'error'); return; }
+  if (!type)   { DB.utils.showToast('Vui lòng chọn loại phép', 'error'); return; }
+  if (!startS) { DB.utils.showToast('Vui lòng chọn ngày bắt đầu', 'error'); return; }
+  if (!endS)   { DB.utils.showToast('Vui lòng chọn ngày kết thúc', 'error'); return; }
+
+  function toISO(ddmmyyyy) { var p=ddmmyyyy.split('/'); return p[2]+'-'+p[1]+'-'+p[0]; }
+  var startISO = toISO(startS), endISO = toISO(endS);
+  if (startISO > endISO) { DB.utils.showToast('Ngày bắt đầu phải trước ngày kết thúc', 'error'); return; }
+
+  var days = calcDays(startISO, endISO);
+  var req = DB.leaves.submit({
+    employeeId: empId,
+    leaveType: type,
+    leaveTypeName: TYPE_LABEL[type] || type,
+    startDate: startISO,
+    endDate: endISO,
+    totalDays: days,
+    reason: reason
+  });
+
+  if (autoApp) {
+    DB.leaves.approve(req.id, currentUser.id);
+    DB.utils.showToast('Đã tạo và duyệt phiếu nghỉ');
+  } else {
+    DB.utils.showToast('Đã tạo phiếu nghỉ thành công');
+  }
+
+  // Gửi thông báo cho nhân viên
+  _sendLeaveMsg(req, autoApp, null);
+
+  closeCreateModal();
+  DATA = loadData(); filterTable();
+}
+
+// ─── Export CSV ──────────────────────────────────────────
+function exportCSV() {
+  var headers = ['Mã NV','Tên nhân viên','Đơn vị','Loại phép','Từ ngày','Đến ngày','Số ngày','Trạng thái','Lý do','Người duyệt','Ngày duyệt'];
+  var rows = filteredData.map(function(r) {
+    return [
+      r.empCode, r.empName, r.empUnit, r.type,
+      fmtDate(r.startDate), fmtDate(r.endDate), r.totalDays,
+      STATUS_LABEL[r.status]||r.status, '"'+(r.reason||'').replace(/"/g,'""')+'"',
+      r.approverName||'—', fmtDateTime(r.approvedAt||r.rejectedAt)
+    ].join(',');
+  });
+  var csv = '\uFEFF' + headers.join(',') + '\n' + rows.join('\n');
+  var blob = new Blob([csv], { type:'text/csv;charset=utf-8;' });
+  var url = URL.createObjectURL(blob);
+  var a = document.createElement('a'); a.href=url;
+  a.download = 'phieu-nghi-' + new Date().toISOString().slice(0,10) + '.csv';
+  a.click(); URL.revokeObjectURL(url);
+}
+
+// ─── Init flatpickr ──────────────────────────────────────
+window._fpInstance = flatpickr('#filterDate', {
+  mode: 'range', dateFormat: 'd/m/Y', locale: 'vn', allowInput: false, disableMobile: true,
+  onChange: function(dates) {
+    if (dates.length === 2) {
+      _dateRange = { from: dates[0], to: dates[1] };
+    } else {
+      _dateRange = null;
+    }
+    filterTable();
+  }
+});
+
+window._fpStart = flatpickr('#createStartDate', {
+  dateFormat: 'd/m/Y', locale: 'vn', disableMobile: true,
+  onChange: function() { updateCalcDays(); }
+});
+window._fpEnd = flatpickr('#createEndDate', {
+  dateFormat: 'd/m/Y', locale: 'vn', disableMobile: true,
+  onChange: function() { updateCalcDays(); }
+});
+
+// ─── Init ────────────────────────────────────────────────
+filterTable();
+
+window.addEventListener('humi_synced', function() {
+  DATA = loadData(); filterTable();
+});
+</script>
+</body>
+</html>

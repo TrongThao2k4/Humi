@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Humi - Danh sách nhân viên</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="db.js"></script>
+  <script src="theme.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root { --primary:#5D87FF; --primary-dark:#4570EA; --primary-rgb:93,135,255; }
+    * { font-family: 'Plus Jakarta Sans', sans-serif; box-sizing: border-box; }
+    body { background: #F2F6FA; margin: 0; }
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #DFE5EF; border-radius: 4px; }
+
+    .layout { display:grid; grid-template-columns:240px 1fr; grid-template-rows:64px 1fr; min-height:100vh; }
+    .sidebar { grid-column:1; grid-row:1/3; background:white; border-right:1px solid #e5eaef; display:flex; flex-direction:column; }
+    .topbar  { grid-column:2; grid-row:1; background:white; border-bottom:1px solid #e5eaef; box-shadow:0 1px 3px rgba(0,0,0,0.04); display:flex; align-items:center; padding:0 24px; justify-content:space-between; z-index:10; }
+    .main-content { grid-column:2; grid-row:2; overflow:hidden; display:flex; flex-direction:column; }
+
+    .sidebar-item { display:flex; align-items:center; gap:12px; padding:10px 12px; border-radius:7px; cursor:pointer; font-size:13px; font-weight:500; color:#5A6A85; text-decoration:none; transition:all 0.15s; margin-bottom:2px; }
+    .sidebar-item:hover { background:#F2F6FA; }
+    .sidebar-item.active { background:rgba(var(--primary-rgb),0.1); color:var(--primary); font-weight:600; }
+    .sidebar-item.active svg { stroke:var(--primary); }
+    .logo-mark { background:linear-gradient(135deg,var(--primary),var(--primary-dark)); }
+
+    @keyframes fadeInUp { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+    .fade-in { animation:fadeInUp 0.35s ease forwards; }
+
+    /* Filter chips */
+    .filter-chip { display:inline-flex; align-items:center; gap:6px; background:var(--primary); color:white; font-size:12px; font-weight:600; padding:5px 10px 5px 12px; border-radius:20px; cursor:pointer; user-select:none; }
+    .filter-chip-btn { background:rgba(255,255,255,0.3); border:none; color:white; cursor:pointer; width:16px; height:16px; border-radius:50%; display:flex; align-items:center; justify-content:center; padding:0; transition:background 0.15s; }
+    .filter-chip-btn:hover { background:rgba(255,255,255,0.5); }
+    .chip-dropdown { display:inline-flex; align-items:center; gap:4px; background:white; border:1px solid #e5eaef; border-radius:8px; padding:5px 10px; font-size:12px; font-weight:600; color:#2A3547; cursor:pointer; }
+    .chip-dropdown:hover { background:#F2F6FA; }
+
+    .filter-select { appearance:none; -webkit-appearance:none; border:1px solid #e5eaef; border-radius:7px; padding:7px 30px 7px 12px; font-size:13px; color:#2A3547; font-family:inherit; outline:none; background:white; cursor:pointer; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 10px center; }
+    .filter-select:focus { border-color:var(--primary); }
+
+    /* Table */
+    .data-table { width:100%; border-collapse:collapse; }
+    .data-table thead tr { background:#F2F6FA; }
+    .data-table th { padding:11px 14px; font-size:11px; font-weight:700; color:#5A6A85; text-align:left; white-space:nowrap; border-bottom:1px solid #e5eaef; border-right:1px solid #EAEFF4; }
+    .data-table th:last-child { border-right:none; }
+    .data-table td { padding:12px 14px; font-size:12.5px; color:#2A3547; border-bottom:1px solid #EAEFF4; white-space:nowrap; border-right:1px solid #F2F6FA; vertical-align:middle; }
+    .data-table td:last-child { border-right:none; }
+    .data-table tbody tr:hover td { background:#fafafa; }
+    .data-table tbody tr:last-child td { border-bottom:none; }
+
+    .emp-link { color:var(--primary); font-weight:700; font-size:13px; cursor:pointer; text-decoration:none; }
+    .emp-link:hover { text-decoration:underline; }
+
+    .badge-contract { display:inline-flex; align-items:center; gap:4px; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:600; white-space:nowrap; }
+    .badge-green { background:#dcfce7; color:#16a34a; }
+    .badge-orange { background:#fef3c7; color:#d97706; }
+    .badge-gray { background:#EAEFF4; color:#5A6A85; }
+    .badge-blue { background:#eff6ff; color:#2563eb; }
+
+    .btn-primary { display:flex; align-items:center; gap:6px; background:linear-gradient(135deg,var(--primary),var(--primary-dark)); border:none; border-radius:7px; padding:8px 16px; font-size:13px; font-weight:600; color:white; cursor:pointer; transition:all 0.2s; font-family:inherit; box-shadow:none; white-space:nowrap; }
+    .btn-primary:hover { opacity:0.9; transform:translateY(-1px); }
+    .btn-outline { display:flex; align-items:center; gap:6px; background:white; border:1px solid #e5eaef; border-radius:7px; padding:8px 14px; font-size:13px; font-weight:500; color:#2A3547; cursor:pointer; transition:all 0.15s; font-family:inherit; white-space:nowrap; }
+    .btn-outline:hover { background:#F2F6FA; }
+    .btn-icon { display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; border-radius:8px; border:none; cursor:pointer; background:transparent; transition:background 0.15s; }
+    .btn-icon:hover { background:#EAEFF4; }
+
+    /* Active filters row */
+    .active-filter-row { display:flex; align-items:center; gap:8px; padding:8px 24px; background:#faf5ff; border-bottom:1px solid #ECF2FF; font-size:12px; color:#5A6A85; flex-shrink:0; }
+    .active-filter-tag { display:inline-flex; align-items:center; gap:5px; background:var(--primary); color:white; font-size:11px; font-weight:700; padding:3px 8px 3px 10px; border-radius:20px; }
+    .active-filter-tag button { background:none; border:none; color:rgba(255,255,255,0.8); cursor:pointer; padding:0; line-height:1; }
+    .active-filter-tag button:hover { color:white; }
+
+    /* Modal */
+    .modal-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:100; align-items:center; justify-content:center; padding:20px; }
+    .modal { background:white; border-radius:20px; width:620px; max-width:95vw; box-shadow:0 20px 60px rgba(0,0,0,0.2); max-height:90vh; overflow-y:auto; }
+  </style>
+</head>
+<body>
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <aside class="sidebar">
+    <div style="display:flex;align-items:center;gap:10px;padding:20px;border-bottom:1px solid #f5f5f8;">
+      <div class="logo-mark" style="width:32px;height:32px;border-radius:7px;display:flex;align-items:center;justify-content:center;">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
+      </div>
+      <span style="font-size:22px;font-weight:800;letter-spacing:-0.5px;color:#2A3547;">Humi</span>
+    </div>
+    <div style="padding:16px;border-bottom:1px solid #f5f5f8;">
+      <div style="display:flex;align-items:center;gap:12px;padding:8px;border-radius:7px;cursor:pointer;">
+        <div style="position:relative;">
+          <img src="https://i.pravatar.cc/40?img=47" alt="" style="width:40px;height:40px;border-radius:50%;border:2px solid #ECF2FF;" />
+          <div style="position:absolute;bottom:0;right:0;width:10px;height:10px;background:#34d399;border-radius:50%;border:2px solid white;"></div>
+        </div>
+        <div style="flex:1;"><p style="font-size:13px;font-weight:700;color:#2A3547;margin:0;">Tiểu Nhi</p><p style="font-size:11px;color:#7C8FAC;margin:0;">Quản lý</p></div>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7C8FAC" stroke-width="2"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
+      </div>
+    </div>
+    <nav style="padding:12px;overflow-y:auto;">
+      <p style="font-size:10px;font-weight:600;color:#7C8FAC;letter-spacing:0.1em;text-transform:uppercase;padding:0 12px 8px;margin:0;">Menu</p>
+      <a href="index.html" class="sidebar-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Trang chủ</a>
+      <a href="duyet-cong.html" class="sidebar-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>Duyệt công</a>
+      <a href="danh-sach-phieu-nghi.html" class="sidebar-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><polyline points="9 15 11 17 15 13"/></svg>Duyệt phép</a>
+      <a href="danh-sach-nhan-vien.html" class="sidebar-item active"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>Nhân viên</a>
+      <a href="lich-lam-viec.html" class="sidebar-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Lịch làm việc</a>
+      <a href="chia-ca.html" class="sidebar-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Đăng ký ca</a>
+      <div style="margin:8px 4px;border-top:1px solid #EAEFF4;"></div>
+      <a href="xem-phep-ton.html" class="sidebar-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Xem phép tồn</a>
+      <a href="xem-thu-nhap.html" class="sidebar-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>Xem thu nhập</a>
+      <a href="hop-thu.html" class="sidebar-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>Hộp thư</a>
+    </nav>
+    <div style="padding:12px;border-top:1px solid #f5f5f8;">
+      <a href="cai-dat.html" class="sidebar-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>Cài đặt</a>
+      <a onclick="doLogout();return false;" href="#" class="sidebar-item" style="color:#ef4444;margin-top:4px;">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        Đăng xuất
+      </a>
+    </div>
+  </aside>
+
+  <!-- TOPBAR -->
+  <header class="topbar">
+    <div style="flex:1;max-width:460px;">
+      <div style="display:flex;align-items:center;gap:10px;background:#F2F6FA;border:1px solid #e5eaef;border-radius:7px;padding:9px 16px;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7C8FAC" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input placeholder="Tìm kiếm..." style="background:transparent;border:none;outline:none;font-size:13px;color:#2A3547;flex:1;font-family:inherit;" />
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <button style="position:relative;padding:10px;border-radius:7px;background:transparent;border:none;cursor:pointer;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2A3547" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
+        <span style="position:absolute;top:8px;right:8px;width:8px;height:8px;background:#ef4444;border-radius:50%;border:2px solid white;"></span>
+      </button>
+      <div style="width:1px;height:32px;background:#e5eaef;"></div>
+      <div style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:6px 10px;border-radius:7px;">
+        <img src="https://i.pravatar.cc/32?img=47" alt="" style="width:32px;height:32px;border-radius:50%;border:2px solid #ECF2FF;" />
+        <div><p style="font-size:13px;font-weight:600;color:#2A3547;margin:0;line-height:1.2;">Tiểu Nhi</p><p style="font-size:11px;color:#7C8FAC;margin:0;">Quản lý</p></div>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7C8FAC" stroke-width="2" style="margin-left:4px;"><polyline points="6 9 12 15 18 9"/></svg>
+      </div>
+    </div>
+  </header>
+
+  <!-- MAIN -->
+  <main class="main-content fade-in">
+
+    <!-- Title -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 24px;background:white;border-bottom:1px solid #e5eaef;flex-shrink:0;">
+      <h1 style="font-size:18px;font-weight:700;color:#2A3547;margin:0;">Danh sách nhân viên</h1>
+      <div style="display:flex;gap:10px;">
+        <button class="btn-outline" onclick="exportCSV()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Xuất CSV
+        </button>
+        <button class="btn-primary" onclick="openAddModal()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Thêm nhân viên
+        </button>
+      </div>
+    </div>
+
+    <!-- Filter bar -->
+    <div style="display:flex;align-items:center;gap:10px;padding:12px 24px;background:white;border-bottom:1px solid #e5eaef;flex-shrink:0;flex-wrap:wrap;">
+      <!-- Count -->
+      <div style="display:flex;align-items:center;gap:6px;padding:6px 12px;background:#F2F6FA;border-radius:8px;border:1px solid #e5eaef;">
+        <span style="font-size:13px;font-weight:700;color:#2A3547;" id="empCount">0</span>
+        <span style="font-size:13px;color:#5A6A85;">Nhân viên</span>
+      </div>
+
+      <!-- Status filter chip -->
+      <div style="display:flex;align-items:center;gap:0;">
+        <div class="filter-chip" id="statusChip">
+          <span id="statusChipLabel">Đang làm việc</span>
+          <button class="filter-chip-btn" onclick="removeStatusFilter()">
+            <svg width="8" height="8" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+          </button>
+        </div>
+        <button class="chip-dropdown" style="border-radius:0 8px 8px 0;border-left:none;margin-left:-1px;" onclick="toggleStatusDropdown()">
+          <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
+        </button>
+        <!-- Status dropdown -->
+        <div id="statusDropdown" style="display:none;position:absolute;margin-top:4px;background:white;border-radius:7px;box-shadow:0 8px 24px rgba(0,0,0,0.12);border:1px solid #e5eaef;z-index:20;min-width:180px;overflow:hidden;">
+          <div style="padding:8px;">
+            <div class="dropdown-item" onclick="setStatus('Đang làm việc')">Đang làm việc</div>
+            <div class="dropdown-item" onclick="setStatus('Đã nghỉ việc')">Đã nghỉ việc</div>
+            <div class="dropdown-item" onclick="setStatus('Tất cả')">Tất cả</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Unit filter -->
+      <select class="filter-select" id="filterUnit" onchange="applyFilters()" style="min-width:160px;">
+        <option value="">Chọn đơn vị</option>
+      </select>
+
+      <!-- Search -->
+      <div style="flex:1;max-width:400px;display:flex;align-items:center;gap:8px;border:1px solid #e5eaef;border-radius:7px;padding:7px 12px;background:white;margin-left:auto;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7C8FAC" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input id="searchInput" type="text" placeholder="Nhập mã, tên, số điện thoại để tìm kiếm..." oninput="applyFilters()" style="border:none;outline:none;font-size:13px;color:#2A3547;font-family:inherit;flex:1;background:transparent;min-width:0;" />
+      </div>
+    </div>
+
+    <!-- Active filters row -->
+    <div class="active-filter-row" id="activeFilterRow">
+      <span style="font-weight:600;color:#5A6A85;">Bộ lọc đang được áp dụng:</span>
+      <span class="active-filter-tag" id="activeStatusTag">
+        <span id="activeStatusLabel">Đang làm việc</span>
+        <button onclick="removeStatusFilter()">
+          <svg width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+        </button>
+      </span>
+    </div>
+
+    <!-- Table -->
+    <div style="flex:1;overflow:auto;padding:20px 24px;">
+      <div style="background:white;border-radius:7px;box-shadow:0 2px 12px rgba(0,0,0,0.06);overflow:hidden;">
+        <div style="overflow-x:auto;">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th style="width:44px;"><input type="checkbox" style="width:15px;height:15px;accent-color:var(--primary);cursor:pointer;" id="checkAll" onchange="toggleAll(this)"></th>
+                <th>Nhân viên</th>
+                <th>Đơn vị</th>
+                <th>Vị trí công việc</th>
+                <th>Quản lý trực tiếp</th>
+                <th>Ngày bắt đầu làm việc</th>
+                <th>Trạng thái HĐLĐ</th>
+                <th>Loại HĐLĐ</th>
+                <th>Hình thức làm việc</th>
+                <th>Số điện thoại</th>
+                <th>Ngày sinh</th>
+                <th style="width:70px;text-align:center;">Thao tác</th>
+              </tr>
+            </thead>
+            <tbody id="tableBody"></tbody>
+          </table>
+        </div>
+        <!-- Pagination -->
+        <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 18px;border-top:1px solid #EAEFF4;">
+          <span style="font-size:13px;color:#5A6A85;" id="pageInfo">Trang 1 / 1</span>
+          <div style="display:flex;gap:6px;" id="pagination"></div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
+
+<!-- Detail / Add modal -->
+<div class="modal-overlay" id="detailModal" onclick="e => { if(e.target===this) closeModal(); }">
+  <div class="modal">
+    <div style="padding:22px 24px 16px;border-bottom:1px solid #EAEFF4;display:flex;align-items:center;justify-content:space-between;">
+      <h2 id="modalTitle" style="font-size:16px;font-weight:700;color:#2A3547;margin:0;">Thông tin nhân viên</h2>
+      <button onclick="closeModal()" style="background:none;border:none;cursor:pointer;color:#7C8FAC;padding:4px;border-radius:8px;"><svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg></button>
+    </div>
+    <div id="modalContent" style="padding:20px 24px;"></div>
+    <div id="modalActions" style="padding:16px 24px;border-top:1px solid #EAEFF4;display:flex;gap:10px;justify-content:flex-end;"></div>
+  </div>
+</div>
+
+<style>
+    :root { --primary:#5D87FF; --primary-dark:#4570EA; --primary-rgb:93,135,255; }
+  .dropdown-item { padding:8px 12px; font-size:13px; color:#2A3547; cursor:pointer; border-radius:8px; transition:background 0.12s; }
+  .dropdown-item:hover { background:#F2F6FA; }
+  .page-btn { display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px; border-radius:8px; border:1px solid #e5eaef; background:white; font-size:13px; font-weight:600; color:#2A3547; cursor:pointer; transition:all 0.15s; }
+  .page-btn:hover { border-color:var(--primary); color:var(--primary); }
+  .page-btn.active { background:var(--primary); border-color:var(--primary); color:white; }
+  .form-label { display:block; font-size:12px; font-weight:600; color:#2A3547; margin-bottom:6px; }
+  .form-input { width:100%; border:1px solid #e5eaef; border-radius:7px; padding:9px 12px; font-size:13px; color:#2A3547; font-family:inherit; outline:none; transition:border-color 0.15s; }
+  .form-input:focus { border-color:var(--primary); box-shadow:0 0 0 3px rgba(var(--primary-rgb),0.08); }
+</style>
+
+<script>
+// Auth guard
+const _s = DB.auth.requireAuth(); if(!_s) throw 0;
+const currentUser = _s.user;
+
+// Map DB employee → UI format
+function empToUi(e) {
+  return {
+    id: e.id,
+    name: e.name,
+    code: e.code,
+    email: e.email || '',
+    avatar: e.avatar || `https://i.pravatar.cc/36?img=${Math.abs(e.id.charCodeAt(2)%50)+1}`,
+    unit: e.unit || '',
+    position: e.position || '—',
+    manager: e.managerName || '—',
+    startDate: DB.utils.formatDate(e.startDate),
+    contractStatus: e.contractStatus || '—',
+    contractType: e.contractType || '—',
+    workMode: e.workMode || '—',
+    phone: e.phone || '—',
+    dob: DB.utils.formatDate(e.dob),
+    status: e.status === 'active' ? 'Đang làm việc' : 'Đã nghỉ việc',
+    rawStatus: e.status || 'active'
+  };
+}
+
+// Validate email format
+function isValidEmail(v) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v); }
+// Validate phone (10-11 digits, allow spaces/dashes)
+function isValidPhone(v) { return /^[0-9\s\-]{9,12}$/.test(v.replace(/\s/g,'')); }
+
+function loadEmployees() {
+  return DB.employees.getAll().map(empToUi);
+}
+
+let EMPLOYEES = loadEmployees();
+
+// Populate unit filter dynamically from DB
+(function() {
+  const units = [...new Set(EMPLOYEES.map(e => e.unit).filter(Boolean))].sort();
+  const sel = document.getElementById('filterUnit');
+  units.forEach(u => {
+    const opt = document.createElement('option');
+    opt.value = u;
+    opt.textContent = u;
+    sel.appendChild(opt);
+  });
+})();
+
+let filteredData = [];
+let currentStatus = 'Đang làm việc';
+const PAGE_SIZE = 10;
+let currentPage = 1;
+let selectedIds = new Set();
+
+function contractBadge(s) {
+  if (s === 'Đã có hợp đồng') return `<span class="badge-contract badge-green"><span style="width:5px;height:5px;border-radius:50%;background:#16a34a;display:inline-block;"></span>${s}</span>`;
+  return `<span class="badge-contract badge-orange">${s}</span>`;
+}
+function workModeBadge(m) {
+  if (m === 'Toàn thời gian') return `<span class="badge-contract badge-blue">${m}</span>`;
+  return `<span class="badge-contract badge-gray">${m}</span>`;
+}
+
+function applyFilters() {
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  const unit = document.getElementById('filterUnit').value;
+  filteredData = EMPLOYEES.filter(e =>
+    (currentStatus === 'Tất cả' || e.status === currentStatus) &&
+    (!unit || e.unit === unit) &&
+    (!q || e.name.toLowerCase().includes(q) || e.code.toLowerCase().includes(q) || e.phone.includes(q))
+  );
+  currentPage = 1;
+  renderTable();
+  updateActiveFilterRow();
+}
+
+function renderTable() {
+  document.getElementById('empCount').textContent = filteredData.length;
+  const start = (currentPage-1)*PAGE_SIZE;
+  const pageData = filteredData.slice(start, start+PAGE_SIZE);
+  const tbody = document.getElementById('tableBody');
+  if (!pageData.length) {
+    const msg = EMPLOYEES.length === 0 ? 'Chưa có nhân viên' : 'Không tìm thấy nhân viên phù hợp';
+    tbody.innerHTML = `<tr><td colspan="12" style="text-align:center;padding:48px;color:#7C8FAC;font-size:13px;">${msg}</td></tr>`;
+  } else {
+    tbody.innerHTML = pageData.map(e => `
+      <tr>
+        <td><input type="checkbox" style="width:15px;height:15px;accent-color:var(--primary);cursor:pointer;" class="row-cb" value="${e.id}" onchange="onRowCheck()" ${selectedIds.has(e.id)?'checked':''}></td>
+        <td>
+          <div style="display:flex;align-items:center;gap:10px;">
+            <img src="${e.avatar}" style="width:34px;height:34px;border-radius:50%;object-fit:cover;flex-shrink:0;">
+            <div>
+              <a class="emp-link" onclick="openDetail('${e.id}')">${e.name}</a>
+              <p style="font-size:11px;color:#7C8FAC;margin:2px 0 0;">${e.code}</p>
+            </div>
+          </div>
+        </td>
+        <td style="max-width:130px;overflow:hidden;text-overflow:ellipsis;">${e.unit}</td>
+        <td>${e.position}</td>
+        <td>${e.manager}</td>
+        <td>${e.startDate}</td>
+        <td>${contractBadge(e.contractStatus)}</td>
+        <td><span style="font-size:12px;color:#2A3547;">${e.contractType}</span></td>
+        <td>${workModeBadge(e.workMode)}</td>
+        <td>${e.phone}</td>
+        <td>${e.dob}</td>
+        <td>
+          <div style="display:flex;align-items:center;justify-content:center;gap:2px;">
+            <button class="btn-icon" title="Xem chi tiết" onclick="openDetail('${e.id}')">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+            <button class="btn-icon" title="Chỉnh sửa" onclick="openEdit('${e.id}')">
+              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2A3547" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4z"/></svg>
+            </button>
+          </div>
+        </td>
+      </tr>`).join('');
+  }
+  renderPagination();
+}
+
+function renderPagination() {
+  const total = Math.ceil(filteredData.length/PAGE_SIZE)||1;
+  document.getElementById('pageInfo').textContent = `Trang ${currentPage} / ${total}`;
+  let html = `<button class="page-btn" onclick="goPage(${currentPage-1})" ${currentPage===1?'disabled style="opacity:0.4;cursor:not-allowed;"':''}>‹</button>`;
+  for(let i=1;i<=total;i++) html+=`<button class="page-btn ${i===currentPage?'active':''}" onclick="goPage(${i})">${i}</button>`;
+  html+=`<button class="page-btn" onclick="goPage(${currentPage+1})" ${currentPage===total?'disabled style="opacity:0.4;cursor:not-allowed;"':''}>›</button>`;
+  document.getElementById('pagination').innerHTML = html;
+}
+
+function goPage(p) {
+  const total = Math.ceil(filteredData.length/PAGE_SIZE)||1;
+  if(p<1||p>total) return;
+  currentPage=p; renderTable();
+}
+
+function onRowCheck() {
+  selectedIds = new Set();
+  document.querySelectorAll('.row-cb:checked').forEach(cb => selectedIds.add(Number(cb.value)));
+}
+function toggleAll(cb) {
+  const pageData = filteredData.slice((currentPage-1)*PAGE_SIZE, currentPage*PAGE_SIZE);
+  if(cb.checked) pageData.forEach(e=>selectedIds.add(e.id));
+  else pageData.forEach(e=>selectedIds.delete(e.id));
+  renderTable();
+  document.getElementById('checkAll').checked = cb.checked;
+}
+
+// Status filter
+let statusFilterActive = true;
+function removeStatusFilter() {
+  currentStatus = 'Tất cả';
+  statusFilterActive = false;
+  document.getElementById('statusChip').style.display='none';
+  applyFilters();
+}
+function toggleStatusDropdown() {
+  const dd = document.getElementById('statusDropdown');
+  dd.style.display = dd.style.display==='none' ? 'block' : 'none';
+}
+function setStatus(s) {
+  currentStatus = s;
+  document.getElementById('statusChipLabel').textContent = s;
+  document.getElementById('statusChip').style.display = s==='Tất cả'?'none':'flex';
+  document.getElementById('statusDropdown').style.display='none';
+  applyFilters();
+}
+function updateActiveFilterRow() {
+  const row = document.getElementById('activeFilterRow');
+  if (currentStatus === 'Tất cả') { row.style.display='none'; return; }
+  row.style.display='flex';
+  document.getElementById('activeStatusLabel').textContent = currentStatus;
+}
+document.addEventListener('click', e => {
+  if (!e.target.closest('#statusDropdown') && !e.target.closest('.chip-dropdown')) {
+    document.getElementById('statusDropdown').style.display='none';
+  }
+  if (!e.target.closest('#detailModal')) return;
+  if (e.target === document.getElementById('detailModal')) closeModal();
+});
+
+// Detail modal
+function openDetail(id) {
+  const e = EMPLOYEES.find(x=>x.id===id);
+  document.getElementById('modalTitle').textContent = 'Thông tin nhân viên';
+  document.getElementById('modalContent').innerHTML = `
+    <div style="display:flex;align-items:center;gap:16px;padding-bottom:20px;border-bottom:1px solid #EAEFF4;margin-bottom:20px;">
+      <img src="${e.avatar}" style="width:64px;height:64px;border-radius:50%;object-fit:cover;border:3px solid #ECF2FF;">
+      <div>
+        <p style="font-size:17px;font-weight:800;color:#2A3547;margin:0 0 4px;">${e.name}</p>
+        <p style="font-size:12px;color:#7C8FAC;margin:0 0 6px;">${e.code}</p>
+        ${contractBadge(e.contractStatus)}
+      </div>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;">
+      <div><p class="form-label" style="color:#7C8FAC;">Đơn vị</p><p style="font-size:13px;font-weight:600;color:#2A3547;margin:0;">${e.unit}</p></div>
+      <div><p class="form-label" style="color:#7C8FAC;">Vị trí công việc</p><p style="font-size:13px;font-weight:600;color:#2A3547;margin:0;">${e.position}</p></div>
+      <div><p class="form-label" style="color:#7C8FAC;">Quản lý trực tiếp</p><p style="font-size:13px;font-weight:600;color:#2A3547;margin:0;">${e.manager}</p></div>
+      <div><p class="form-label" style="color:#7C8FAC;">Ngày bắt đầu làm việc</p><p style="font-size:13px;font-weight:600;color:#2A3547;margin:0;">${e.startDate}</p></div>
+      <div><p class="form-label" style="color:#7C8FAC;">Loại HĐLĐ</p><p style="font-size:13px;font-weight:600;color:#2A3547;margin:0;">${e.contractType}</p></div>
+      <div><p class="form-label" style="color:#7C8FAC;">Hình thức làm việc</p><p style="font-size:13px;margin:0;">${workModeBadge(e.workMode)}</p></div>
+      <div><p class="form-label" style="color:#7C8FAC;">Số điện thoại</p><p style="font-size:13px;font-weight:600;color:#2A3547;margin:0;">${e.phone}</p></div>
+      <div><p class="form-label" style="color:#7C8FAC;">Ngày sinh</p><p style="font-size:13px;font-weight:600;color:#2A3547;margin:0;">${e.dob}</p></div>
+      <div><p class="form-label" style="color:#7C8FAC;">Trạng thái</p><p style="font-size:13px;margin:0;"><span class="badge-contract ${e.status==='Đang làm việc'?'badge-green':'badge-gray'}"><span style="width:5px;height:5px;border-radius:50%;background:${e.status==='Đang làm việc'?'#16a34a':'#7C8FAC'};display:inline-block;"></span>${e.status}</span></p></div>
+    </div>`;
+  document.getElementById('modalActions').innerHTML = `
+    <button onclick="closeModal()" style="padding:9px 20px;border-radius:7px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;background:#EAEFF4;border:none;color:#2A3547;">Đóng</button>
+    <button onclick="openEdit('${id}')" style="padding:9px 20px;border-radius:7px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;background:linear-gradient(135deg,var(--primary),var(--primary-dark));border:none;color:white;box-shadow:none;">Chỉnh sửa</button>`;
+  document.getElementById('detailModal').style.display='flex';
+}
+
+function openEdit(id) {
+  const e = EMPLOYEES.find(x => x.id === id);
+  const selStyle = `cursor:pointer;appearance:none;background-image:url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2212%22 height=%2212%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%236b7280%22 stroke-width=%222.5%22%3E%3Cpolyline points=%226 9 12 15 18 9%22/%3E%3C/svg%3E');background-repeat:no-repeat;background-position:right 10px center;`;
+
+  document.getElementById('modalTitle').textContent = 'Chỉnh sửa nhân viên';
+  document.getElementById('modalContent').innerHTML = `
+    <div id="editFormErr" style="display:none;margin-bottom:12px;background:#fef2f2;border:1px solid #fecaca;border-radius:7px;padding:10px 14px;font-size:12.5px;color:#dc2626;font-weight:600;"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+      <div style="grid-column:1/-1;"><label class="form-label">Họ và tên <span style="color:#ef4444;">*</span></label><input class="form-input" id="eName" value="${e.name}"></div>
+      <div><label class="form-label">Mã nhân viên</label><input class="form-input" value="${e.code}" disabled style="background:#F2F6FA;color:#7C8FAC;"></div>
+      <div><label class="form-label">Email <span style="color:#ef4444;">*</span></label><input class="form-input" id="eEmail" type="email" value="${e.email}"></div>
+      <div><label class="form-label">Số điện thoại <span style="color:#ef4444;">*</span></label><input class="form-input" id="ePhone" value="${e.phone === '—' ? '' : e.phone}"></div>
+      <div><label class="form-label">Trạng thái</label>
+        <select class="form-input" id="eSt" style="${selStyle}">
+          <option value="active"   ${e.rawStatus==='active'  ?'selected':''}>Đang làm việc</option>
+          <option value="inactive" ${e.rawStatus==='inactive'?'selected':''}>Đã nghỉ việc</option>
+        </select>
+      </div>
+      <div><label class="form-label">Vị trí công việc</label><input class="form-input" id="ePos" value="${e.position === '—' ? '' : e.position}"></div>
+      <div><label class="form-label">Quản lý trực tiếp</label><input class="form-input" id="eMgr" value="${e.manager === '—' ? '' : e.manager}"></div>
+      <div><label class="form-label">Hình thức làm việc</label>
+        <select class="form-input" id="eMode" style="${selStyle}">
+          <option ${e.workMode==='Toàn thời gian'?'selected':''}>Toàn thời gian</option>
+          <option ${e.workMode==='Bán thời gian'  ?'selected':''}>Bán thời gian</option>
+        </select>
+      </div>
+      <div><label class="form-label">Ngày sinh</label><input class="form-input" id="eDob" type="date" value="${e.dob && e.dob!=='—' ? e.dob.split('/').reverse().join('-') : ''}"></div>
+    </div>`;
+  document.getElementById('modalActions').innerHTML = `
+    <button onclick="closeModal()" style="padding:9px 20px;border-radius:7px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;background:#EAEFF4;border:none;color:#2A3547;">Hủy</button>
+    <button onclick="saveEdit('${id}')" id="saveEditBtn" style="padding:9px 20px;border-radius:7px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;background:linear-gradient(135deg,var(--primary),var(--primary-dark));border:none;color:white;">Lưu thay đổi</button>`;
+  document.getElementById('detailModal').style.display = 'flex';
+}
+
+function saveEdit(id) {
+  const name   = document.getElementById('eName').value.trim();
+  const email  = document.getElementById('eEmail').value.trim();
+  const phone  = document.getElementById('ePhone').value.trim();
+
+  // Validate
+  if (!name)  { const el=document.getElementById('editFormErr'); el.textContent='Vui lòng nhập họ và tên'; el.style.display='block'; return; }
+  if (!email || !isValidEmail(email)) { const el=document.getElementById('editFormErr'); el.textContent='Email không đúng định dạng'; el.style.display='block'; return; }
+  if (!phone || phone.replace(/\D/g,'').length < 9) { const el=document.getElementById('editFormErr'); el.textContent='Số điện thoại phải có ít nhất 9 chữ số'; el.style.display='block'; return; }
+
+  // Duplicate email check (exclude self)
+  const dup = DB.employees.getAll().find(e => e.id !== id && e.email && e.email.toLowerCase() === email.toLowerCase());
+  if (dup) { const el=document.getElementById('editFormErr'); el.textContent=`Email "${email}" đã được sử dụng bởi nhân viên khác`; el.style.display='block'; return; }
+
+  const btn = document.getElementById('saveEditBtn');
+  if (btn) { btn.disabled = true; btn.style.opacity = '0.7'; }
+
+  try {
+    const dobVal = document.getElementById('eDob').value; // YYYY-MM-DD from date input
+    DB.employees.update(id, {
+      name,
+      email,
+      phone,
+      status:      document.getElementById('eSt').value,
+      position:    document.getElementById('ePos').value.trim() || '—',
+      managerName: document.getElementById('eMgr').value.trim() || '—',
+      workMode:    document.getElementById('eMode').value,
+      dob:         dobVal || null,
+    });
+    EMPLOYEES = loadEmployees();
+    closeModal();
+    applyFilters();
+    DB.utils.showToast('Đã cập nhật thông tin nhân viên');
+  } catch(err) {
+    DB.utils.showToast('Có lỗi xảy ra, vui lòng thử lại');
+  } finally {
+    if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
+  }
+}
+
+function openAddModal() {
+  // Build unit options from existing DB data
+  const units = [...new Set(DB.employees.getAll().map(e => e.unit).filter(Boolean))].sort();
+  const unitOpts = ['<option value="">-- Chọn đơn vị --</option>',
+    ...units.map(u => `<option value="${u}">${u}</option>`)].join('');
+  const selStyle = `cursor:pointer;appearance:none;background-image:url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2212%22 height=%2212%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%236b7280%22 stroke-width=%222.5%22%3E%3Cpolyline points=%226 9 12 15 18 9%22/%3E%3C/svg%3E');background-repeat:no-repeat;background-position:right 10px center;`;
+
+  document.getElementById('modalTitle').textContent = 'Thêm nhân viên mới';
+  document.getElementById('modalContent').innerHTML = `
+    <div id="addFormErr" style="display:none;margin-bottom:12px;background:#fef2f2;border:1px solid #fecaca;border-radius:7px;padding:10px 14px;font-size:12.5px;color:#dc2626;font-weight:600;"></div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:14px;">
+      <div style="grid-column:1/-1;"><label class="form-label">Họ và tên <span style="color:#ef4444;">*</span></label><input class="form-input" id="nName" placeholder="Nhập họ và tên đầy đủ"></div>
+      <div><label class="form-label">Email <span style="color:#ef4444;">*</span></label><input class="form-input" id="nEmail" type="email" placeholder="vd: nhanvien@company.com"></div>
+      <div><label class="form-label">Số điện thoại <span style="color:#ef4444;">*</span></label><input class="form-input" id="nPhone" placeholder="VD: 0912345678"></div>
+      <div><label class="form-label">Đơn vị <span style="color:#ef4444;">*</span></label>
+        <select class="form-input" id="nUnit" style="${selStyle}">${unitOpts}</select>
+      </div>
+      <div><label class="form-label">Trạng thái <span style="color:#ef4444;">*</span></label>
+        <select class="form-input" id="nStatus" style="${selStyle}">
+          <option value="active">Đang làm việc</option>
+          <option value="inactive">Đã nghỉ việc</option>
+        </select>
+      </div>
+      <div><label class="form-label">Vị trí công việc</label><input class="form-input" id="nPos" placeholder="VD: Nhân viên bán hàng"></div>
+      <div><label class="form-label">Quản lý trực tiếp</label><input class="form-input" id="nMgr" placeholder="Tên quản lý"></div>
+      <div><label class="form-label">Ngày bắt đầu làm việc</label><input class="form-input" id="nStart" type="date"></div>
+      <div><label class="form-label">Ngày sinh</label><input class="form-input" id="nDob" type="date"></div>
+      <div><label class="form-label">Hình thức làm việc</label>
+        <select class="form-input" id="nMode" style="${selStyle}">
+          <option>Toàn thời gian</option><option>Bán thời gian</option>
+        </select>
+      </div>
+    </div>`;
+  document.getElementById('modalActions').innerHTML = `
+    <button onclick="closeModal()" style="padding:9px 20px;border-radius:7px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;background:#EAEFF4;border:none;color:#2A3547;">Hủy</button>
+    <button onclick="saveNew()" id="saveNewBtn" style="padding:9px 20px;border-radius:7px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;background:linear-gradient(135deg,var(--primary),var(--primary-dark));border:none;color:white;">Thêm nhân viên</button>`;
+  document.getElementById('detailModal').style.display='flex';
+}
+
+function showFormErr(msg) {
+  const el = document.getElementById('addFormErr');
+  if (!el) { DB.utils.showToast(msg); return; }
+  el.textContent = msg;
+  el.style.display = 'block';
+}
+
+function saveNew() {
+  const name   = document.getElementById('nName').value.trim();
+  const email  = document.getElementById('nEmail').value.trim();
+  const phone  = document.getElementById('nPhone').value.trim();
+  const unit   = document.getElementById('nUnit').value;
+  const status = document.getElementById('nStatus').value;
+
+  // Validate required
+  if (!name)  { showFormErr('Vui lòng nhập họ và tên'); return; }
+  if (!email) { showFormErr('Vui lòng nhập email'); return; }
+  if (!isValidEmail(email)) { showFormErr('Email không đúng định dạng (vd: abc@xyz.com)'); return; }
+  if (!phone) { showFormErr('Vui lòng nhập số điện thoại'); return; }
+  if (phone.replace(/\D/g,'').length < 9) { showFormErr('Số điện thoại phải có ít nhất 9 chữ số'); return; }
+  if (!unit)  { showFormErr('Vui lòng chọn đơn vị'); return; }
+
+  // Check duplicate email
+  const dupEmail = DB.employees.getAll().find(e => e.email && e.email.toLowerCase() === email.toLowerCase());
+  if (dupEmail) { showFormErr(`Email "${email}" đã được sử dụng bởi nhân viên khác`); return; }
+
+  const btn = document.getElementById('saveNewBtn');
+  if (btn) { btn.disabled = true; btn.style.opacity = '0.7'; }
+
+  try {
+    DB.employees.create({
+      name, email, phone,
+      unit,
+      status,
+      dob:         document.getElementById('nDob').value   || null,
+      position:    document.getElementById('nPos').value.trim()   || 'Nhân viên',
+      managerName: document.getElementById('nMgr').value.trim()   || '—',
+      startDate:   document.getElementById('nStart').value || new Date().toISOString().slice(0, 10),
+      workMode:    document.getElementById('nMode').value,
+      contractStatus: 'Đã có hợp đồng',
+      contractType:   'Hợp đồng đào tạo',
+      roleId: 'employee',
+    });
+    EMPLOYEES = loadEmployees();
+    closeModal();
+    applyFilters();
+    DB.utils.showToast('Đã thêm nhân viên mới thành công');
+  } catch(err) {
+    DB.utils.showToast('Có lỗi xảy ra, vui lòng thử lại');
+  } finally {
+    if (btn) { btn.disabled = false; btn.style.opacity = '1'; }
+  }
+}
+
+function exportCSV() {
+  const data = filteredData.length ? filteredData : EMPLOYEES;
+  if (!data.length) { DB.utils.showToast('Không có dữ liệu để xuất'); return; }
+  const rows = [
+    ['DANH SÁCH NHÂN VIÊN'],
+    [`Xuất ngày: ${new Date().toLocaleDateString('vi-VN')}`],
+    [],
+    ['Mã NV', 'Họ và tên', 'Email', 'Số điện thoại', 'Đơn vị', 'Vị trí', 'Quản lý', 'Ngày bắt đầu', 'Loại HĐLĐ', 'Hình thức', 'Ngày sinh', 'Trạng thái'],
+    ...data.map(e => [e.code, e.name, e.email, e.phone, e.unit, e.position, e.manager, e.startDate, e.contractType, e.workMode, e.dob, e.status])
+  ];
+  const esc = v => `"${String(v === null || v === undefined ? '' : v).replace(/"/g, '""')}"`;
+  const csv  = rows.map(r => r.map(esc).join(',')).join('\r\n');
+  const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
+  const url  = URL.createObjectURL(blob);
+  const a    = document.createElement('a');
+  a.href = url;
+  a.download = `Nhan_vien_${new Date().toISOString().slice(0,10)}.csv`;
+  document.body.appendChild(a); a.click();
+  document.body.removeChild(a); URL.revokeObjectURL(url);
+  DB.utils.showToast('Xuất file thành công!');
+}
+
+function closeModal() { document.getElementById('detailModal').style.display='none'; }
+
+// Init
+applyFilters();
+</script>
+</body>
+</html>

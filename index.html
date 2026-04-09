@@ -1,0 +1,1833 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Humi - HRM Dashboard</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="db.js"></script>
+  <script src="theme.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script defer src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <style>
+    :root { --primary:#5D87FF; --primary-dark:#4570EA; --primary-rgb:93,135,255; }
+    * { font-family: 'Plus Jakarta Sans', sans-serif; }
+    body { background: #F2F6FA; }
+
+    /* Scrollbar */
+    ::-webkit-scrollbar { width: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #DFE5EF; border-radius: 4px; }
+
+    /* Gradient button */
+    .btn-primary {
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 50%, #2563EB 100%);
+      transition: all 0.2s ease;
+      box-shadow: 0 4px 14px rgba(99, 60, 236, 0.35);
+    }
+    .btn-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(99, 60, 236, 0.45);
+    }
+    .btn-primary:active { transform: translateY(0); }
+
+    /* Active sidebar item */
+    .sidebar-active {
+      background: linear-gradient(135deg, rgba(93, 135, 255, 0.12) 0%, rgba(79, 70, 229, 0.12) 100%);
+      color: var(--primary);
+      font-weight: 600;
+    }
+    .sidebar-active svg { color: var(--primary); }
+
+    /* Sidebar hover */
+    .sidebar-item:hover:not(.sidebar-active) {
+      background: rgba(107, 114, 128, 0.07);
+    }
+
+    /* Banner gradient */
+    .banner-bg {
+      background: linear-gradient(135deg, #0a0a2e 0%, #0d1b4b 25%, #0f2460 40%, #1a1078 55%, #3b0f8c 70%, #1a3a8f 85%, #0f4fa8 100%);
+      position: relative;
+      overflow: hidden;
+    }
+    .banner-bg::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: radial-gradient(ellipse 80% 60% at 50% 120%, rgba(99, 102, 241, 0.5) 0%, transparent 70%),
+                  radial-gradient(ellipse 40% 40% at 20% 60%, rgba(139, 92, 246, 0.3) 0%, transparent 60%),
+                  radial-gradient(ellipse 50% 50% at 80% 40%, rgba(59, 130, 246, 0.3) 0%, transparent 60%);
+    }
+    .banner-bg::after {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background-image: 
+        repeating-linear-gradient(
+          -45deg,
+          transparent,
+          transparent 2px,
+          rgba(99, 102, 241, 0.04) 2px,
+          rgba(99, 102, 241, 0.04) 4px
+        );
+    }
+
+    /* Wave lines in banner */
+    .wave-lines {
+      position: absolute;
+      inset: 0;
+      overflow: hidden;
+    }
+    .wave-lines svg {
+      position: absolute;
+      bottom: -20%;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 160%;
+      opacity: 0.35;
+    }
+
+    /* Clock glow */
+    .clock-display {
+      background: linear-gradient(135deg, #1e1b4b 0%, #312e81 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    /* Card shadow */
+    .card {
+      box-shadow: 0 2px 12px rgba(0, 0, 0, 0.06), 0 1px 3px rgba(0, 0, 0, 0.04);
+    }
+
+    /* Status badges */
+    .badge-active {
+      background: linear-gradient(135deg, #d1fae5, #a7f3d0);
+      color: #065f46;
+    }
+    .badge-expired {
+      background: #EAEFF4;
+      color: #5A6A85;
+    }
+
+    /* Quick action icons */
+    .quick-icon {
+      background: linear-gradient(135deg, #f5f3ff, #ECF2FF);
+      border: 1.5px solid rgba(93, 135, 255, 0.15);
+      transition: all 0.2s ease;
+    }
+    .quick-icon:hover {
+      background: linear-gradient(135deg, #ECF2FF, #ddd6fe);
+      transform: translateY(-2px);
+      box-shadow: 0 4px 12px rgba(93, 135, 255, 0.2);
+    }
+
+    /* Search input */
+    .search-input:focus { outline: none; }
+    .search-input::placeholder { color: #7C8FAC; }
+
+    /* Announcement items */
+    .announcement-item {
+      transition: background 0.15s ease;
+    }
+    .announcement-item:hover { background: #fafafa; }
+
+    /* Tab active */
+    .tab-active {
+      color: var(--primary);
+      border-bottom: 2px solid var(--primary);
+    }
+
+    /* Logo mark */
+    .logo-mark {
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+    }
+
+    /* Inbox row hover */
+    .inbox-row:hover { background: #fafafa; }
+
+    /* Note textarea */
+    textarea:focus { outline: none; box-shadow: 0 0 0 2px rgba(93, 135, 255, 0.2); }
+
+    /* Pulse dot */
+    @keyframes pulse-dot {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+    .pulse-dot { animation: pulse-dot 2s infinite; }
+
+    /* Slide fade */
+    @keyframes slideUp {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .slide-up { animation: slideUp 0.4s ease forwards; }
+
+    /* Grid layout */
+    .dashboard-grid {
+      display: grid;
+      grid-template-columns: 240px 1fr 300px;
+      grid-template-rows: 64px 1fr;
+      min-height: 100vh;
+    }
+
+    .sidebar-scroll { overflow-y: auto; max-height: calc(100vh - 64px); }
+  </style>
+</head>
+<body>
+
+<div class="dashboard-grid">
+
+  <!-- ==================== SIDEBAR ==================== -->
+  <aside class="bg-white card row-span-2 flex flex-col" style="grid-column: 1; grid-row: 1 / 3; border-right: 1px solid #e5eaef;">
+    <!-- Logo -->
+    <div class="flex items-center gap-2.5 px-5 py-5 border-b border-gray-50">
+      <div class="logo-mark w-8 h-8 rounded-lg flex items-center justify-center">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5">
+          <path d="M12 2L2 7l10 5 10-5-10-5z"/>
+          <path d="M2 17l10 5 10-5"/>
+          <path d="M2 12l10 5 10-5"/>
+        </svg>
+      </div>
+      <span class="text-[22px] font-800 text-gray-900" style="font-weight: 800; letter-spacing: -0.5px;">Humi</span>
+    </div>
+
+    <!-- User Profile -->
+    <div class="px-4 py-4 border-b border-gray-50">
+      <div class="flex items-center gap-3 p-2 rounded-xl hover:bg-gray-50 cursor-pointer transition-colors">
+        <div class="relative">
+          <img src="https://i.pravatar.cc/40?img=47" alt="avatar" class="w-10 h-10 rounded-full object-cover ring-2 ring-purple-100" />
+          <div class="absolute bottom-0 right-0 w-2.5 h-2.5 bg-green-400 rounded-full border-2 border-white pulse-dot"></div>
+        </div>
+        <div class="flex-1 min-w-0">
+          <p id="sidebarUserName" class="text-sm font-700 text-gray-900 truncate" style="font-weight: 700;">—</p>
+          <p id="sidebarUserRole" class="text-xs text-gray-400 font-500">—</p>
+        </div>
+        <button onclick="openFaceRegModal()" title="Đăng ký khuôn mặt" class="text-gray-400 hover:text-purple-600 transition-colors">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/>
+          </svg>
+        </button>
+      </div>
+    </div>
+
+    <!-- Navigation -->
+    <nav class="sidebar-scroll px-3 py-3 space-y-0.5">
+      <!-- Main menu -->
+      <div class="mb-1">
+        <p class="text-[10px] font-600 text-gray-400 uppercase tracking-widest px-3 pb-2" style="font-weight: 600;">Menu</p>
+      </div>
+
+      <a href="index.html" class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all active">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+          <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+        </svg>
+        <span class="text-sm">Trang chủ</span>
+      </a>
+
+      <a href="duyet-cong.html" class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all text-gray-600">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M9 11l3 3L22 4"/><path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
+        </svg>
+        <span class="text-sm font-500">Duyệt công</span>
+      </a>
+
+      <a href="danh-sach-phieu-nghi.html" class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all text-gray-600">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><polyline points="9 15 11 17 15 13"/></svg>
+        <span class="text-sm font-500">Duyệt phép</span>
+      </a>
+
+      <a href="danh-sach-nhan-vien.html" class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all text-gray-600">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/>
+          <path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/>
+        </svg>
+        <span class="text-sm font-500">Nhân viên</span>
+      </a>
+
+      <a href="lich-lam-viec.html" class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all text-gray-600">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/>
+          <line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+        </svg>
+        <span class="text-sm font-500">Lịch làm việc</span>
+      </a>
+
+      <a href="chia-ca.html" class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all text-gray-600">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+        </svg>
+        <span class="text-sm font-500">Đăng ký ca</span>
+      </a>
+
+      <!-- Divider -->
+      <div class="pt-2 pb-1">
+        <div class="border-t border-gray-100 mx-1"></div>
+      </div>
+
+      <a href="xem-phep-ton.html" class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all text-gray-600">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/>
+          <circle cx="12" cy="7" r="4"/>
+          <polyline points="16 11 18 13 22 9"/>
+        </svg>
+        <span class="text-sm font-500">Xem phép tồn</span>
+      </a>
+
+      <a href="xem-thu-nhap.html" class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all text-gray-600">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>
+        </svg>
+        <span class="text-sm font-500">Xem thu nhập</span>
+      </a>
+
+      <a href="hop-thu.html" class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all text-gray-600">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+          <polyline points="22,6 12,13 2,6"/>
+        </svg>
+        <span class="text-sm font-500">Hộp thư</span>
+      </a>
+    </nav>
+
+    <!-- Settings at bottom -->
+    <div class="px-3 pb-4 border-t border-gray-50 pt-3">
+      <a href="#" class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all text-gray-600">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
+        </svg>
+        <span class="text-sm font-500">Cài đặt</span>
+      </a>
+      <button onclick="doLogout()" class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all w-full text-red-500 hover:bg-red-50" style="border:none;background:none;font-family:inherit;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        <span class="text-sm font-500">Đăng xuất</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ==================== TOPBAR ==================== -->
+  <header class="bg-white flex items-center justify-between px-6" style="grid-column: 2 / 3; border-bottom: 1px solid #e5eaef; box-shadow: 0 7px 30px 0 rgba(90,114,123,0.11);">
+    <!-- Search -->
+    <div class="flex-1 max-w-lg">
+      <div class="flex items-center gap-2.5 bg-gray-50 border border-gray-100 rounded-xl px-4 py-2.5 hover:border-gray-200 transition-colors focus-within:border-purple-200 focus-within:bg-white" style="transition: all 0.2s;">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#7C8FAC" stroke-width="2">
+          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        <input type="text" placeholder="Tìm kiếm..." class="search-input bg-transparent text-sm text-gray-700 w-full border-none" />
+        <div class="flex items-center gap-1 ml-auto">
+          <kbd class="text-[10px] text-gray-400 bg-gray-100 rounded px-1.5 py-0.5 font-mono">⌘K</kbd>
+        </div>
+      </div>
+    </div>
+
+    <!-- Right actions -->
+    <div class="flex items-center gap-3 ml-4">
+      <button class="relative p-2.5 rounded-xl hover:bg-gray-50 transition-colors">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2A3547" stroke-width="2">
+          <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+          <path d="M13.73 21a2 2 0 01-3.46 0"/>
+        </svg>
+        <span class="absolute top-1.5 right-1.5 w-2 h-2 bg-red-500 rounded-full ring-2 ring-white pulse-dot"></span>
+      </button>
+      <div class="w-px h-8 bg-gray-100"></div>
+      <div class="flex items-center gap-2 cursor-pointer hover:bg-gray-50 px-2 py-1.5 rounded-xl transition-colors">
+        <img src="https://i.pravatar.cc/32?img=47" alt="avatar" class="w-8 h-8 rounded-full ring-2 ring-purple-100" />
+        <div>
+          <p id="topbarUserName" class="text-sm font-600 text-gray-800">—</p>
+          <p id="topbarUserRole" class="text-[11px] text-gray-400">—</p>
+        </div>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7C8FAC" stroke-width="2" class="ml-1">
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </div>
+    </div>
+  </header>
+
+  <!-- ==================== MAIN CONTENT ==================== -->
+  <main class="overflow-y-auto px-6 py-5 space-y-4 slide-up" style="grid-column: 2 / 3;">
+
+    <!-- Banner -->
+    <div class="banner-bg rounded-2xl overflow-hidden relative" style="height: 200px; min-height: 200px;">
+      <div class="wave-lines">
+        <svg viewBox="0 0 1200 400" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="none">
+          <defs>
+            <linearGradient id="wg1" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" style="stop-color:#818cf8;stop-opacity:0"/>
+              <stop offset="50%" style="stop-color:#c084fc;stop-opacity:1"/>
+              <stop offset="100%" style="stop-color:#818cf8;stop-opacity:0"/>
+            </linearGradient>
+            <linearGradient id="wg2" x1="0%" y1="0%" x2="100%" y2="0%">
+              <stop offset="0%" style="stop-color:#60a5fa;stop-opacity:0"/>
+              <stop offset="50%" style="stop-color:#818cf8;stop-opacity:0.8"/>
+              <stop offset="100%" style="stop-color:#60a5fa;stop-opacity:0"/>
+            </linearGradient>
+          </defs>
+          <!-- Multiple wave paths -->
+          <path d="M0,200 C100,160 200,240 300,200 C400,160 500,240 600,200 C700,160 800,240 900,200 C1000,160 1100,240 1200,200" fill="none" stroke="url(#wg1)" stroke-width="1.5"/>
+          <path d="M0,220 C120,180 240,260 360,220 C480,180 600,260 720,220 C840,180 960,260 1080,220 C1140,200 1180,210 1200,220" fill="none" stroke="url(#wg1)" stroke-width="1"/>
+          <path d="M0,240 C80,200 160,280 240,240 C320,200 400,280 480,240 C560,200 640,280 720,240 C800,200 880,280 960,240 C1040,200 1120,280 1200,240" fill="none" stroke="url(#wg2)" stroke-width="0.8"/>
+          <path d="M0,260 C150,220 300,300 450,260 C600,220 750,300 900,260 C1050,220 1150,270 1200,260" fill="none" stroke="url(#wg1)" stroke-width="1.2"/>
+          <path d="M0,280 C100,240 200,320 300,280 C400,240 500,320 600,280 C700,240 800,320 900,280 C1000,240 1100,320 1200,280" fill="none" stroke="url(#wg2)" stroke-width="0.6"/>
+          <path d="M0,300 C200,260 400,340 600,300 C800,260 1000,340 1200,300" fill="none" stroke="url(#wg1)" stroke-width="1.5"/>
+          <path d="M0,320 C100,280 200,360 300,320 C400,280 500,360 600,320 C700,280 800,360 900,320 C1000,280 1100,360 1200,320" fill="none" stroke="url(#wg2)" stroke-width="1"/>
+          <path d="M0,340 C120,300 240,380 360,340 C480,300 600,380 720,340 C840,300 960,380 1080,340 C1140,320 1180,330 1200,340" fill="none" stroke="url(#wg1)" stroke-width="0.7"/>
+          <!-- Highlight glow line -->
+          <path d="M0,280 C200,220 400,340 600,270 C800,200 1000,330 1200,260" fill="none" stroke="white" stroke-width="2" opacity="0.15"/>
+        </svg>
+      </div>
+
+      <!-- Banner content -->
+      <div class="absolute inset-0 flex items-center justify-between px-8 z-10">
+        <button class="w-8 h-8 rounded-full bg-white/15 backdrop-blur-sm flex items-center justify-center hover:bg-white/25 transition-all text-white/80">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="15 18 9 12 15 6"/>
+          </svg>
+        </button>
+
+        <!-- Center text -->
+        <div class="text-center">
+          <p class="text-white/40 text-xs font-500 tracking-[4px] uppercase mb-1">Abstract</p>
+          <p class="text-white/15 text-[10px] tracking-[8px] uppercase">Background</p>
+        </div>
+
+        <button class="w-8 h-8 rounded-full bg-white/15 backdrop-blur-sm flex items-center justify-center hover:bg-white/25 transition-all text-white/80">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <polyline points="9 18 15 12 9 6"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Slide dots -->
+      <div class="absolute bottom-4 left-1/2 -translate-x-1/2 flex gap-1.5 z-10">
+        <div class="w-5 h-1.5 rounded-full bg-white/70"></div>
+        <div class="w-1.5 h-1.5 rounded-full bg-white/30"></div>
+        <div class="w-1.5 h-1.5 rounded-full bg-white/30"></div>
+      </div>
+    </div>
+
+    <!-- Announcement Section -->
+    <div class="bg-white rounded-2xl card overflow-hidden">
+      <!-- Header -->
+      <div class="flex items-center justify-between px-5 py-4 border-b border-gray-50">
+        <div class="flex items-center gap-2.5">
+          <div class="w-7 h-7 rounded-lg bg-purple-50 flex items-center justify-center">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2.5">
+              <path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/>
+              <polyline points="14 2 14 8 20 8"/>
+              <line x1="16" y1="13" x2="8" y2="13"/>
+              <line x1="16" y1="17" x2="8" y2="17"/>
+              <polyline points="10 9 9 9 8 9"/>
+            </svg>
+          </div>
+          <h2 class="font-700 text-gray-900 text-[15px]" style="font-weight: 700;">Thông báo công ty</h2>
+        </div>
+        <button class="p-1.5 hover:bg-gray-50 rounded-lg transition-colors">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#7C8FAC" stroke-width="2">
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
+        </button>
+      </div>
+
+      <!-- Announcement List (dynamic) -->
+      <div id="announcementList"></div>
+
+      <!-- View all -->
+      <div class="px-5 py-3 border-t border-gray-50 flex justify-end">
+        <a href="#" class="text-xs font-600 text-purple-600 hover:text-purple-700 flex items-center gap-1 transition-colors" style="font-weight: 600;">
+          Xem tất cả
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+          </svg>
+        </a>
+      </div>
+    </div>
+
+    <!-- Inbox Section -->
+    <div class="bg-white rounded-2xl card overflow-hidden">
+      <!-- Header -->
+      <div class="px-5 py-4 border-b border-gray-50">
+        <div class="flex items-center gap-2.5 mb-3">
+          <div class="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" stroke-width="2.5">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+              <polyline points="22,6 12,13 2,6"/>
+            </svg>
+          </div>
+          <h2 class="font-700 text-gray-900 text-[15px]" style="font-weight: 700;">Thư mới từ đồng nghiệp</h2>
+        </div>
+        <!-- Tabs -->
+        <div class="flex gap-0 border-b border-gray-100 -mb-4">
+          <button class="tab-active flex items-center gap-2 px-4 py-2 text-sm font-600" style="font-weight: 600;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <polyline points="6 9 12 15 18 9"/>
+            </svg>
+            Chưa đọc
+          </button>
+          <button class="flex items-center gap-2 px-4 py-2 text-sm text-gray-500 hover:text-gray-700 font-500 transition-colors">
+            Thư Khác
+          </button>
+        </div>
+      </div>
+
+      <!-- Empty state -->
+      <div class="px-5 py-6 text-center border-b border-gray-50">
+        <div class="w-10 h-10 rounded-full bg-green-50 flex items-center justify-center mx-auto mb-2">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2">
+            <polyline points="20 6 9 17 4 12"/>
+          </svg>
+        </div>
+        <p class="text-sm text-gray-500 font-500">Tuyệt quá! Bạn đã đọc tất cả thư trong hộp thư đến của mình.</p>
+      </div>
+
+      <!-- Thư khác section -->
+      <div class="px-5 pt-4 pb-1">
+        <div class="flex items-center gap-2 mb-3 cursor-pointer">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2A3547" stroke-width="2">
+            <polyline points="6 9 12 15 18 9"/>
+          </svg>
+          <span class="text-sm font-600 text-gray-700" style="font-weight: 600;">Thư Khác</span>
+        </div>
+      </div>
+
+      <!-- Inbox row -->
+      <div class="inbox-row flex items-center gap-4 px-5 py-3 cursor-pointer transition-colors border-t border-gray-50">
+        <div class="w-8 h-8 rounded-full bg-purple-100 flex items-center justify-center flex-shrink-0">
+          <span class="text-xs font-700 text-purple-700">CH</span>
+        </div>
+        <div class="flex-1 min-w-0">
+          <div class="flex items-center justify-between mb-0.5">
+            <span class="text-sm font-600 text-gray-900" style="font-weight: 600;">Cao Thị Hà Như</span>
+            <span class="text-xs text-gray-400">01/01/2026</span>
+          </div>
+          <div class="flex items-center justify-between">
+            <p class="text-xs text-gray-500 truncate pr-4">P.HCNS THÔNG BÁO VỀ VIỆC DUYỆT CÔNG CHI TRẢ...</p>
+            <div class="flex items-center gap-1 text-gray-400 flex-shrink-0">
+              <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/>
+              </svg>
+              <span class="text-[11px]">45/50</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="px-5 py-3 flex justify-end border-t border-gray-50">
+        <a href="#" class="text-xs font-600 text-purple-600 hover:text-purple-700 flex items-center gap-1 transition-colors" style="font-weight: 600;">
+          Xem tất cả
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+            <line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/>
+          </svg>
+        </a>
+      </div>
+    </div>
+
+  </main>
+
+  <!-- ==================== RIGHT PANEL ==================== -->
+  <aside class="row-span-2 overflow-y-auto px-4 py-5 space-y-4 slide-up" style="grid-column: 3; grid-row: 1 / 3; background: #F2F6FA; border-left: 1px solid #e8eaf0;">
+
+    <!-- Time Card -->
+    <div class="bg-white rounded-2xl card p-5">
+      <!-- Clock -->
+      <div class="text-center mb-4">
+        <div id="clock" class="clock-display text-5xl font-800 tracking-tight leading-none mb-1" style="font-weight: 800; font-size: 44px; background: linear-gradient(135deg, #1e1b4b 0%, #4338ca 50%, #2563eb 100%); -webkit-background-clip: text; -webkit-text-fill-color: transparent;"></div>
+        <p id="date-display" class="text-sm text-gray-500 font-500 mt-2"></p>
+      </div>
+
+      <!-- Company & Shift -->
+      <div class="space-y-2 mb-4">
+        <div class="flex items-center gap-2.5 p-3 bg-gray-50 rounded-xl">
+          <div class="w-7 h-7 rounded-lg bg-purple-50 flex items-center justify-center">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2">
+              <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
+            </svg>
+          </div>
+          <span id="cardUnitName" class="text-sm font-600 text-gray-800" style="font-weight:600;">—</span>
+        </div>
+        <div class="flex items-center gap-2.5 p-3 bg-gray-50 rounded-xl">
+          <div class="w-7 h-7 rounded-lg bg-blue-50 flex items-center justify-center">
+            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" stroke-width="2">
+              <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+            </svg>
+          </div>
+          <div>
+            <span id="cardShiftName" class="text-sm font-600 text-gray-800" style="font-weight:600;">—</span>
+            <p id="cardShiftNext" style="display:none;font-size:10px;color:#7C8FAC;margin:2px 0 0;"></p>
+          </div>
+        </div>
+      </div>
+
+      <!-- Khu vực chấm công (ẩn/hiện theo trạng thái) -->
+      <div id="attActionArea">
+        <!-- Giờ chấm công hôm nay -->
+        <div id="attendanceStatus" class="hidden mb-3 rounded-xl p-3 bg-gray-50 text-sm">
+          <div class="flex justify-between items-center">
+            <span class="text-gray-500">Giờ vào:</span>
+            <span id="attCheckInTime" class="font-700 text-green-600" style="font-weight:700;">—</span>
+          </div>
+          <div class="flex justify-between items-center mt-1">
+            <span class="text-gray-500">Giờ ra:</span>
+            <span id="attCheckOutTime" class="font-700 text-red-500" style="font-weight:700;">—</span>
+          </div>
+        </div>
+        <!-- Ghi chú -->
+        <div class="mb-4" id="attendanceNoteWrap">
+          <textarea id="cardAttNote" placeholder="Ghi chú (tùy chọn)" rows="2"
+            class="w-full text-sm text-gray-600 bg-gray-50 border border-gray-100 rounded-xl px-3 py-2.5 resize-none placeholder-gray-400 transition-all hover:border-gray-200"></textarea>
+        </div>
+        <!-- Nút chấm công -->
+        <button id="attendanceCardBtn" onclick="openAttendanceModal()" class="btn-primary w-full py-3 rounded-xl text-white font-700 text-sm tracking-wide" style="font-weight:700;">
+          Bắt đầu ca
+        </button>
+      </div>
+
+      <!-- Hiển thị khi không có ca hoặc đã kết thúc ca -->
+      <div id="attNoShift" class="hidden text-center py-3">
+        <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="#9ca3af" stroke-width="1.5" class="mx-auto mb-2"><circle cx="12" cy="12" r="10"/><path d="M8 12h8M12 8v8"/></svg>
+        <p id="attNoShiftMsg" class="text-sm text-gray-400">Hôm nay không có ca làm việc</p>
+      </div>
+    </div>
+
+    <!-- Quick Actions -->
+    <div class="bg-white rounded-2xl card p-5">
+      <div class="flex items-center justify-between mb-4">
+        <h3 class="font-700 text-gray-900 text-sm" style="font-weight: 700;">Truy cập nhanh</h3>
+        <button class="text-xs text-purple-600 font-500 hover:text-purple-700 transition-colors flex items-center gap-1">
+          + Thêm mới
+        </button>
+      </div>
+
+      <div class="grid grid-cols-3 gap-3">
+        <!-- Quick action 1 -->
+        <div class="flex flex-col items-center gap-2 cursor-pointer group">
+          <div class="quick-icon w-12 h-12 rounded-2xl flex items-center justify-center">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2">
+              <path d="M17.5 21H9a7 7 0 117-7v1"/>
+              <path d="M21 3l-9 9"/><path d="M15 3h6v6"/>
+            </svg>
+          </div>
+          <span class="text-[11px] text-gray-600 font-500 text-center leading-tight">Tạo nghỉ phép</span>
+        </div>
+
+        <!-- Quick action 2 -->
+        <div class="flex flex-col items-center gap-2 cursor-pointer group">
+          <div class="quick-icon w-12 h-12 rounded-2xl flex items-center justify-center">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2">
+              <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+              <polyline points="22,6 12,13 2,6"/>
+            </svg>
+          </div>
+          <span class="text-[11px] text-gray-600 font-500 text-center leading-tight">Thư nội bộ</span>
+        </div>
+
+        <!-- Quick action 3 -->
+        <div class="flex flex-col items-center gap-2 cursor-pointer group">
+          <div class="quick-icon w-12 h-12 rounded-2xl flex items-center justify-center">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2">
+              <path d="M9 11l3 3L22 4"/>
+              <path d="M21 12v7a2 2 0 01-2 2H5a2 2 0 01-2-2V5a2 2 0 012-2h11"/>
+            </svg>
+          </div>
+          <span class="text-[11px] text-gray-600 font-500 text-center leading-tight">Duyệt công</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- Mini Stats -->
+    <div class="bg-white rounded-2xl card p-5">
+      <h3 class="font-700 text-gray-900 text-sm mb-3" style="font-weight: 700;">Thống kê tháng này</h3>
+      <div class="space-y-3">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <div class="w-2 h-2 rounded-full bg-green-400"></div>
+            <span class="text-xs text-gray-600">Ngày công</span>
+          </div>
+          <span id="statWorkDays" class="text-sm font-700 text-gray-900" style="font-weight: 700;">—</span>
+        </div>
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <div class="w-2 h-2 rounded-full bg-blue-400"></div>
+            <span class="text-xs text-gray-600">Tăng ca</span>
+          </div>
+          <span class="text-sm font-700 text-gray-900" style="font-weight: 700;">0 giờ</span>
+        </div>
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-2">
+            <div class="w-2 h-2 rounded-full bg-yellow-400"></div>
+            <span class="text-xs text-gray-600">Phép còn lại</span>
+          </div>
+          <span id="statLeaveLeft" class="text-sm font-700 text-gray-900" style="font-weight: 700;">—</span>
+        </div>
+      </div>
+
+      <!-- Progress bar -->
+      <div class="mt-4 pt-3 border-t border-gray-50">
+        <div class="flex items-center justify-between mb-1.5">
+          <span class="text-[11px] text-gray-500">Hoàn thành công</span>
+          <span id="statPct" class="text-[11px] font-600 text-purple-600" style="font-weight: 600;">—</span>
+        </div>
+        <div class="h-1.5 bg-gray-100 rounded-full overflow-hidden">
+          <div id="statBar" class="h-full rounded-full" style="width: 0%; background: linear-gradient(90deg, var(--primary), var(--primary-dark), #2563EB);"></div>
+        </div>
+      </div>
+    </div>
+
+  </aside>
+
+</div>
+
+<!-- ==================== ATTENDANCE MODAL ==================== -->
+<style>
+    :root { --primary:#5D87FF; --primary-dark:#4570EA; --primary-rgb:93,135,255; }
+  #attendanceModal { display: none; }
+  #attendanceModal.open { display: flex; }
+
+  @keyframes modalIn {
+    from { opacity: 0; transform: translate(-50%, -48%) scale(0.96); }
+    to   { opacity: 1; transform: translate(-50%, -50%) scale(1); }
+  }
+  @keyframes overlayIn {
+    from { opacity: 0; }
+    to   { opacity: 1; }
+  }
+  #attendanceModal.open .modal-overlay { animation: overlayIn 0.2s ease forwards; }
+  #attendanceModal.open .modal-box    { animation: modalIn  0.25s cubic-bezier(0.34,1.2,0.64,1) forwards; }
+
+  #cameraVideo { transform: scaleX(-1); } /* mirror effect */
+
+  .spinner {
+    width: 16px; height: 16px;
+    border: 2px solid rgba(255,255,255,0.4);
+    border-top-color: white;
+    border-radius: 50%;
+    animation: spin 0.7s linear infinite;
+    display: inline-block;
+  }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  #toast {
+    position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%);
+    padding: 11px 22px; border-radius: 7px; font-size: 13px; font-weight: 600;
+    color: white; z-index: 9999; opacity: 0; pointer-events: none;
+    transition: opacity 0.3s ease;
+    box-shadow: 0 6px 24px rgba(0,0,0,0.18);
+  }
+  #toast.show { opacity: 1; }
+  #toast.success { background: linear-gradient(135deg, #16a34a, #15803d); }
+  #toast.error   { background: linear-gradient(135deg, #dc2626, #b91c1c); }
+
+  /* Camera wrapper border */
+  #cameraWrapper {
+    transition: border-color 0.35s ease, box-shadow 0.35s ease;
+    border: 2.5px solid transparent;
+  }
+  #cameraWrapper.face-ok    { border-color: #22c55e; box-shadow: 0 0 0 4px rgba(34,197,94,0.18); }
+  #cameraWrapper.face-fail  { border-color: #ef4444; box-shadow: 0 0 0 4px rgba(239,68,68,0.18); }
+  #cameraWrapper.face-multi { border-color: #f59e0b; box-shadow: 0 0 0 4px rgba(245,158,11,0.18); }
+
+  /* Face overlays */
+  #faceNoFaceOverlay {
+    display: none;
+    position: absolute; inset: 0;
+    background: rgba(0,0,0,0.55);
+    backdrop-filter: blur(1px);
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 10px;
+    animation: fadeIn 0.25s ease;
+  }
+  #faceDetectedBadge {
+    display: none;
+    position: absolute; bottom: 10px; left: 50%; transform: translateX(-50%);
+    padding: 6px 14px; border-radius: 20px;
+    background: rgba(21,128,61,0.88);
+    backdrop-filter: blur(4px);
+    align-items: center; gap: 6px;
+    animation: faceBadgeIn 0.25s ease;
+  }
+  #faceModelLoadingBadge {
+    display: none;
+    position: absolute; top: 10px; right: 10px;
+    padding: 5px 10px; border-radius: 8px;
+    background: rgba(0,0,0,0.6);
+    align-items: center; gap: 6px;
+  }
+
+  @keyframes fadeIn  { from { opacity: 0; } to { opacity: 1; } }
+  @keyframes faceBadgeIn { from { opacity: 0; transform: translateX(-50%) translateY(6px); } to { opacity: 1; transform: translateX(-50%) translateY(0); } }
+
+  @keyframes pulseFace {
+    0%, 100% { opacity: 1; }
+    50%       { opacity: 0.45; }
+  }
+  .icon-pulse { animation: pulseFace 1.2s ease-in-out infinite; }
+
+  @keyframes shakeWarn {
+    0%, 100% { transform: translateX(0); }
+    20%       { transform: translateX(-5px); }
+    40%       { transform: translateX(5px); }
+    60%       { transform: translateX(-4px); }
+    80%       { transform: translateX(4px); }
+  }
+  .shake { animation: shakeWarn 0.4s ease; }
+
+  /* Button disabled */
+  #captureBtn:disabled {
+    background: #DFE5EF !important;
+    box-shadow: none !important;
+    cursor: not-allowed !important;
+    transform: none !important;
+  }
+</style>
+
+<!-- Modal wrapper -->
+<div id="attendanceModal" style="position:fixed;inset:0;z-index:1000;align-items:center;justify-content:center;">
+  <!-- Overlay -->
+  <div class="modal-overlay" onclick="closeAttendanceModal()"
+    style="position:absolute;inset:0;background:rgba(10,10,40,0.55);backdrop-filter:blur(3px);"></div>
+
+  <!-- Popup box -->
+  <div class="modal-box"
+    style="position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);
+           width:460px;max-width:calc(100vw - 32px);background:white;
+           border-radius:22px;box-shadow:0 20px 60px rgba(0,0,0,0.22);
+           overflow:hidden;z-index:1001;">
+
+    <!-- Header -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px 14px;border-bottom:1px solid #f0f0f8;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div style="width:32px;height:32px;border-radius:7px;background:linear-gradient(135deg,var(--primary),var(--primary-dark));display:flex;align-items:center;justify-content:center;">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5">
+            <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
+            <circle cx="12" cy="13" r="4"/>
+          </svg>
+        </div>
+        <span style="font-size:15px;font-weight:700;color:#2A3547;">Xác nhận chấm công</span>
+      </div>
+      <button onclick="closeAttendanceModal()"
+        style="width:30px;height:30px;border-radius:8px;border:none;background:#EAEFF4;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background 0.15s;"
+        onmouseover="this.style.background='#e5eaef'" onmouseout="this.style.background='#EAEFF4'">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5A6A85" stroke-width="2.5">
+          <line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/>
+        </svg>
+      </button>
+    </div>
+
+    <!-- Camera preview -->
+    <div id="cameraWrapper" style="position:relative;margin:16px 16px 0;border-radius:7px;overflow:hidden;background:#0f0f1a;aspect-ratio:16/9;">
+      <video id="cameraVideo" autoplay playsinline muted
+        style="width:100%;height:100%;object-fit:cover;display:block;"></video>
+
+      <!-- Camera error -->
+      <div id="cameraError" style="display:none;position:absolute;inset:0;align-items:center;justify-content:center;flex-direction:column;gap:8px;">
+        <svg width="36" height="36" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2">
+          <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
+          <line x1="1" y1="1" x2="23" y2="23" stroke="#ef4444"/>
+        </svg>
+        <span style="font-size:13px;font-weight:700;color:#ef4444;">Không thể truy cập camera</span>
+        <span style="font-size:11px;color:#7C8FAC;">Vui lòng cấp quyền và thử lại</span>
+      </div>
+
+      <!-- Loading camera -->
+      <div id="cameraLoading" style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;background:#0f0f1a;">
+        <div class="spinner" style="width:24px;height:24px;border-width:3px;opacity:0.6;"></div>
+      </div>
+
+      <!-- NO FACE overlay: semi-dark + centered warning -->
+      <div id="faceNoFaceOverlay">
+        <div class="icon-pulse" style="width:56px;height:56px;border-radius:50%;background:rgba(239,68,68,0.2);border:2px solid rgba(239,68,68,0.6);display:flex;align-items:center;justify-content:center;">
+          <svg width="26" height="26" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2">
+            <circle cx="12" cy="8" r="5"/>
+            <path d="M3 21v-1a9 9 0 0118 0v1"/>
+            <line x1="4" y1="4" x2="20" y2="20" stroke="#ef4444" stroke-width="2.5"/>
+          </svg>
+        </div>
+        <p id="faceNoFaceTitle" style="font-size:14px;font-weight:700;color:white;margin:0;text-align:center;">Không nhận diện được khuôn mặt</p>
+        <p style="font-size:11px;color:rgba(255,255,255,0.65);margin:0;text-align:center;line-height:1.5;">Đưa mặt vào giữa khung &nbsp;·&nbsp; Tránh ngược sáng<br>Không đeo khẩu trang</p>
+      </div>
+
+      <!-- FACE DETECTED badge (bottom center) -->
+      <div id="faceDetectedBadge">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#86efac" stroke-width="2.5">
+          <polyline points="20 6 9 17 4 12"/>
+        </svg>
+        <span style="font-size:12px;font-weight:700;color:#bbf7d0;">Đã nhận diện khuôn mặt</span>
+      </div>
+
+      <!-- Model loading badge (top-right) -->
+      <div id="faceModelLoadingBadge">
+        <div class="spinner" style="width:10px;height:10px;border-width:1.5px;opacity:0.8;flex-shrink:0;"></div>
+        <span style="font-size:10px;color:rgba(255,255,255,0.75);font-weight:500;">Đang tải nhận diện...</span>
+      </div>
+
+      <!-- Face guide oval -->
+      <div id="faceGuide" style="display:none;position:absolute;inset:0;pointer-events:none;align-items:center;justify-content:center;">
+        <div id="faceOval" style="width:110px;height:145px;border-radius:50%;border:2px dashed rgba(255,255,255,0.3);transition:border-color 0.35s,border-style 0.35s;"></div>
+      </div>
+    </div>
+
+    <!-- Info cards -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:12px 16px 0;">
+      <!-- Time -->
+      <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:#F2F6FA;border-radius:7px;border:1px solid #f0f0f8;">
+        <div style="width:26px;height:26px;border-radius:8px;background:#ECF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+          </svg>
+        </div>
+        <div>
+          <p style="font-size:10px;color:#7C8FAC;margin:0;">Thời gian</p>
+          <p id="modalClock" style="font-size:13px;font-weight:700;color:#2A3547;margin:0;"></p>
+        </div>
+      </div>
+      <!-- IP -->
+      <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:#F2F6FA;border-radius:7px;border:1px solid #f0f0f8;">
+        <div style="width:26px;height:26px;border-radius:8px;background:#dbeafe;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" stroke-width="2">
+            <circle cx="12" cy="12" r="10"/>
+            <line x1="2" y1="12" x2="22" y2="12"/>
+            <path d="M12 2a15.3 15.3 0 010 20M12 2a15.3 15.3 0 000 20"/>
+          </svg>
+        </div>
+        <div>
+          <p style="font-size:10px;color:#7C8FAC;margin:0;">Địa chỉ IP</p>
+          <p id="modalIP" style="font-size:12px;font-weight:700;color:#2A3547;margin:0;">Đang tải...</p>
+        </div>
+      </div>
+      <!-- Company -->
+      <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:#F2F6FA;border-radius:7px;border:1px solid #f0f0f8;">
+        <div style="width:26px;height:26px;border-radius:8px;background:#ECF2FF;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2">
+            <path d="M3 9l9-7 9 7v11a2 2 0 01-2 2H5a2 2 0 01-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/>
+          </svg>
+        </div>
+        <div>
+          <p style="font-size:10px;color:#7C8FAC;margin:0;">Công ty</p>
+          <p id="modalUnitName" style="font-size:13px;font-weight:700;color:#2A3547;margin:0;">—</p>
+        </div>
+      </div>
+      <!-- Shift -->
+      <div style="display:flex;align-items:center;gap:8px;padding:10px 12px;background:#F2F6FA;border-radius:7px;border:1px solid #f0f0f8;">
+        <div style="width:26px;height:26px;border-radius:8px;background:#dbeafe;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#3B82F6" stroke-width="2">
+            <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+          </svg>
+        </div>
+        <div>
+          <p style="font-size:10px;color:#7C8FAC;margin:0;">Ca làm</p>
+          <p id="modalShiftName" style="font-size:12px;font-weight:700;color:#2A3547;margin:0;">Ca sáng (08:00 - 17:00)</p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Note -->
+    <div style="margin:12px 16px 0;">
+      <textarea id="attendanceNote" placeholder="Ghi chú (nếu có)" rows="2"
+        style="width:100%;font-size:13px;color:#2A3547;background:#F2F6FA;border:1px solid #e5eaef;border-radius:7px;
+               padding:10px 12px;resize:none;outline:none;font-family:inherit;box-sizing:border-box;transition:border-color 0.2s;"
+        onfocus="this.style.borderColor='#a78bfa'" onblur="this.style.borderColor='#e5eaef'"></textarea>
+    </div>
+
+    <!-- Action buttons -->
+    <div style="display:flex;gap:10px;padding:14px 16px 18px;">
+      <button id="captureBtn" onclick="captureAndSubmit()"
+        style="flex:1;padding:12px;border-radius:7px;border:none;
+               background:linear-gradient(135deg,var(--primary) 0%,var(--primary-dark) 50%,#2563EB 100%);
+               color:white;font-size:13px;font-weight:700;cursor:pointer;
+               box-shadow:0 4px 14px rgba(99,60,236,0.35);transition:all 0.2s;font-family:inherit;
+               display:flex;align-items:center;justify-content:center;gap:8px;"
+        onmouseover="this.style.transform='translateY(-1px)';this.style.boxShadow='0 6px 20px rgba(99,60,236,0.45)'"
+        onmouseout="this.style.transform='translateY(0)';this.style.boxShadow='0 4px 14px rgba(99,60,236,0.35)'">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5">
+          <path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/>
+          <circle cx="12" cy="13" r="4"/>
+        </svg>
+        <span id="captureBtnText">Chấm công</span>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- Hidden canvas for capture -->
+<canvas id="captureCanvas" style="display:none;"></canvas>
+
+<!-- Toast -->
+<div id="toast"></div>
+
+<script>
+  // Auth guard
+  const _s = DB.auth.requireAuth(); if(!_s) throw 0;
+  const currentUser = _s.user;
+
+  // Real-time clock
+  function updateClock() {
+    const now = new Date();
+    const h = String(now.getHours()).padStart(2, '0');
+    const m = String(now.getMinutes()).padStart(2, '0');
+    const s = String(now.getSeconds()).padStart(2, '0');
+    document.getElementById('clock').textContent = `${h}:${m}:${s}`;
+
+    const days = ['Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
+    const dayName = days[now.getDay()];
+    const date = String(now.getDate()).padStart(2, '0');
+    const month = String(now.getMonth() + 1).padStart(2, '0');
+    const year = now.getFullYear();
+    document.getElementById('date-display').textContent = `${dayName}, Ngày ${date}/${month}/${year}`;
+  }
+
+  updateClock();
+  setInterval(updateClock, 1000);
+
+  // Populate monthly stats from DB
+  (function() {
+    const now = new Date();
+    const period = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
+    const stats = DB.attendance.getMonthStats(currentUser.id, period);
+    const bal   = DB.leaves.getBalance(currentUser.id);
+    const totalWD = stats.total || 22;
+    const worked  = stats.worked || 0;
+    const pct = totalWD > 0 ? Math.round(worked / totalWD * 100) : 0;
+    const el = id => document.getElementById(id);
+    if (el('statWorkDays'))  el('statWorkDays').textContent  = worked + '/' + totalWD;
+    if (el('statLeaveLeft')) el('statLeaveLeft').textContent = (bal.annual || 0) + ' ngày';
+    if (el('statPct'))       el('statPct').textContent       = pct + '%';
+    if (el('statBar'))       el('statBar').style.width       = pct + '%';
+  })();
+
+  // Populate user info & shift from DB
+  (function() {
+    const roleMap = { manager:'Quản lý', employee:'Nhân viên', admin:'Quản trị' };
+    const roleLabel = roleMap[currentUser.roleId] || 'Nhân viên';
+    const el = id => document.getElementById(id);
+    if (el('sidebarUserName'))  el('sidebarUserName').textContent  = currentUser.name || '—';
+    if (el('sidebarUserRole'))  el('sidebarUserRole').textContent  = roleLabel;
+    if (el('topbarUserName'))   el('topbarUserName').textContent   = currentUser.name || '—';
+    if (el('topbarUserRole'))   el('topbarUserRole').textContent   = roleLabel;
+    if (el('modalUnitName'))    el('modalUnitName').textContent    = currentUser.unit || '—';
+    if (el('cardUnitName'))     el('cardUnitName').textContent     = currentUser.unit || '—';
+  })();
+
+  // Render announcements from DB
+  (function() {
+    const list = DB.announcements.getAll();
+    const el = document.getElementById('announcementList');
+    if (!el) return;
+    if (!list.length) { el.innerHTML = '<p style="font-size:13px;color:#7C8FAC;text-align:center;padding:20px;">Không có thông báo</p>'; return; }
+    const fmtD = iso => iso ? iso.split('-').reverse().join('/') : '—';
+    el.innerHTML = list.slice(0,3).map((a, i) => {
+      const isLast = i === list.slice(0,3).length - 1;
+      const badge = a.status === 'active'
+        ? '<span class="badge-active text-[10px] font-600 px-2 py-0.5 rounded-full" style="font-weight:600;">Đang hiệu lực</span>'
+        : '<span class="badge-expired text-[10px] font-600 px-2 py-0.5 rounded-full" style="font-weight:600;">Đã kết thúc</span>';
+      return `<div class="announcement-item px-5 py-4${isLast ? '' : ' border-b border-gray-50'}">
+        <div class="flex gap-4">
+          <div class="flex-1 min-w-0">
+            <div class="flex items-center gap-2 mb-1.5">
+              <span class="text-[10px] font-600 text-purple-600 bg-purple-50 px-2 py-0.5 rounded-md" style="font-weight:600;">${a.department}</span>
+            </div>
+            <h3 class="font-700 text-gray-900 text-sm mb-1" style="font-weight:700;">${a.title}</h3>
+            <p class="text-xs text-gray-400 leading-relaxed line-clamp-2">${a.preview}</p>
+          </div>
+          <div class="flex-shrink-0 text-right space-y-1.5" style="min-width:180px;">
+            <div class="flex items-center justify-end gap-1.5">
+              <span class="text-xs text-gray-500">Người tạo:</span>
+              <a href="#" class="text-xs font-500 text-purple-600 hover:underline">${a.creator}</a>
+            </div>
+            <div class="flex items-center justify-end gap-1.5">${badge}</div>
+            <div class="flex items-center justify-end gap-1.5">
+              <span class="text-xs text-gray-500">Người duyệt:</span>
+              <a href="#" class="text-xs font-500 text-purple-600 hover:underline">${a.approver}</a>
+            </div>
+            <div class="flex items-center justify-end">
+              <div class="flex items-center gap-1 text-gray-400">
+                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/></svg>
+                <span class="text-[10px]">Hiệu lực từ ${fmtD(a.startDate)} – ${fmtD(a.endDate)}</span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>`;
+    }).join('');
+  })();
+
+  // Tab switching
+  document.querySelectorAll('.tab-active, [class*="tab"]').forEach(btn => {
+    btn.addEventListener('click', function() {
+      // Simple tab click visual
+    });
+  });
+
+  // ==================== ATTENDANCE MODAL ====================
+  let cameraStream       = null;
+  let modalClockInterval = null;
+  let userIP             = null;
+  let isFaceDetected     = false;
+  let faceDetectInterval = null;
+  let faceModelsLoaded   = false;
+  // Cache kết quả xác minh — { verified: bool, pct: number, ts: timestamp }
+  let _verifyCache       = null;
+  let _verifying         = false; // tránh chạy song song
+
+  const FACE_MODELS_URL = 'https://cdn.jsdelivr.net/gh/justadudewhohacks/face-api.js@master/weights/';
+
+  // ---- Face models ----
+  let _faceModelPromise = null;
+  let faceRecognitionModelsLoaded = false;
+  let _faceRecogPromise = null;
+
+  // Model nhẹ: chỉ detect (dùng cho vòng lặp chấm công)
+  async function loadFaceModels() {
+    if (faceModelsLoaded) return true;
+    if (!_faceModelPromise) {
+      _faceModelPromise = faceapi.nets.tinyFaceDetector.loadFromUri(FACE_MODELS_URL)
+        .then(function() { faceModelsLoaded = true; return true; })
+        .catch(function(e) { console.warn('face-api detect model failed:', e); return false; });
+    }
+    return _faceModelPromise;
+  }
+
+  // Model nặng: landmark + recognition (dùng khi đăng ký & xác minh)
+  async function loadFaceRecognitionModels() {
+    if (faceRecognitionModelsLoaded) return true;
+    if (!_faceRecogPromise) {
+      _faceRecogPromise = Promise.all([
+        faceapi.nets.tinyFaceDetector.loadFromUri(FACE_MODELS_URL),
+        faceapi.nets.faceLandmark68Net.loadFromUri(FACE_MODELS_URL),
+        faceapi.nets.faceRecognitionNet.loadFromUri(FACE_MODELS_URL)
+      ]).then(function() { faceModelsLoaded = true; faceRecognitionModelsLoaded = true; return true; })
+        .catch(function(e) { console.warn('face-api recognition models failed:', e); return false; });
+    }
+    return _faceRecogPromise;
+  }
+
+  // Preload detection model ngay, recognition model load ngầm sau
+  setTimeout(function() {
+    if (typeof faceapi !== 'undefined') {
+      loadFaceModels();
+      setTimeout(function() { loadFaceRecognitionModels(); }, 3000); // load sau 3s
+    }
+  }, 1000);
+
+  function _todayStr() {
+    const now = new Date();
+    return now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
+  }
+
+
+  function getFallbackShifts(allShifts) {
+    const todayDow = new Date().getDay();
+    const fallbacks = allShifts.filter(function(s) {
+      return s.active !== false && (!s.applyDays || s.applyDays.includes(todayDow));
+    });
+    if (fallbacks.length > 0) return { shifts: fallbacks, source: 'fallback' };
+    return { shifts: [], source: 'none' };
+  }
+
+  // Lấy ca hôm nay đồng bộ từ localStorage — tức thì, không cần network
+  function getTodayShifts(empId, callback) {
+    const allShifts = DB.shifts.getAll();
+    const today = _todayStr();
+    try {
+      const assignments = JSON.parse(localStorage.getItem('humi_shift_assignments') || '[]');
+      const todayAsgn = assignments.filter(function(a) {
+        return String(a.employeeId) === String(empId) && a.date === today;
+      });
+      if (todayAsgn.length > 0) {
+        const shifts = todayAsgn.map(function(a) {
+          return allShifts.find(function(s) { return String(s.id) === String(a.shiftId); });
+        }).filter(Boolean);
+        if (shifts.length > 0) { callback({ shifts: shifts, source: 'assigned' }); return; }
+      }
+    } catch(e) {}
+    callback(getFallbackShifts(allShifts));
+  }
+
+  // Ca đang được chấm công hiện tại (dùng trong captureAndSubmit)
+  var _currentAttendanceShift = null;
+
+  function _shiftLabel(s) {
+    return s.name + ' (' + (s.startTime||'') + '–' + (s.endTime||'') + ')';
+  }
+
+  // Cập nhật card chấm công theo lịch ca + trạng thái thực tế
+  function updateAttendanceCard() {
+    const actionArea   = document.getElementById('attActionArea');
+    const noShiftEl    = document.getElementById('attNoShift');
+    const noShiftMsg   = document.getElementById('attNoShiftMsg');
+    const btn          = document.getElementById('attendanceCardBtn');
+    const statusBox    = document.getElementById('attendanceStatus');
+    const noteWrap     = document.getElementById('attendanceNoteWrap');
+    const inEl         = document.getElementById('attCheckInTime');
+    const outEl        = document.getElementById('attCheckOutTime');
+    const shiftEl      = document.getElementById('cardShiftName');
+    const shiftNextEl  = document.getElementById('cardShiftNext');
+    const modalShiftEl = document.getElementById('modalShiftName');
+    if (!actionArea) return;
+
+    getTodayShifts(currentUser.id, function(result) {
+      var shifts = result.shifts;
+
+      // 1. Dedup theo shiftId
+      var seen = {};
+      shifts = shifts.filter(function(s) {
+        var k = String(s.id);
+        if (seen[k]) return false;
+        seen[k] = true;
+        return true;
+      });
+
+      // 2. Sort theo startTime tăng dần (ưu tiên ca bắt đầu sớm)
+      shifts.sort(function(a, b) {
+        var at = parseInt((a.startTime||'00:00').replace(':', ''), 10);
+        var bt = parseInt((b.startTime||'00:00').replace(':', ''), 10);
+        return at - bt;
+      });
+
+      // 3. Tìm ca đang cần xử lý (ca đầu tiên chưa check-out)
+      var activeShift  = null;
+      var activeStatus = null;
+      for (var i = 0; i < shifts.length; i++) {
+        var st = DB.attendance.getTodayStatus(currentUser.id, shifts[i].id);
+        if (!st.checkedOut) { activeShift = shifts[i]; activeStatus = st; break; }
+      }
+
+      // 4. Không có ca
+      if (shifts.length === 0) {
+        if (shiftEl) { shiftEl.textContent = 'Không có ca hôm nay'; }
+        if (shiftNextEl) shiftNextEl.style.display = 'none';
+        if (modalShiftEl) modalShiftEl.textContent = 'Không có ca hôm nay';
+        actionArea.classList.add('hidden');
+        noShiftEl.classList.remove('hidden');
+        noShiftMsg.textContent = 'Hôm nay không có ca làm việc';
+        return;
+      }
+
+      // 5. Tất cả ca đã xong
+      if (!activeShift) {
+        if (shiftEl) shiftEl.textContent = 'Đã hoàn thành tất cả ca';
+        if (shiftNextEl) shiftNextEl.style.display = 'none';
+        if (modalShiftEl) modalShiftEl.textContent = 'Đã hoàn thành tất cả ca';
+        actionArea.classList.add('hidden');
+        noShiftEl.classList.remove('hidden');
+        noShiftMsg.textContent = 'Ca làm việc hôm nay đã kết thúc';
+        return;
+      }
+
+      // 6. Hiển thị ca đang hoạt động + ca tiếp theo
+      _currentAttendanceShift = activeShift;
+      if (shiftEl) shiftEl.textContent = _shiftLabel(activeShift);
+      if (modalShiftEl) modalShiftEl.textContent = _shiftLabel(activeShift);
+
+      // Ca tiếp theo (sau activeShift, chưa done)
+      var activeIdx = shifts.indexOf(activeShift);
+      var remaining = shifts.slice(activeIdx + 1).filter(function(s) {
+        return !DB.attendance.getTodayStatus(currentUser.id, s.id).checkedOut;
+      });
+      if (shiftNextEl) {
+        if (remaining.length > 0) {
+          shiftNextEl.textContent = 'Tiếp theo: ' + remaining.map(_shiftLabel).join(', ');
+          shiftNextEl.style.display = 'block';
+        } else {
+          shiftNextEl.style.display = 'none';
+        }
+      }
+
+      // 7. Render khu vực chấm công
+      actionArea.classList.remove('hidden');
+      noShiftEl.classList.add('hidden');
+
+      if (!activeStatus.checkedIn) {
+        statusBox.classList.add('hidden');
+        noteWrap.classList.remove('hidden');
+        btn.textContent = 'Bắt đầu ca';
+        btn.style.background = '';
+        btn.disabled = false;
+        btn.onclick = openAttendanceModal;
+      } else {
+        inEl.textContent  = activeStatus.record.checkIn || '—';
+        outEl.textContent = '—';
+        statusBox.classList.remove('hidden');
+        noteWrap.classList.add('hidden');
+        btn.textContent = 'Kết thúc ca';
+        btn.style.background = 'linear-gradient(135deg,#dc2626,#b91c1c)';
+        btn.disabled = false;
+        btn.onclick = openAttendanceModal;
+      }
+    });
+  }
+
+  // Gọi ngay khi load trang
+  updateAttendanceCard();
+
+  // Khi Supabase sync xong → refresh card để lấy dữ liệu mới nhất
+  window.addEventListener('humi_synced', function() {
+    updateAttendanceCard();
+  });
+
+  function openAttendanceModal() {
+    document.getElementById('attendanceModal').classList.add('open');
+    document.getElementById('cameraError').style.display = 'none';
+    document.getElementById('cameraLoading').style.display = 'flex';
+    document.getElementById('faceGuide').style.display = 'none';
+    document.getElementById('faceNoFaceOverlay').style.display = 'none';
+    document.getElementById('faceDetectedBadge').style.display = 'none';
+    document.getElementById('faceModelLoadingBadge').style.display = 'none';
+    document.getElementById('cameraWrapper').className = '';
+    document.getElementById('attendanceNote').value = '';
+    isFaceDetected = false;
+    resetCaptureBtn(); // reset text/opacity/spinner từ lần dùng trước
+    startModalClock();
+    startCamera();
+    fetchUserIP();
+  }
+
+  function closeAttendanceModal() {
+    stopFaceDetection();
+    stopCamera();
+    stopModalClock();
+    document.getElementById('attendanceModal').classList.remove('open');
+  }
+
+  // ---- Camera ----
+  async function startCamera() {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user' }, audio: false });
+      cameraStream = stream;
+      const video = document.getElementById('cameraVideo');
+      video.srcObject = stream;
+      video.onloadedmetadata = () => {
+        document.getElementById('cameraLoading').style.display = 'none';
+        document.getElementById('faceGuide').style.display = 'flex';
+        startFaceDetection();
+      };
+    } catch (err) {
+      document.getElementById('cameraLoading').style.display = 'none';
+      const errEl = document.getElementById('cameraError');
+      errEl.style.display = 'flex';
+      console.error('Camera error:', err);
+    }
+  }
+
+  function stopCamera() {
+    if (cameraStream) {
+      cameraStream.getTracks().forEach(track => track.stop());
+      cameraStream = null;
+      document.getElementById('cameraVideo').srcObject = null;
+    }
+  }
+
+  // ---- Face Detection ----
+  // Ưu tiên native FaceDetector API (Chrome, off main-thread, không block UI)
+  // Fallback về face-api.js nếu không hỗ trợ
+  var _nativeFaceDetector = null;
+  function _getNativeDetector() {
+    if (_nativeFaceDetector) return _nativeFaceDetector;
+    if (typeof FaceDetector !== 'undefined') {
+      try { _nativeFaceDetector = new FaceDetector({ fastMode: true, maxDetectedFaces: 2 }); } catch(e) {}
+    }
+    return _nativeFaceDetector;
+  }
+
+  async function startFaceDetection() {
+    const modelLoadEl = document.getElementById('faceModelLoadingBadge');
+    const nativeDet = _getNativeDetector();
+
+    if (nativeDet) {
+      // Native API — không cần load model, không block main thread
+      modelLoadEl.style.display = 'none';
+      setFaceDetected(false, 0);
+      let _detecting = false;
+      faceDetectInterval = setInterval(async () => {
+        if (_detecting) return;
+        const video = document.getElementById('cameraVideo');
+        if (!video || !cameraStream || video.readyState < 2) return;
+        _detecting = true;
+        try {
+          const faces = await nativeDet.detect(video);
+          setFaceDetected(faces.length === 1, faces.length);
+        } catch(e) { /* skip */ } finally { _detecting = false; }
+      }, 200);
+      return;
+    }
+
+    // Fallback: face-api.js (chạy trên main thread — dùng interval dài hơn để tránh block)
+    modelLoadEl.style.display = 'flex';
+    const loaded = await loadFaceModels();
+    modelLoadEl.style.display = 'none';
+    if (!loaded) { isFaceDetected = true; updateCaptureButtonState(); return; }
+    if (loaded) setFaceDetected(false, 0);
+
+    const _detOpts = new faceapi.TinyFaceDetectorOptions({ inputSize: 160, scoreThreshold: 0.4 });
+    let _detecting = false;
+    faceDetectInterval = setInterval(async () => {
+      if (_detecting) return;
+      const video = document.getElementById('cameraVideo');
+      if (!video || !cameraStream || video.readyState < 2) return;
+      _detecting = true;
+      try {
+        const detections = await faceapi.detectAllFaces(video, _detOpts);
+        setFaceDetected(detections.length === 1, detections.length);
+      } catch(e) { /* skip */ } finally { _detecting = false; }
+    }, 600); // interval dài hơn để tránh block UI
+  }
+
+  function stopFaceDetection() {
+    if (faceDetectInterval) {
+      clearInterval(faceDetectInterval);
+      faceDetectInterval = null;
+    }
+    isFaceDetected = false;
+    _verifyCache = null;
+    _verifying = false;
+  }
+
+  // Chạy xác minh ngầm sau khi detect thấy mặt
+  async function _runVerifyInBackground() {
+    if (_verifying) return;
+    const storedDescJson = currentUser.faceDescriptor ||
+      (DB.employees.getById(currentUser.id) || {}).faceDescriptor || null;
+    if (!storedDescJson) return; // chưa đăng ký descriptor → bỏ qua
+
+    // Cache còn mới (<8s) → không cần tính lại
+    if (_verifyCache && (Date.now() - _verifyCache.ts) < 8000) return;
+
+    _verifying = true;
+    try {
+      const recLoaded = await loadFaceRecognitionModels();
+      if (!recLoaded) { _verifying = false; return; }
+
+      const video = document.getElementById('cameraVideo');
+      if (!video || !cameraStream || video.readyState < 2) { _verifying = false; return; }
+
+      const opts = new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.4 });
+      const det = await faceapi.detectSingleFace(video, opts).withFaceLandmarks().withFaceDescriptor();
+      if (!det) { _verifyCache = { verified: false, pct: 0, ts: Date.now() }; _verifying = false; return; }
+
+      const storedDesc = new Float32Array(JSON.parse(storedDescJson));
+      const distance = faceapi.euclideanDistance(storedDesc, det.descriptor);
+      const pct = Math.round((1 - Math.min(distance, 1)) * 100);
+      _verifyCache = { verified: distance <= 0.5, pct, distance, ts: Date.now() };
+      console.log(`🔍 Verify ngầm: ${pct}% giống (distance=${distance.toFixed(3)}) → ${_verifyCache.verified ? '✅' : '❌'}`);
+    } catch(e) { /* skip */ }
+    _verifying = false;
+  }
+
+  function setFaceDetected(detected, count) {
+    isFaceDetected = detected;
+    const wrapper       = document.getElementById('cameraWrapper');
+    const noFaceOverlay = document.getElementById('faceNoFaceOverlay');
+    const detectedBadge = document.getElementById('faceDetectedBadge');
+    const titleEl       = document.getElementById('faceNoFaceTitle');
+    const oval          = document.getElementById('faceOval');
+
+    if (count > 1) {
+      // Multiple faces
+      isFaceDetected                = false;
+      wrapper.className             = 'face-multi';
+      noFaceOverlay.style.display   = 'flex';
+      noFaceOverlay.style.background= 'rgba(120,53,15,0.5)';
+      detectedBadge.style.display   = 'none';
+      titleEl.textContent           = `Phát hiện ${count} khuôn mặt — chỉ để 1 người`;
+      oval.style.borderColor        = 'rgba(251,191,36,0.7)';
+      oval.style.borderStyle        = 'solid';
+    } else if (detected) {
+      // Exactly 1 face ✓ — chạy verify ngầm
+      wrapper.className             = 'face-ok';
+      noFaceOverlay.style.display   = 'none';
+      detectedBadge.style.display   = 'flex';
+      oval.style.borderColor        = 'rgba(34,197,94,0.85)';
+      oval.style.borderStyle        = 'solid';
+      _runVerifyInBackground(); // không await — chạy ngầm
+    } else {
+      // No face detected
+      wrapper.className             = 'face-fail';
+      noFaceOverlay.style.display   = 'flex';
+      noFaceOverlay.style.background= 'rgba(0,0,0,0.55)';
+      detectedBadge.style.display   = 'none';
+      titleEl.textContent           = 'Không nhận diện được khuôn mặt';
+      oval.style.borderColor        = 'rgba(239,68,68,0.7)';
+      oval.style.borderStyle        = 'dashed';
+    }
+
+    updateCaptureButtonState();
+  }
+
+  function updateCaptureButtonState() {
+    const btn = document.getElementById('captureBtn');
+    const txt = document.getElementById('captureBtnText');
+    if (!btn) return;
+    if (isFaceDetected) {
+      btn.disabled = false;
+      btn.title    = '';
+      btn.style.background  = 'linear-gradient(135deg,var(--primary) 0%,var(--primary-dark) 50%,#2563EB 100%)';
+      btn.style.boxShadow   = '0 4px 14px rgba(99,60,236,0.35)';
+    } else {
+      btn.disabled = true;
+      btn.title    = 'Cần nhận diện khuôn mặt để chấm công';
+      btn.style.background  = '#DFE5EF';
+      btn.style.boxShadow   = 'none';
+    }
+  }
+
+  // ---- IP ----
+  async function fetchUserIP() {
+    document.getElementById('modalIP').textContent = 'Đang tải...';
+    try {
+      const res = await fetch('https://api.ipify.org?format=json');
+      const data = await res.json();
+      userIP = data.ip;
+      document.getElementById('modalIP').textContent = userIP;
+    } catch (err) {
+      document.getElementById('modalIP').textContent = 'Không lấy được IP';
+      userIP = null;
+    }
+  }
+
+  // ---- Modal clock ----
+  function startModalClock() {
+    function tick() {
+      const now = new Date();
+      const h = String(now.getHours()).padStart(2, '0');
+      const m = String(now.getMinutes()).padStart(2, '0');
+      const s = String(now.getSeconds()).padStart(2, '0');
+      const el = document.getElementById('modalClock');
+      if (el) el.textContent = `${h}:${m}:${s}`;
+    }
+    tick();
+    modalClockInterval = setInterval(tick, 1000);
+  }
+
+  function stopModalClock() {
+    if (modalClockInterval) {
+      clearInterval(modalClockInterval);
+      modalClockInterval = null;
+    }
+  }
+
+  // ---- Capture & Submit ----
+  async function captureAndSubmit() {
+    const video = document.getElementById('cameraVideo');
+    const canvas = document.getElementById('captureCanvas');
+    const errEl = document.getElementById('cameraError');
+
+    if (errEl.style.display === 'flex' || !cameraStream) {
+      showToast('Không thể chụp ảnh — camera chưa được cấp quyền', 'error');
+      return;
+    }
+
+    if (!isFaceDetected) {
+      const overlay = document.getElementById('faceNoFaceOverlay');
+      overlay.classList.add('shake');
+      overlay.addEventListener('animationend', () => overlay.classList.remove('shake'), { once: true });
+      showToast('Không nhận diện được khuôn mặt — vui lòng thử lại', 'error');
+      return;
+    }
+
+    // Capture frame
+    canvas.width  = video.videoWidth  || 640;
+    canvas.height = video.videoHeight || 360;
+    const ctx = canvas.getContext('2d');
+    ctx.save();
+    ctx.scale(-1, 1);
+    ctx.drawImage(video, -canvas.width, 0, canvas.width, canvas.height);
+    ctx.restore();
+    const imageBase64 = canvas.toDataURL('image/jpeg', 0.85);
+
+    setLoadingBtn(true);
+
+    // ── Xác minh khuôn mặt — dùng cache từ verify ngầm ──
+    const storedDescJson = currentUser.faceDescriptor ||
+      (DB.employees.getById(currentUser.id) || {}).faceDescriptor || null;
+
+    if (storedDescJson) {
+      const cacheAge = _verifyCache ? (Date.now() - _verifyCache.ts) : Infinity;
+      if (_verifyCache && cacheAge < 8000) {
+        // Dùng kết quả đã có sẵn → tức thì
+        if (!_verifyCache.verified) {
+          showToast(`Khuôn mặt không khớp (${_verifyCache.pct}% giống) — từ chối!`, 'error');
+          setLoadingBtn(false); return;
+        }
+      } else {
+        // Cache cũ / chưa có → verify nhanh 1 lần
+        const txt = document.getElementById('captureBtnText');
+        if (txt) txt.textContent = 'Đang xác minh...';
+        try {
+          const recLoaded = await loadFaceRecognitionModels();
+          if (!recLoaded) { showToast('Không load được model nhận diện!', 'error'); setLoadingBtn(false); return; }
+          const opts = new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.4 });
+          const det = await faceapi.detectSingleFace(canvas, opts).withFaceLandmarks().withFaceDescriptor();
+          if (!det) { showToast('Không nhận diện được khuôn mặt — thử lại!', 'error'); setLoadingBtn(false); return; }
+          const storedDesc = new Float32Array(JSON.parse(storedDescJson));
+          const distance = faceapi.euclideanDistance(storedDesc, det.descriptor);
+          const pct = Math.round((1 - Math.min(distance, 1)) * 100);
+          _verifyCache = { verified: distance <= 0.5, pct, distance, ts: Date.now() };
+          if (distance > 0.5) { showToast(`Khuôn mặt không khớp (${pct}% giống) — từ chối!`, 'error'); setLoadingBtn(false); return; }
+        } catch(e) { console.warn('verify error, skip:', e); }
+      }
+    }
+
+    const payload = {
+      time: new Date().toISOString(),
+      image: imageBase64,
+      ip: userIP || 'unknown',
+      note: document.getElementById('attendanceNote').value.trim()
+    };
+
+    try {
+      const shiftId = _currentAttendanceShift ? _currentAttendanceShift.id : null;
+      const status = DB.attendance.getTodayStatus(currentUser.id, shiftId);
+      let res;
+      if (!status.checkedIn) {
+        res = DB.attendance.checkIn(currentUser.id, shiftId, null, payload.note, payload.image);
+      } else {
+        res = DB.attendance.checkOut(currentUser.id, shiftId, payload.image);
+      }
+      if (res.ok) {
+        const msg = !status.checkedIn ? 'Chấm công vào thành công! ✓' : 'Kết thúc ca thành công! ✓';
+        setLoadingBtn(false);
+        showToast(msg, 'success');
+        closeAttendanceModal();
+        updateAttendanceCard();
+      } else {
+        showToast(res.error || 'Chấm công thất bại', 'error');
+        setLoadingBtn(false);
+      }
+    } catch (err) {
+      showToast('Chấm công thất bại. Vui lòng thử lại.', 'error');
+      setLoadingBtn(false);
+    }
+  }
+
+  // ---- UI helpers ----
+  function setLoadingBtn(loading) {
+    const btn = document.getElementById('captureBtn');
+    const txt = document.getElementById('captureBtnText');
+    if (loading) {
+      btn.disabled = true;
+      btn.style.opacity = '0.75';
+      btn.style.cursor = 'not-allowed';
+      txt.textContent = 'Đang xử lý...';
+      btn.insertAdjacentHTML('afterbegin', '<span class="spinner" id="btnSpinner"></span>');
+    } else {
+      resetCaptureBtn();
+    }
+  }
+
+  function resetCaptureBtn() {
+    const sp = document.getElementById('btnSpinner');
+    if (sp) sp.remove();
+    const btn = document.getElementById('captureBtn');
+    const txt = document.getElementById('captureBtnText');
+    if (btn) { btn.style.opacity = '1'; btn.style.cursor = ''; }
+    if (txt) txt.textContent = 'Chấm công';
+    updateCaptureButtonState();
+  }
+
+  function showToast(msg, type) {
+    const toast = document.getElementById('toast');
+    toast.textContent = msg;
+    toast.className = `show ${type}`;
+    setTimeout(() => { toast.className = ''; }, 3000);
+  }
+
+  // Close modal on Escape key
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') { closeAttendanceModal(); closeFaceRegModal(); }
+  });
+</script>
+
+<!-- ===== MODAL ĐĂNG KÝ KHUÔN MẶT ===== -->
+<div id="faceRegModal" style="display:none;position:fixed;inset:0;z-index:1100;align-items:center;justify-content:center;">
+  <div onclick="closeFaceRegModal()" style="position:absolute;inset:0;background:rgba(10,10,40,0.55);backdrop-filter:blur(3px);"></div>
+  <div style="position:relative;background:white;border-radius:16px;width:340px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,0.25);overflow:hidden;font-family:inherit;">
+    <!-- Header -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-bottom:1px solid #e5eaef;">
+      <div style="display:flex;align-items:center;gap:8px;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#633CEC" stroke-width="2"><circle cx="12" cy="8" r="4"/><path d="M5 20a7 7 0 0114 0"/></svg>
+        <span style="font-size:15px;font-weight:700;color:#2A3547;">Đăng ký khuôn mặt</span>
+      </div>
+      <button onclick="closeFaceRegModal()" style="width:30px;height:30px;border-radius:8px;border:none;background:#EAEFF4;cursor:pointer;display:flex;align-items:center;justify-content:center;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5A6A85" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+
+    <!-- Camera area -->
+    <div style="position:relative;background:#0a0a18;width:100%;aspect-ratio:4/3;overflow:hidden;">
+      <video id="faceRegVideo" autoplay playsinline muted style="width:100%;height:100%;object-fit:cover;transform:scaleX(-1);display:block;"></video>
+      <canvas id="faceRegCanvas" style="display:none;"></canvas>
+      <!-- Overlay hướng dẫn -->
+      <div id="faceRegGuide" style="position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center;pointer-events:none;">
+        <div style="width:140px;height:175px;border:2.5px dashed rgba(99,60,236,0.7);border-radius:50%;"></div>
+        <p style="color:rgba(255,255,255,0.8);font-size:11px;margin-top:10px;font-weight:600;">Đặt khuôn mặt vào khung</p>
+      </div>
+      <!-- Loading camera -->
+      <div id="faceRegLoading" style="position:absolute;inset:0;background:#0a0a18;display:flex;align-items:center;justify-content:center;">
+        <div style="text-align:center;color:white;">
+          <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="rgba(255,255,255,0.4)" stroke-width="1.5" style="margin-bottom:8px;display:block;"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+          <p style="font-size:12px;opacity:0.6;">Đang mở camera...</p>
+        </div>
+      </div>
+      <!-- Ảnh preview sau khi chụp -->
+      <img id="faceRegPreview" src="" style="display:none;position:absolute;inset:0;width:100%;height:100%;object-fit:cover;" />
+    </div>
+
+    <!-- Ảnh đã đăng ký (nếu có) -->
+    <div id="faceRegExisting" style="display:none;padding:10px 16px;background:#f8f9fc;border-bottom:1px solid #e5eaef;display:flex;align-items:center;gap:10px;">
+      <img id="faceRegExistingImg" src="" style="width:44px;height:44px;border-radius:8px;object-fit:cover;border:2px solid #e5eaef;" />
+      <div>
+        <p style="font-size:11px;color:#7C8FAC;margin:0;">Ảnh đăng ký hiện tại</p>
+        <p style="font-size:12px;font-weight:600;color:#2A3547;margin:2px 0 0;">Chụp lại để cập nhật</p>
+      </div>
+    </div>
+
+    <!-- Buttons -->
+    <div style="padding:14px 16px;display:flex;gap:8px;">
+      <button id="faceRegCaptureBtn" onclick="faceRegCapture()"
+        style="flex:1;padding:11px;border-radius:8px;border:none;background:linear-gradient(135deg,#633CEC,#2563EB);color:white;font-size:13px;font-weight:700;cursor:pointer;display:flex;align-items:center;justify-content:center;gap:6px;font-family:inherit;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><path d="M23 19a2 2 0 01-2 2H3a2 2 0 01-2-2V8a2 2 0 012-2h4l2-3h6l2 3h4a2 2 0 012 2z"/><circle cx="12" cy="13" r="4"/></svg>
+        <span id="faceRegCaptureTxt">Chụp ảnh</span>
+      </button>
+      <button id="faceRegSaveBtn" onclick="faceRegSave()" style="display:none;flex:1;padding:11px;border-radius:8px;border:none;background:#16a34a;color:white;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">
+        Lưu khuôn mặt
+      </button>
+      <button id="faceRegRetakeBtn" onclick="faceRegRetake()" style="display:none;padding:11px 14px;border-radius:8px;border:1px solid #e5eaef;background:white;color:#5A6A85;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;">
+        Chụp lại
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+  // ===== ĐĂNG KÝ KHUÔN MẶT =====
+  var _faceRegStream = null;
+  var _faceRegCaptured = null;
+
+  function openFaceRegModal() {
+    document.getElementById('faceRegModal').style.display = 'flex';
+    document.getElementById('faceRegLoading').style.display = 'flex';
+    document.getElementById('faceRegGuide').style.display = 'flex';
+    document.getElementById('faceRegPreview').style.display = 'none';
+    document.getElementById('faceRegCaptureBtn').style.display = 'flex';
+    document.getElementById('faceRegSaveBtn').style.display = 'none';
+    document.getElementById('faceRegRetakeBtn').style.display = 'none';
+    document.getElementById('faceRegCaptureTxt').textContent = 'Chụp ảnh';
+    _faceRegCaptured = null;
+
+    // Bắt đầu tải recognition models ngay khi mở modal (ngầm, không block UI)
+    if (typeof faceapi !== 'undefined') loadFaceRecognitionModels();
+
+    // Hiển thị ảnh đã đăng ký (nếu có)
+    var existingImg = currentUser.faceImage || null;
+    var existingBox = document.getElementById('faceRegExisting');
+    if (existingImg) {
+      document.getElementById('faceRegExistingImg').src = existingImg;
+      existingBox.style.display = 'flex';
+    } else {
+      existingBox.style.display = 'none';
+    }
+
+    // Mở camera
+    navigator.mediaDevices.getUserMedia({ video: { facingMode: 'user', width:640, height:480 } })
+      .then(function(stream) {
+        _faceRegStream = stream;
+        var video = document.getElementById('faceRegVideo');
+        video.srcObject = stream;
+        video.onloadedmetadata = function() {
+          document.getElementById('faceRegLoading').style.display = 'none';
+        };
+      })
+      .catch(function() {
+        document.getElementById('faceRegLoading').innerHTML = '<p style="color:rgba(255,255,255,0.6);font-size:12px;padding:20px;text-align:center;">Không truy cập được camera</p>';
+      });
+  }
+
+  function closeFaceRegModal() {
+    document.getElementById('faceRegModal').style.display = 'none';
+    if (_faceRegStream) { _faceRegStream.getTracks().forEach(function(t){ t.stop(); }); _faceRegStream = null; }
+    _faceRegCaptured = null;
+  }
+
+  function faceRegCapture() {
+    var video = document.getElementById('faceRegVideo');
+    var canvas = document.getElementById('faceRegCanvas');
+    canvas.width = video.videoWidth || 640;
+    canvas.height = video.videoHeight || 480;
+    var ctx = canvas.getContext('2d');
+    ctx.save(); ctx.scale(-1, 1);
+    ctx.drawImage(video, -canvas.width, 0, canvas.width, canvas.height);
+    ctx.restore();
+    _faceRegCaptured = canvas.toDataURL('image/jpeg', 0.85);
+
+    // Hiện preview
+    var preview = document.getElementById('faceRegPreview');
+    preview.src = _faceRegCaptured;
+    preview.style.display = 'block';
+    document.getElementById('faceRegGuide').style.display = 'none';
+
+    // Swap buttons
+    document.getElementById('faceRegCaptureBtn').style.display = 'none';
+    document.getElementById('faceRegSaveBtn').style.display = 'block';
+    document.getElementById('faceRegRetakeBtn').style.display = 'block';
+  }
+
+  function faceRegRetake() {
+    _faceRegCaptured = null;
+    document.getElementById('faceRegPreview').style.display = 'none';
+    document.getElementById('faceRegGuide').style.display = 'flex';
+    document.getElementById('faceRegCaptureBtn').style.display = 'flex';
+    document.getElementById('faceRegSaveBtn').style.display = 'none';
+    document.getElementById('faceRegRetakeBtn').style.display = 'none';
+  }
+
+  async function faceRegSave() {
+    if (!_faceRegCaptured) return;
+    var saveBtn = document.getElementById('faceRegSaveBtn');
+    var retakeBtn = document.getElementById('faceRegRetakeBtn');
+    saveBtn.disabled = true;
+    retakeBtn.disabled = true;
+
+    // Tính face descriptor từ ảnh đã chụp
+    var descriptor = null;
+    try {
+      saveBtn.textContent = 'Đang tải model...';
+      var loaded = await loadFaceRecognitionModels();
+      if (loaded) {
+        saveBtn.textContent = 'Đang phân tích...';
+        var canvas = document.getElementById('faceRegCanvas');
+        var opts = new faceapi.TinyFaceDetectorOptions({ inputSize: 224, scoreThreshold: 0.4 });
+        var det = await faceapi.detectSingleFace(canvas, opts).withFaceLandmarks().withFaceDescriptor();
+        if (det) {
+          descriptor = JSON.stringify(Array.from(det.descriptor));
+        } else {
+          saveBtn.disabled = false;
+          retakeBtn.disabled = false;
+          saveBtn.textContent = 'Lưu khuôn mặt';
+          showToast('Không tìm thấy khuôn mặt — chụp lại!', 'error');
+          return;
+        }
+      }
+    } catch(e) { console.warn('descriptor error:', e); }
+    retakeBtn.disabled = false;
+
+    saveBtn.textContent = 'Đang lưu...';
+    DB.employees.update(currentUser.id, { faceImage: _faceRegCaptured, faceDescriptor: descriptor });
+    currentUser.faceImage = _faceRegCaptured;
+    currentUser.faceDescriptor = descriptor;
+
+    saveBtn.disabled = false;
+    saveBtn.textContent = 'Lưu khuôn mặt';
+    closeFaceRegModal();
+
+    var t = document.createElement('div');
+    t.style.cssText = 'position:fixed;bottom:28px;right:28px;z-index:9999;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:600;color:white;background:#16a34a;box-shadow:0 4px 20px rgba(0,0,0,.18);transition:opacity .3s;font-family:inherit;';
+    t.textContent = descriptor ? '✓ Đã lưu khuôn mặt + dữ liệu nhận diện!' : '✓ Đã lưu khuôn mặt (không có descriptor)';
+    document.body.appendChild(t);
+    setTimeout(function(){ t.style.opacity='0'; setTimeout(function(){ t.remove(); }, 300); }, 3000);
+  }
+</script>
+</body>
+</html>

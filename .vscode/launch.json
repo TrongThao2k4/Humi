@@ -1,0 +1,33 @@
+{
+    "version": "0.2.0",
+    "configurations": [
+        {
+            "type": "msedge",
+            "request": "launch",
+            "name": "Mở index.html",
+            "file": "${workspaceFolder}/index.html",
+            "webRoot": "${workspaceFolder}"
+        },
+        {
+            "type": "msedge",
+            "request": "launch",
+            "name": "Mở duyet-cong.html",
+            "file": "${workspaceFolder}/duyet-cong.html",
+            "webRoot": "${workspaceFolder}"
+        },
+        {
+            "type": "msedge",
+            "request": "launch",
+            "name": "Mở lich-lam-viec.html",
+            "file": "${workspaceFolder}/lich-lam-viec.html",
+            "webRoot": "${workspaceFolder}"
+        },
+        {
+            "type": "msedge",
+            "request": "launch",
+            "name": "Mở chia-ca.html",
+            "file": "${workspaceFolder}/chia-ca.html",
+            "webRoot": "${workspaceFolder}"
+        }
+    ]
+}

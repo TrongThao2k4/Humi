@@ -1,0 +1,861 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Humi - Chia Ca</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="db.js"></script>
+  <script src="theme.js"></script>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/vn.js"></script>
+  <style>
+    :root { --primary:#5D87FF; --primary-dark:#4570EA; --primary-rgb:93,135,255; }
+    * { font-family: 'Plus Jakarta Sans', sans-serif; box-sizing: border-box; }
+    body { background: #F2F6FA; margin: 0; }
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #DFE5EF; border-radius: 4px; }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 240px 1fr;
+      grid-template-rows: 64px 1fr;
+      min-height: 100vh;
+    }
+    .sidebar {
+      grid-column: 1; grid-row: 1 / 3;
+      background: white; border-right: 1px solid #e5eaef;
+      display: flex; flex-direction: column;
+    }
+    .topbar {
+      grid-column: 2; grid-row: 1;
+      background: white; border-bottom: 1px solid #e5eaef;
+      box-shadow: 0 7px 30px 0 rgba(90,114,123,0.11);
+      display: flex; align-items: center; padding: 0 24px;
+      justify-content: space-between; z-index: 10;
+    }
+    .main-content {
+      grid-column: 2; grid-row: 2;
+      overflow: hidden; display: flex; flex-direction: column;
+    }
+    .sidebar-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 12px; border-radius: 7px; cursor: pointer;
+      font-size: 13px; font-weight: 500; color: #5A6A85;
+      text-decoration: none; transition: all 0.15s; margin-bottom: 2px;
+    }
+    .sidebar-item:hover { background: #F2F6FA; }
+    .sidebar-item.active { background: rgba(var(--primary-rgb),0.1); color: var(--primary); font-weight: 600; }
+    .sidebar-item.active svg { stroke: var(--primary); }
+    .logo-mark { background: linear-gradient(135deg, var(--primary), var(--primary-dark)); }
+
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .fade-in { animation: fadeInUp 0.35s ease forwards; }
+
+    /* ===== Table ===== */
+    .shift-table { border-collapse: separate; border-spacing: 0; width: max-content; }
+
+    .shift-table th, .shift-table td {
+      border-right: 1px solid #e5eaef;
+      border-bottom: 1px solid #e5eaef;
+      padding: 0;
+      white-space: nowrap;
+    }
+    .shift-table th:first-child, .shift-table td:first-child { border-left: 1px solid #e5eaef; }
+    .shift-table thead tr:first-child th { border-top: 1px solid #e5eaef; }
+
+    /* Frozen employee column */
+    .col-emp {
+      position: sticky; left: 0; z-index: 4;
+      background: white; min-width: 220px;
+    }
+    th.col-emp { z-index: 20; background: #F2F6FA; }
+
+    /* Day header (spans multiple shift cols) */
+    .th-day {
+      background: var(--primary);
+      color: white; font-size: 11px; font-weight: 700;
+      text-align: center; padding: 6px 8px;
+      border-bottom: 1px solid var(--primary-dark);
+    }
+
+    /* Shift sub-header */
+    .th-shift {
+      background: #ECF2FF; color: #4338ca;
+      font-size: 10px; font-weight: 700; text-align: center;
+      padding: 4px 6px; border-bottom: 1px solid #e0e7ff;
+    }
+
+    /* Time sub-header */
+    .th-time {
+      background: #F2F6FA; color: #5A6A85;
+      font-size: 10px; font-weight: 500; text-align: center;
+      padding: 3px 4px; border-bottom: 1px solid #e5eaef;
+    }
+
+    /* Ratio sub-header */
+    .th-ratio {
+      background: #F2F6FA; color: #2A3547;
+      font-size: 10px; font-weight: 600; text-align: center;
+      padding: 3px 4px; border-bottom: 1px solid #e5eaef;
+    }
+
+    /* Cell */
+    .td-check {
+      text-align: center; vertical-align: middle;
+      padding: 0; width: 36px; height: 46px;
+    }
+
+    /* Custom checkbox */
+    .cb-wrap {
+      display: flex; align-items: center; justify-content: center;
+      width: 100%; height: 100%; cursor: pointer;
+    }
+    .cb-box {
+      width: 18px; height: 18px; border-radius: 4px;
+      border: 1.5px solid #DFE5EF; background: white;
+      display: flex; align-items: center; justify-content: center;
+      transition: all 0.15s; flex-shrink: 0;
+    }
+    .cb-box.checked { background: #16a34a; border-color: #16a34a; }
+    .cb-box:hover { border-color: var(--primary); }
+
+    /* Employee row */
+    .emp-row td { height: 60px; }
+    .emp-row:hover td { background: #fafafa; }
+    .emp-row:hover td.col-emp { background: #fafafa; }
+
+    /* Progress badge */
+    .prog-badge {
+      display: inline-flex; align-items: center; justify-content: center;
+      padding: 3px 10px; border-radius: 20px;
+      font-size: 11px; font-weight: 700; color: white;
+      background: #f97316; flex-shrink: 0;
+    }
+
+    /* Filter bar */
+    .filter-select {
+      appearance: none; -webkit-appearance: none;
+      background: white; border: 1px solid #e5eaef;
+      border-radius: 7px; padding: 8px 32px 8px 12px;
+      font-size: 13px; color: #2A3547; font-family: inherit;
+      cursor: pointer; outline: none; min-width: 180px;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E");
+      background-repeat: no-repeat; background-position: right 10px center;
+    }
+    .filter-select:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(var(--primary-rgb),0.08); }
+
+    .date-input {
+      background: white; border: 1px solid #e5eaef; border-radius: 7px;
+      padding: 8px 12px; font-size: 13px; color: #2A3547;
+      font-family: inherit; outline: none; cursor: pointer;
+    }
+    .date-input:focus { border-color: var(--primary); }
+
+    .btn-export {
+      display: flex; align-items: center; gap: 6px;
+      background: white; border: 1px solid #e5eaef; border-radius: 7px;
+      padding: 8px 14px; font-size: 13px; font-weight: 500; color: #2A3547;
+      cursor: pointer; transition: all 0.15s; font-family: inherit;
+    }
+    .btn-export:hover { background: #F2F6FA; border-color: #DFE5EF; }
+
+    .btn-setup-shift {
+      display: flex; align-items: center; gap: 6px;
+      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
+      border: none; border-radius: 7px;
+      padding: 8px 16px; font-size: 13px; font-weight: 600; color: white;
+      cursor: pointer; transition: all 0.2s; font-family: inherit;
+      box-shadow:none;
+    }
+    .btn-setup-shift:hover { opacity: 0.9; transform: translateY(-1px); box-shadow: 0 5px 14px rgba(var(--primary-rgb),0.4); }
+
+    .btn-approve {
+      display: flex; align-items: center; gap: 6px;
+      background: linear-gradient(135deg, #2563EB, #1d4ed8);
+      border: none; border-radius: 7px;
+      padding: 8px 16px; font-size: 13px; font-weight: 600; color: white;
+      cursor: pointer; transition: all 0.2s; font-family: inherit;
+      box-shadow: 0 3px 10px rgba(37,99,235,0.3);
+    }
+    .btn-approve:hover { opacity: 0.9; transform: translateY(-1px); }
+
+    .table-scroll {
+      overflow: auto; flex: 1;
+    }
+  </style>
+</head>
+<body>
+<div class="layout">
+
+  <!-- ===== SIDEBAR ===== -->
+  <aside class="sidebar">
+    <div style="display:flex;align-items:center;gap:10px;padding:20px;border-bottom:1px solid #f5f5f8;">
+      <div class="logo-mark" style="width:32px;height:32px;border-radius:7px;display:flex;align-items:center;justify-content:center;">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5">
+          <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
+        </svg>
+      </div>
+      <span style="font-size:22px;font-weight:800;letter-spacing:-0.5px;color:#2A3547;">Humi</span>
+    </div>
+
+    <div style="padding:16px;border-bottom:1px solid #f5f5f8;">
+      <div style="display:flex;align-items:center;gap:12px;padding:8px;border-radius:7px;cursor:pointer;">
+        <div style="position:relative;">
+          <img src="https://i.pravatar.cc/40?img=47" alt="" style="width:40px;height:40px;border-radius:50%;border:2px solid #ECF2FF;" />
+          <div style="position:absolute;bottom:0;right:0;width:10px;height:10px;background:#34d399;border-radius:50%;border:2px solid white;"></div>
+        </div>
+        <div style="flex:1;">
+          <p style="font-size:13px;font-weight:700;color:#2A3547;margin:0;">Tiểu Nhi</p>
+          <p style="font-size:11px;color:#7C8FAC;margin:0;">Quản lý</p>
+        </div>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7C8FAC" stroke-width="2">
+          <circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/>
+        </svg>
+      </div>
+    </div>
+
+    <nav style="padding:12px;overflow-y:auto;">
+      <p style="font-size:10px;font-weight:600;color:#7C8FAC;letter-spacing:0.1em;text-transform:uppercase;padding:0 12px 8px;margin:0;">Menu</p>
+
+      <a href="index.html" class="sidebar-item">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
+          <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
+        </svg>
+        Trang chủ
+      </a>
+      <a href="duyet-cong.html" class="sidebar-item">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
+        </svg>
+        Duyệt công
+      </a>
+      <a href="danh-sach-phieu-nghi.html" class="sidebar-item">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><polyline points="9 15 11 17 15 13"/></svg>
+        Duyệt phép
+      </a>
+      <a href="danh-sach-nhan-vien.html" class="sidebar-item">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/>
+          <path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/>
+        </svg>
+        Nhân viên
+      </a>
+      <a href="lich-lam-viec.html" class="sidebar-item">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/>
+          <line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+        </svg>
+        Lịch làm việc
+      </a>
+      <a href="chia-ca.html" class="sidebar-item active" style="background:rgba(var(--primary-rgb),0.1);color:var(--primary);font-weight:600;">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2">
+          <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
+        </svg>
+        Đăng ký ca
+      </a>
+
+      <div style="margin:8px 4px;border-top:1px solid #EAEFF4;"></div>
+
+      <a href="xem-phep-ton.html" class="sidebar-item">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/>
+        </svg>
+        Xem phép tồn
+      </a>
+      <a href="xem-thu-nhap.html" class="sidebar-item">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <line x1="12" y1="1" x2="12" y2="23"/>
+          <path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>
+        </svg>
+        Xem thu nhập
+      </a>
+      <a href="hop-thu.html" class="sidebar-item">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
+          <polyline points="22,6 12,13 2,6"/>
+        </svg>
+        Hộp thư
+      </a>
+    </nav>
+
+    <div style="padding:12px;border-top:1px solid #f5f5f8;">
+      <a href="cai-dat.html" class="sidebar-item">
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
+        </svg>
+        Cài đặt
+      </a>
+      <button onclick="doLogout()" class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all w-full text-red-500 hover:bg-red-50" style="border:none;background:none;font-family:inherit;">
+        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+        <span class="text-sm font-500">Đăng xuất</span>
+      </button>
+    </div>
+  </aside>
+
+  <!-- ===== TOPBAR ===== -->
+  <header class="topbar">
+    <div style="flex:1;max-width:460px;">
+      <div style="display:flex;align-items:center;gap:10px;background:#F2F6FA;border:1px solid #e5eaef;border-radius:7px;padding:9px 16px;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7C8FAC" stroke-width="2">
+          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
+        </svg>
+        <input placeholder="Tìm kiếm..." style="background:transparent;border:none;outline:none;font-size:13px;color:#2A3547;flex:1;font-family:inherit;" />
+      </div>
+    </div>
+    <div style="display:flex;align-items:center;gap:12px;">
+      <button style="position:relative;padding:10px;border-radius:7px;background:transparent;border:none;cursor:pointer;">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2A3547" stroke-width="2">
+          <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+          <path d="M13.73 21a2 2 0 01-3.46 0"/>
+        </svg>
+        <span style="position:absolute;top:8px;right:8px;width:8px;height:8px;background:#ef4444;border-radius:50%;border:2px solid white;"></span>
+      </button>
+      <div style="width:1px;height:32px;background:#e5eaef;"></div>
+      <div style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:6px 10px;border-radius:7px;">
+        <img src="https://i.pravatar.cc/32?img=47" alt="" style="width:32px;height:32px;border-radius:50%;border:2px solid #ECF2FF;" />
+        <div>
+          <p style="font-size:13px;font-weight:600;color:#2A3547;margin:0;line-height:1.2;">Tiểu Nhi</p>
+          <p style="font-size:11px;color:#7C8FAC;margin:0;">Quản lý</p>
+        </div>
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7C8FAC" stroke-width="2" style="margin-left:4px;">
+          <polyline points="6 9 12 15 18 9"/>
+        </svg>
+      </div>
+    </div>
+  </header>
+
+  <!-- ===== MAIN ===== -->
+  <main class="main-content fade-in">
+
+    <!-- Title -->
+    <div style="display:flex;align-items:center;padding:16px 24px;background:white;border-bottom:1px solid #e5eaef;flex-shrink:0;">
+      <h1 style="font-size:18px;font-weight:700;color:#2A3547;margin:0;">Chia ca</h1>
+    </div>
+
+    <!-- Filter bar + actions -->
+    <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:14px;padding:12px 24px;background:white;border-bottom:1px solid #e5eaef;flex-shrink:0;">
+      <div style="display:flex;align-items:flex-end;gap:14px;">
+      <!-- Đơn vị -->
+      <div>
+        <label style="font-size:11px;font-weight:600;color:#5A6A85;display:block;margin-bottom:4px;">Đơn vị</label>
+        <div style="position:relative;">
+          <select class="filter-select" style="min-width:320px;">
+            <option value="">Chọn đơn vị</option>
+            <option selected>CH 613 Âu Cơ - Tân Phú - HCM</option>
+            <option>CH 614 Lê Văn Sỹ - Q3 - HCM</option>
+          </select>
+        </div>
+      </div>
+      <!-- Khoảng thời gian -->
+      <div>
+        <label style="font-size:11px;font-weight:600;color:#5A6A85;display:block;margin-bottom:4px;">Khoảng thời gian</label>
+        <div style="display:flex;align-items:center;gap:6px;background:white;border:1px solid #e5eaef;border-radius:7px;padding:7px 12px;cursor:pointer;"
+          onclick="this.querySelector('input').focus()">
+          <input id="dateRange" type="text" value="16/03/2026 - 22/03/2026" class="date-input"
+            style="border:none;padding:0;outline:none;font-size:13px;color:#2A3547;font-family:inherit;min-width:220px;cursor:pointer;" />
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7C8FAC" stroke-width="2">
+            <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/>
+            <line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
+          </svg>
+        </div>
+      </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:10px;margin-left:16px;">
+      <!-- Xuất dữ liệu -->
+      <button class="btn-export">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
+          <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
+        </svg>
+        Xuất dữ liệu
+      </button>
+      <!-- Lưu lịch ca -->
+      <button id="btnSaveShifts" onclick="saveShiftAssignments()" style="display:flex;align-items:center;gap:6px;padding:8px 16px;background:linear-gradient(135deg,#16a34a,#15803d);color:white;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;font-family:inherit;transition:opacity .15s;" onmouseover="this.style.opacity='.88'" onmouseout="this.style.opacity='1'">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/>
+        </svg>
+        Lưu lịch ca
+      </button>
+      <!-- Thiết lập chia ca -->
+      <button class="btn-setup-shift" onclick="window.location.href='thiet-lap-chia-ca.html'">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+          <circle cx="12" cy="12" r="3"/>
+          <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/>
+        </svg>
+        Thiết lập chia ca
+      </button>
+      </div>
+    </div>
+
+    <!-- Table -->
+    <div class="table-scroll" style="background:#F2F6FA;padding:20px;">
+      <div style="background:white;border-radius:7px;box-shadow:0 2px 12px rgba(0,0,0,0.06);overflow:auto;">
+        <table class="shift-table" id="shiftTable">
+          <thead id="shiftHead"></thead>
+          <tbody id="shiftBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+</div>
+
+<script>
+  // Auth guard
+  const _s = DB.auth.requireAuth(); if(!_s) throw 0;
+  const currentUser = _s.user;
+
+  // ===== LOAD CONFIG FROM LOCALSTORAGE =====
+const LS_KEY = 'humiShiftConfig';
+const DEFAULT_SLOTS = [
+  { id:1, name:'Ca CHTT 101', time:'08:00\n22:00', hours:12, quota:5 },
+  { id:2, name:'Ca CHTT 102', time:'08:00\n15:00', hours:6,  quota:3 },
+  { id:3, name:'Ca CHTT 103', time:'13:00\n22:00', hours:8,  quota:4 },
+  { id:4, name:'Ca CHTT 104', time:'15:00\n22:00', hours:6,  quota:3 },
+  { id:5, name:'Ca CHTT 105', time:'18:00\n22:00', hours:4,  quota:2 },
+];
+let SLOTS = DEFAULT_SLOTS;
+let DAY_ASSIGNMENTS = {}; // { 'DD/MM/YYYY': [shiftId, ...] }
+
+function loadConfig() {
+  try {
+    // Try DB shifts first
+    const dbShifts = DB.shifts.getAll().filter(s => s.active === true || s.status === 'active');
+    if (dbShifts.length) {
+      SLOTS = dbShifts.map(s => {
+        const [sh,sm] = (s.startTime||'08:00').split(':').map(Number);
+        const [eh,em] = (s.endTime||'17:00').split(':').map(Number);
+        let diff = (eh*60+em)-(sh*60+sm);
+        if (diff < 0) diff += 24*60;
+        return { id:s.id, name:s.name, time:`${s.startTime||'08:00'}\n${s.endTime||'17:00'}`, hours:Math.round(diff/60*10)/10, quota:s.quota||3 };
+      });
+    } else {
+      const cfg = JSON.parse(localStorage.getItem(LS_KEY) || '{}');
+      if (cfg.shifts && cfg.shifts.length) {
+        SLOTS = cfg.shifts.filter(s => s.active).map(s => {
+          const [sh,sm] = s.start.split(':').map(Number);
+          const [eh,em] = s.end.split(':').map(Number);
+          let diff = (eh*60+em)-(sh*60+sm);
+          if (diff < 0) diff += 24*60;
+          return { id:s.id, name:s.name, time:`${s.start}\n${s.end}`, hours:Math.round(diff/60*10)/10, quota:s.quota };
+        });
+      } else { SLOTS = DEFAULT_SLOTS; }
+    }
+    const cfg = JSON.parse(localStorage.getItem(LS_KEY) || '{}');
+    DAY_ASSIGNMENTS = cfg.dayAssignments || {};
+  } catch(e) { SLOTS = DEFAULT_SLOTS; DAY_ASSIGNMENTS = {}; }
+}
+
+function isAssigned(dayDate, slotIdx) {
+  if (!DAY_ASSIGNMENTS[dayDate]) return true; // no config → show all
+  return DAY_ASSIGNMENTS[dayDate].includes(SLOTS[slotIdx].id);
+}
+
+loadConfig();
+
+const ALL_EMPLOYEES = DB.employees.getAll().filter(e=>e.status==='active').map(e=>({
+  id: e.id, name: e.name, code: e.code, branch: e.unit,
+  role: e.roleId==='manager' ? 'Quản lý' : 'Nhân viên',
+  avatar: e.avatar || ('https://i.pravatar.cc/36?img='+(Math.abs((e.id||'x').charCodeAt(2)%50)+1))
+}));
+
+// ===== STATE =====
+const checked = {};
+let currentDays = [];
+let currentEmployees = [];
+
+// ===== HELPERS =====
+const DAY_LABELS = ['Chủ nhật', 'Thứ 2', 'Thứ 3', 'Thứ 4', 'Thứ 5', 'Thứ 6', 'Thứ 7'];
+
+function generateDays(start, end) {
+  const days = [];
+  const cur = new Date(start);
+  cur.setHours(0, 0, 0, 0);
+  const endD = new Date(end);
+  endD.setHours(0, 0, 0, 0);
+  while (cur <= endD) {
+    const d = String(cur.getDate()).padStart(2, '0');
+    const m = String(cur.getMonth() + 1).padStart(2, '0');
+    const y = cur.getFullYear();
+    days.push({ label: DAY_LABELS[cur.getDay()], date: `${d}/${m}/${y}` });
+    cur.setDate(cur.getDate() + 1);
+  }
+  return days;
+}
+
+function getSelectedBranch() {
+  return document.querySelector('select.filter-select')?.value || '';
+}
+
+function getFilteredEmployees() {
+  const branch = getSelectedBranch();
+  if (!branch) return ALL_EMPLOYEES;
+  return ALL_EMPLOYEES.filter(e => e.branch === branch);
+}
+
+function countSlot(dayIdx, slotIdx) {
+  return currentEmployees.filter(emp => !!checked[`${emp.id}-${dayIdx}-${slotIdx}`]).length;
+}
+
+function updateRatioCell(dayIdx, slotIdx) {
+  const cell = document.getElementById(`ratio-${dayIdx}-${slotIdx}`);
+  if (!cell) return;
+  const n = countSlot(dayIdx, slotIdx);
+  const quota = SLOTS[slotIdx].quota;
+  cell.textContent = `${n}/${quota}`;
+  cell.style.color = n >= quota ? '#16a34a' : n > 0 ? '#dc2626' : '#7C8FAC';
+  cell.style.fontWeight = n > 0 ? '700' : '500';
+}
+
+function calcEmpHours(empId) {
+  let total = 0;
+  currentDays.forEach((_, di) => {
+    SLOTS.forEach((slot, si) => {
+      if (checked[`${empId}-${di}-${si}`]) total += slot.hours;
+    });
+  });
+  return total;
+}
+
+function updateBadge(empId) {
+  const badge = document.getElementById(`badge-${empId}`);
+  if (!badge) return;
+  const hours = calcEmpHours(empId);
+  const base = 56;
+  badge.textContent = `${hours}/${base}`;
+  badge.style.background = hours >= base ? '#16a34a' : hours > base * 0.8 ? '#f97316' : '#ef4444';
+}
+
+function toggleCheck(empId, dayIdx, slotIdx) {
+  const key = `${empId}-${dayIdx}-${slotIdx}`;
+  const isCurrentlyChecked = !!checked[key];
+  if (!isCurrentlyChecked) {
+    // Kiểm tra quota của ca đó
+    const quota = SLOTS[slotIdx].quota;
+    const current = countSlot(dayIdx, slotIdx);
+    if (current >= quota) return;
+    // Rule: không được trùng CÙNG 1 ca (đã xử lý bởi unique key, không cần thêm check)
+  }
+  checked[key] = !isCurrentlyChecked;
+  const box = document.getElementById(`cb-${key}`);
+  if (box) {
+    box.className = 'cb-box' + (checked[key] ? ' checked' : '');
+    box.innerHTML = checked[key]
+      ? `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>`
+      : '';
+  }
+  updateRatioCell(dayIdx, slotIdx);
+  updateBadge(empId);
+}
+
+// dbAssignments: cache dữ liệu shift_assignments từ DB cho lần lưu
+var dbAssignments = [];
+
+function applyAssignmentsToChecked(assignments) {
+  // Đặt tất cả về false
+  currentDays.forEach(function(_, di) {
+    currentEmployees.forEach(function(emp) {
+      SLOTS.forEach(function(_, si) {
+        checked[emp.id + '-' + di + '-' + si] = false;
+      });
+    });
+  });
+  // Điền true theo dữ liệu DB
+  assignments.forEach(function(a) {
+    // date dạng yyyy-mm-dd → dd/mm/yyyy
+    var parts = (a.date || '').split('-');
+    var dateStr = parts.length === 3 ? (parts[2] + '/' + parts[1] + '/' + parts[0]) : '';
+    var di = currentDays.findIndex(function(d) { return d.date === dateStr; });
+    if (di === -1) return;
+    // shift_id có thể là số hoặc string, so sánh loose
+    var si = SLOTS.findIndex(function(s) { return String(s.id) === String(a.shift_id); });
+    if (si === -1) return;
+    var emp = currentEmployees.find(function(e) { return e.id === a.employee_id; });
+    if (!emp) return;
+    checked[a.employee_id + '-' + di + '-' + si] = true;
+  });
+}
+
+// Load từ Supabase DB (async) → sau đó render lại bảng
+function loadCheckedFromDB(callback) {
+  if (!_sbClient || currentEmployees.length === 0 || currentDays.length === 0) {
+    applyAssignmentsToChecked([]);
+    dbAssignments = [];
+    if (callback) callback();
+    return;
+  }
+  var empIds = currentEmployees.map(function(e) { return e.id; });
+  // Tính startDate / endDate từ currentDays
+  function dayToISO(dateStr) { // dd/mm/yyyy → yyyy-mm-dd
+    var p = dateStr.split('/');
+    return p[2] + '-' + p[1] + '-' + p[0];
+  }
+  var startISO = dayToISO(currentDays[0].date);
+  var endISO   = dayToISO(currentDays[currentDays.length - 1].date);
+
+  _sbClient.from('shift_assignments')
+    .select('*')
+    .in('employee_id', empIds)
+    .gte('date', startISO)
+    .lte('date', endISO)
+    .then(function(r) {
+      if (r.error) {
+        console.error('❌ Load shift_assignments:', r.error.message);
+        dbAssignments = [];
+      } else {
+        dbAssignments = r.data || [];
+      }
+      applyAssignmentsToChecked(dbAssignments);
+      if (callback) callback();
+    });
+}
+
+function renderTable() {
+  // ---- THEAD ----
+  let hhtml = '<tr>';
+  hhtml += `<th class="col-emp" rowspan="4" style="min-width:220px;padding:12px 16px;background:#F2F6FA;font-size:12px;font-weight:600;color:#5A6A85;text-align:left;border:1px solid #e5eaef;">Nhân viên</th>`;
+  currentDays.forEach((day, di) => {
+    const sep = di > 0 ? 'border-left:5px solid #F0F2F8;' : '';
+    hhtml += `<th colspan="${SLOTS.length}" class="th-day" style="border:1px solid var(--primary-dark);${sep}">${day.label}<br><span style="font-weight:500;font-size:10px;opacity:0.85;">${day.date}</span></th>`;
+  });
+  hhtml += '</tr><tr>';
+  currentDays.forEach(() => {
+    SLOTS.forEach((slot, si) => {
+      const sep = si === 0 ? 'border-left:5px solid #F0F2F8;' : '';
+      hhtml += `<th class="th-shift" style="border:1px solid #e0e7ff;${sep}font-size:9.5px;padding:3px 2px;">${slot.name}</th>`;
+    });
+  });
+  hhtml += '</tr><tr>';
+  currentDays.forEach(() => {
+    SLOTS.forEach((slot, si) => {
+      const sep = si === 0 ? 'border-left:5px solid #F0F2F8;' : '';
+      const parts = slot.time.split('\n');
+      hhtml += `<th class="th-time" style="border:1px solid #e5eaef;${sep}min-width:38px;">${parts[0]}<br>${parts[1]}</th>`;
+    });
+  });
+  hhtml += '</tr><tr>';
+  currentDays.forEach((day, di) => {
+    SLOTS.forEach((slot, si) => {
+      const sep = si === 0 ? 'border-left:5px solid #F0F2F8;' : '';
+      const assigned = isAssigned(day.date, si);
+      if (!assigned) {
+        hhtml += `<th class="th-ratio" style="border:1px solid #e5eaef;${sep}background:#F2F6FA;"></th>`;
+      } else {
+        const n = countSlot(di, si);
+        const color = n >= slot.quota ? '#16a34a' : n > 0 ? '#dc2626' : '#7C8FAC';
+        const fw = n > 0 ? '700' : '500';
+        hhtml += `<th class="th-ratio" style="border:1px solid #e5eaef;${sep}"><span id="ratio-${di}-${si}" style="color:${color};font-weight:${fw};">${n}/${slot.quota}</span></th>`;
+      }
+    });
+  });
+  hhtml += '</tr>';
+  document.getElementById('shiftHead').innerHTML = hhtml;
+
+  // ---- TBODY ----
+  let bhtml = '';
+  if (currentEmployees.length === 0) {
+    bhtml = `<tr><td colspan="${1 + currentDays.length * SLOTS.length}" style="text-align:center;padding:32px;color:#7C8FAC;font-size:13px;">Không có nhân viên thuộc đơn vị này</td></tr>`;
+  } else {
+    currentEmployees.forEach(emp => {
+      bhtml += `<tr class="emp-row"><td class="col-emp" style="padding:8px 12px;border:1px solid #e5eaef;">
+        <div style="display:flex;align-items:center;gap:10px;">
+          <img src="${emp.avatar}" alt="" style="width:36px;height:36px;border-radius:50%;object-fit:cover;flex-shrink:0;" />
+          <div style="flex:1;">
+            <p style="font-size:12.5px;font-weight:700;color:#2A3547;margin:0 0 1px;">${emp.name}</p>
+            <p style="font-size:11px;color:#7C8FAC;margin:0 0 1px;">${emp.code}</p>
+            <p style="font-size:10.5px;color:#7C8FAC;margin:0;">${emp.branch} – ${emp.role}</p>
+          </div>
+          <span class="prog-badge" id="badge-${emp.id}">${calcEmpHours(emp.id)}/56</span>
+        </div>
+      </td>`;
+      currentDays.forEach((day, di) => {
+        SLOTS.forEach((_, si) => {
+          const key = `${emp.id}-${di}-${si}`;
+          const isChecked = !!checked[key];
+          const sep = si === 0 ? 'border-left:5px solid #F0F2F8;' : '';
+          const assigned = isAssigned(day.date, si);
+          if (!assigned) {
+            bhtml += `<td class="td-check" style="border:1px solid #e5eaef;${sep}background:#F2F6FA;"></td>`;
+          } else {
+            bhtml += `<td class="td-check" style="border:1px solid #e5eaef;${sep}">
+              <div class="cb-wrap" onclick="toggleCheck('${emp.id}',${di},${si})">
+                <div id="cb-${key}" class="cb-box${isChecked?' checked':''}">
+                  ${isChecked ? `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>` : ''}
+                </div>
+              </div>
+            </td>`;
+          }
+        });
+      });
+      bhtml += '</tr>';
+    });
+  }
+  document.getElementById('shiftBody').innerHTML = bhtml;
+  // Cập nhật màu badge sau khi render
+  currentEmployees.forEach(emp => updateBadge(emp.id));
+}
+
+function buildTable() {
+  loadConfig();
+  currentEmployees = getFilteredEmployees();
+  // Show loading skeleton
+  document.getElementById('shiftBody').innerHTML =
+    `<tr><td colspan="999" style="text-align:center;padding:32px;color:#7C8FAC;font-size:13px;">Đang tải dữ liệu...</td></tr>`;
+  // Load từ DB rồi render
+  loadCheckedFromDB(function() { renderTable(); });
+}
+
+// ===== INIT =====
+function getBaseMonday() {
+  const now = new Date();
+  const day = now.getDay();
+  const diff = day === 0 ? -6 : 1 - day;
+  const mon = new Date(now);
+  mon.setDate(now.getDate() + diff);
+  return mon;
+}
+const _baseMon = getBaseMonday();
+const _baseSun = new Date(_baseMon);
+_baseSun.setDate(_baseSun.getDate() + 6);
+
+currentDays = generateDays(_baseMon, _baseSun);
+buildTable();
+
+// Date range picker
+flatpickr('#dateRange', {
+  mode: 'range',
+  dateFormat: 'd/m/Y',
+  defaultDate: [_baseMon, _baseSun],
+  locale: 'vn',
+  allowInput: false,
+  disableMobile: true,
+  onChange: function(selectedDates) {
+    if (selectedDates.length === 2) {
+      currentDays = generateDays(selectedDates[0], selectedDates[1]);
+      buildTable();
+    }
+  }
+});
+
+// Unit filter
+document.querySelector('select.filter-select').addEventListener('change', function() {
+  buildTable();
+});
+
+// ===== LƯU LỊCH CA =====
+function saveShiftAssignments() {
+  if (!_sbClient) { showSaveToast('Không có kết nối Supabase!', false); return; }
+  var btn = document.getElementById('btnSaveShifts');
+  var btnHTML = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M19 21H5a2 2 0 01-2-2V5a2 2 0 012-2h11l5 5v11a2 2 0 01-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg> Lưu lịch ca';
+  if (btn) { btn.disabled = true; btn.style.opacity = '0.6'; btn.textContent = 'Đang lưu...'; }
+
+  function done(ok, msg) {
+    if (btn) { btn.disabled = false; btn.style.opacity = '1'; btn.innerHTML = btnHTML; }
+    showSaveToast(msg, ok);
+    if (ok) {
+      // Reload lại DB cache sau khi lưu
+      loadCheckedFromDB(function() { renderTable(); });
+    }
+  }
+
+  // --- Xác định selectedShifts (đang tick) và existingShifts (từ DB cache) ---
+  var selectedShifts = []; // { employee_id, shift_id, date }
+  currentEmployees.forEach(function(emp) {
+    currentDays.forEach(function(day, di) {
+      var parts = day.date.split('/');
+      var dateISO = parts[2] + '-' + parts[1] + '-' + parts[0];
+      SLOTS.forEach(function(slot, si) {
+        if (checked[emp.id + '-' + di + '-' + si]) {
+          selectedShifts.push({ employee_id: emp.id, shift_id: slot.id, date: dateISO });
+        }
+      });
+    });
+  });
+
+  // dbAssignments = dữ liệu load được từ DB (set khi loadCheckedFromDB)
+  var existingShifts = dbAssignments; // [{ id, employee_id, shift_id, date }]
+
+  // Helper: tìm record trong DB khớp employee_id + shift_id + date
+  function findInDB(empId, shiftId, date) {
+    return existingShifts.find(function(a) {
+      return a.employee_id === empId && String(a.shift_id) === String(shiftId) && a.date === date;
+    });
+  }
+  function keyOf(empId, shiftId, date) { return empId + '|' + shiftId + '|' + date; }
+
+  var selectedKeys = new Set(selectedShifts.map(function(s) { return keyOf(s.employee_id, s.shift_id, s.date); }));
+
+  // 1. DELETE: existing trong DB nhưng KHÔNG còn trong selectedShifts
+  var toDeleteIds = existingShifts
+    .filter(function(a) { return !selectedKeys.has(keyOf(a.employee_id, a.shift_id, a.date)); })
+    .map(function(a) { return a.id; });
+
+  // 2. INSERT: selected nhưng CHƯA tồn tại trong DB
+  var toInsert = selectedShifts.filter(function(s) {
+    return !findInDB(s.employee_id, s.shift_id, s.date);
+  });
+
+  // 3. UPDATE: selected VÀ đã tồn tại trong DB → không cần làm gì (data không đổi)
+  // (nếu muốn update thêm field khác thì bổ sung ở đây)
+
+  var promises = [];
+
+  if (toDeleteIds.length > 0) {
+    for (var j = 0; j < toDeleteIds.length; j += 100) {
+      promises.push(_sbClient.from('shift_assignments').delete().in('id', toDeleteIds.slice(j, j + 100)));
+    }
+  }
+  if (toInsert.length > 0) {
+    var rows = toInsert.map(function(s) {
+      return { employee_id: s.employee_id, shift_id: s.shift_id, date: s.date };
+    });
+    for (var i = 0; i < rows.length; i += 100) {
+      promises.push(_sbClient.from('shift_assignments').insert(rows.slice(i, i + 100)));
+    }
+  }
+
+  if (promises.length === 0) {
+    done(true, 'Đã lưu lịch đi ca thành công!');
+    return;
+  }
+
+  Promise.all(promises).then(function(results) {
+    var errs = results.filter(function(r) { return r && r.error; });
+    if (errs.length > 0) {
+      console.error('Supabase save errors:', errs.map(function(r) { return r.error; }));
+      done(false, 'Lỗi lưu: ' + errs[0].error.message);
+    } else {
+      done(true, 'Đã lưu lịch đi ca thành công!');
+    }
+  }).catch(function(err) {
+    console.error('Save error:', err);
+    done(false, 'Lỗi không xác định khi lưu.');
+  });
+}
+
+function showSaveToast(msg, success) {
+  var t = document.getElementById('shiftSaveToast');
+  if (!t) {
+    t = document.createElement('div');
+    t.id = 'shiftSaveToast';
+    t.style.cssText = 'position:fixed;bottom:28px;right:28px;z-index:9999;padding:12px 20px;border-radius:10px;font-size:13px;font-weight:600;color:white;box-shadow:0 4px 20px rgba(0,0,0,.18);transition:opacity .3s;opacity:0;pointer-events:none;font-family:inherit;';
+    document.body.appendChild(t);
+  }
+  t.textContent = msg;
+  t.style.background = success !== false ? '#16a34a' : '#dc2626';
+  t.style.opacity = '1';
+  clearTimeout(t._t);
+  t._t = setTimeout(function(){ t.style.opacity = '0'; }, 3000);
+}
+</script>
+</body>
+</html>
