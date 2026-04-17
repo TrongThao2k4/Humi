@@ -5,88 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Humi - Xem phép tồn</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="db.js"></script>
-  <script src="theme.js"></script>
+  <script src="../js/db.js"></script>
+  <script src="../js/theme.js"></script>
+  <script>(function(){var o=console.warn;console.warn=function(){var m=Array.prototype.join.call(arguments,' ');if(m.indexOf('cdn.tailwindcss.com should not be used in production')!==-1)return;return o.apply(console,arguments);};})();</script>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-  <style>
-    :root { --primary:#5D87FF; --primary-dark:#4570EA; --primary-rgb:93,135,255; }
-    * { font-family: 'Plus Jakarta Sans', sans-serif; box-sizing: border-box; }
-    body { background: #F2F6FA; margin: 0; }
-    ::-webkit-scrollbar { width: 4px; height: 4px; }
-    ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: #DFE5EF; border-radius: 4px; }
-
-    .layout { display:grid; grid-template-columns:240px 1fr; grid-template-rows:64px 1fr; min-height:100vh; }
-    .sidebar { grid-column:1; grid-row:1/3; background:white; border-right:1px solid #e5eaef; display:flex; flex-direction:column; }
-    .topbar  { grid-column:2; grid-row:1; background:white; border-bottom:1px solid #e5eaef; box-shadow:0 1px 3px rgba(0,0,0,0.04); display:flex; align-items:center; padding:0 24px; justify-content:space-between; z-index:10; }
-    .main-content { grid-column:2; grid-row:2; overflow:hidden; display:flex; flex-direction:column; }
-
-    .sidebar-item { display:flex; align-items:center; gap:12px; padding:10px 12px; border-radius:7px; cursor:pointer; font-size:13px; font-weight:500; color:#5A6A85; text-decoration:none; transition:all 0.15s; margin-bottom:2px; }
-    .sidebar-item:hover { background:#F2F6FA; }
-    .sidebar-item.active { background:rgba(var(--primary-rgb),0.1); color:var(--primary); font-weight:600; }
-    .sidebar-item.active svg { stroke:var(--primary); }
-    .logo-mark { background:linear-gradient(135deg,var(--primary),var(--primary-dark)); }
-
-    @keyframes fadeInUp { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
-    .fade-in { animation:fadeInUp 0.35s ease forwards; }
-
-    /* Cards */
-    .summary-grid { display:grid; grid-template-columns:repeat(4,1fr); gap:14px; padding:16px 16px 0; }
-    .sum-card { background:white; border-radius:7px; padding:16px 18px; box-shadow:0 2px 8px rgba(0,0,0,0.05); }
-    .sum-card-label { font-size:11.5px; color:#7C8FAC; font-weight:500; margin:0 0 6px; }
-    .sum-card-value { font-size:26px; font-weight:800; margin:0; line-height:1; }
-    .sum-card-sub { font-size:11px; color:#7C8FAC; margin:5px 0 0; }
-
-    /* Table */
-    .leave-table { width:100%; border-collapse:collapse; }
-    .leave-table thead th { padding:10px 16px; font-size:11px; font-weight:700; color:#7C8FAC; text-align:left; border-bottom:1px solid #EAEFF4; background:#fafafa; text-transform:uppercase; letter-spacing:0.04em; white-space:nowrap; }
-    .leave-table td { padding:0 16px; height:60px; vertical-align:middle; font-size:13px; color:#2A3547; border-bottom:1px solid #EAEFF4; }
-    .leave-table tr:last-child td { border-bottom:none; }
-    .leave-table tbody tr:hover td { background:#fafbff; }
-
-    /* Leave type badge */
-    .leave-badge { display:inline-flex; align-items:center; gap:6px; padding:5px 12px; border-radius:20px; font-size:12px; font-weight:600; }
-    .badge-green { background:#f0fdf4; color:#16a34a; }
-    .badge-blue { background:#eff6ff; color:#2563eb; }
-    .badge-orange { background:#fff7ed; color:#ea580c; }
-    .badge-purple { background:#faf5ff; color:var(--primary); }
-    .badge-red { background:#fef2f2; color:#dc2626; }
-
-    /* Progress bar */
-    .progress-wrap { display:flex; align-items:center; gap:10px; }
-    .progress-bar-bg { flex:1; height:6px; background:#EAEFF4; border-radius:3px; overflow:hidden; min-width:80px; }
-    .progress-bar-fill { height:100%; border-radius:3px; transition:width 0.4s; }
-
-    /* Detail grid */
-    .detail-grid { display:grid; grid-template-columns:1fr 1fr; gap:14px; padding:14px 16px 16px; }
-    .card { background:white; border-radius:7px; box-shadow:0 2px 8px rgba(0,0,0,0.05); overflow:hidden; }
-    .card-head { padding:13px 18px 11px; border-bottom:1px solid #EAEFF4; display:flex; align-items:center; justify-content:space-between; }
-    .card-head-title { font-size:13.5px; font-weight:800; color:#2A3547; margin:0; }
-    .card-body { padding:6px 18px 14px; }
-
-    /* History table inside card */
-    .hist-row { display:flex; align-items:center; justify-content:space-between; padding:9px 0; border-bottom:1px solid #F2F6FA; gap:10px; }
-    .hist-row:last-child { border-bottom:none; }
-    .hist-label { font-size:12.5px; color:#2A3547; flex:1; }
-    .hist-date { font-size:11.5px; color:#7C8FAC; margin-top:2px; }
-    .hist-val { font-size:13px; font-weight:700; }
-
-    /* Status pill */
-    .status-pill { display:inline-block; padding:3px 10px; border-radius:7px; font-size:11.5px; font-weight:600; }
-    .pill-green { background:#f0fdf4; color:#16a34a; }
-    .pill-orange { background:#fff7ed; color:#ea580c; }
-    .pill-blue { background:#eff6ff; color:#2563eb; }
-    .pill-gray { background:#EAEFF4; color:#5A6A85; }
-
-    .btn-outline { display:flex; align-items:center; gap:6px; background:white; border:1px solid #e5eaef; border-radius:7px; padding:7px 14px; font-size:13px; font-weight:500; color:#2A3547; cursor:pointer; transition:all 0.15s; font-family:inherit; }
-    .btn-outline:hover { background:#F2F6FA; }
-    .btn-primary { display:flex; align-items:center; gap:6px; background:linear-gradient(135deg,var(--primary),var(--primary-dark)); color:white; border:none; border-radius:7px; padding:8px 16px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; transition:opacity 0.15s; }
-    .btn-primary:hover { opacity:0.9; }
-
-    .toast { position:fixed; bottom:28px; right:28px; background:#2A3547; color:white; padding:12px 20px; border-radius:7px; font-size:13px; font-weight:600; box-shadow:0 8px 24px rgba(0,0,0,0.18); opacity:0; transform:translateY(8px); transition:all 0.25s; z-index:999; pointer-events:none; }
-    .toast.show { opacity:1; transform:translateY(0); }
-  </style>
+  <link rel="stylesheet" href="../css/xem-phep-ton.css">
 </head>
 <body>
 <div class="layout">
@@ -99,19 +23,9 @@
       </div>
       <span style="font-size:22px;font-weight:800;letter-spacing:-0.5px;color:#2A3547;">Humi</span>
     </div>
-    <div style="padding:16px;border-bottom:1px solid #f5f5f8;">
-      <div style="display:flex;align-items:center;gap:12px;padding:8px;border-radius:7px;cursor:pointer;">
-        <div style="position:relative;">
-          <img src="https://i.pravatar.cc/40?img=47" alt="" style="width:40px;height:40px;border-radius:50%;border:2px solid #ECF2FF;" />
-          <div style="position:absolute;bottom:0;right:0;width:10px;height:10px;background:#34d399;border-radius:50%;border:2px solid white;"></div>
-        </div>
-        <div style="flex:1;"><p style="font-size:13px;font-weight:700;color:#2A3547;margin:0;">Tiểu Nhi</p><p style="font-size:11px;color:#7C8FAC;margin:0;">Quản lý</p></div>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7C8FAC" stroke-width="2"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
-      </div>
-    </div>
     <nav style="padding:12px;overflow-y:auto;">
       <p style="font-size:10px;font-weight:600;color:#7C8FAC;letter-spacing:0.1em;text-transform:uppercase;padding:0 12px 8px;margin:0;">Menu</p>
-      <a href="index.html" class="sidebar-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Trang chủ</a>
+      <a href="../index.html" class="sidebar-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Trang chủ</a>
       <a href="duyet-cong.html" class="sidebar-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>Duyệt công</a>
       <a href="danh-sach-phieu-nghi.html" class="sidebar-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><polyline points="9 15 11 17 15 13"/></svg>Duyệt phép</a>
       <a href="danh-sach-nhan-vien.html" class="sidebar-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>Nhân viên</a>
@@ -122,21 +36,16 @@
       <a href="xem-thu-nhap.html" class="sidebar-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>Xem thu nhập</a>
       <a href="hop-thu.html" class="sidebar-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>Hộp thư</a>
     </nav>
-    <div style="padding:12px;border-top:1px solid #f5f5f8;">
-      <a href="cai-dat.html" class="sidebar-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>Cài đặt</a>
-      <a onclick="doLogout();return false;" href="#" class="sidebar-item" style="color:#ef4444;margin-top:4px;">
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-        Đăng xuất
-      </a>
-    </div>
   </aside>
 
   <!-- TOPBAR -->
+  <!-- ===== TOPBAR ===== -->
   <header class="topbar">
     <div style="flex:1;max-width:460px;">
       <div style="display:flex;align-items:center;gap:10px;background:#F2F6FA;border:1px solid #e5eaef;border-radius:7px;padding:9px 16px;">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7C8FAC" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input placeholder="Tìm kiếm..." style="background:transparent;border:none;outline:none;font-size:13px;color:#2A3547;flex:1;font-family:inherit;" />
+        <input type="text" placeholder="Tìm kiếm..." style="background:transparent;border:none;outline:none;font-size:13px;color:#2A3547;flex:1;font-family:inherit;" />
+        <kbd style="font-size:10px;color:#7C8FAC;background:#EAEFF4;border-radius:5px;padding:2px 6px;font-family:monospace;">⌘K</kbd>
       </div>
     </div>
     <div style="display:flex;align-items:center;gap:12px;">
@@ -145,146 +54,116 @@
         <span style="position:absolute;top:8px;right:8px;width:8px;height:8px;background:#ef4444;border-radius:50%;border:2px solid white;"></span>
       </button>
       <div style="width:1px;height:32px;background:#e5eaef;"></div>
-      <div style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:6px 10px;border-radius:7px;">
-        <img src="https://i.pravatar.cc/32?img=47" alt="" style="width:32px;height:32px;border-radius:50%;border:2px solid #ECF2FF;" />
-        <div><p style="font-size:13px;font-weight:600;color:#2A3547;margin:0;line-height:1.2;">Tiểu Nhi</p><p style="font-size:11px;color:#7C8FAC;margin:0;">Quản lý</p></div>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7C8FAC" stroke-width="2" style="margin-left:4px;"><polyline points="6 9 12 15 18 9"/></svg>
+      <div style="position:relative;">
+        <div onclick="toggleUserDropdown()" style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:6px 10px;border-radius:7px;user-select:none;" id="topbarUserBtn">
+          <img id="topbarAvatar" src="https://i.pravatar.cc/32?img=47" alt="" style="width:32px;height:32px;border-radius:50%;border:2px solid #ECF2FF;" />
+          <div>
+            <p id="topbarName" style="font-size:13px;font-weight:600;color:#2A3547;margin:0;line-height:1.2;">—</p>
+            <p id="topbarRole" style="font-size:11px;color:#7C8FAC;margin:0;">—</p>
+          </div>
+          <svg id="topbarChevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7C8FAC" stroke-width="2" style="margin-left:4px;transition:transform 0.2s;"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div id="userDropdown" style="display:none;position:absolute;top:calc(100% + 8px);right:0;width:220px;background:white;border:1px solid #e5eaef;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.10);z-index:999;overflow:hidden;">
+          <div style="padding:14px 16px;border-bottom:1px solid #F2F6FA;display:flex;align-items:center;gap:10px;">
+            <img id="dropdownAvatar" src="https://i.pravatar.cc/36?img=47" alt="" style="width:36px;height:36px;border-radius:50%;border:2px solid #ECF2FF;flex-shrink:0;" />
+            <div>
+              <p id="dropdownName" style="font-size:13px;font-weight:700;color:#2A3547;margin:0;line-height:1.3;">—</p>
+              <p id="dropdownRole" style="font-size:11px;color:#7C8FAC;margin:0;">—</p>
+            </div>
+          </div>
+          <div style="padding:6px;">
+            <a href="cai-dat.html" style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:7px;font-size:13px;color:#2A3547;text-decoration:none;transition:background 0.12s;" onmouseover="this.style.background='#F2F6FA'" onmouseout="this.style.background='transparent'">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5A6A85" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+              Cài đặt
+            </a>
+            <div style="height:1px;background:#F2F6FA;margin:4px 0;"></div>
+            <button onclick="doLogout()" style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:7px;font-size:13px;color:#ef4444;width:100%;border:none;background:transparent;cursor:pointer;font-family:inherit;transition:background 0.12s;" onmouseover="this.style.background='#fef2f2'" onmouseout="this.style.background='transparent'">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+              Đăng xuất
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   </header>
 
   <!-- MAIN -->
   <main class="main-content fade-in">
-
-    <!-- Toolbar -->
-    <div style="padding:10px 16px;background:white;border-bottom:1px solid #e5eaef;flex-shrink:0;display:flex;align-items:center;justify-content:space-between;gap:12px;">
+    <!-- Page header -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid #e5eaef;background:white;flex-shrink:0;">
       <div style="display:flex;align-items:center;gap:10px;">
-        <span style="font-size:15px;font-weight:800;color:#2A3547;">Phép tồn</span>
-        <span style="background:#f0fdf4;color:#16a34a;font-size:11.5px;font-weight:700;padding:3px 10px;border-radius:7px;">Năm 2026</span>
+        <h1 style="font-size:18px;font-weight:700;color:#2A3547;margin:0;">Phép tồn</h1>
+        <span id="yearBadge" style="font-size:12px;font-weight:600;color:#16a34a;background:#dcfce7;padding:3px 10px;border-radius:20px;"></span>
       </div>
-      <div style="display:flex;gap:8px;">
+      <div style="display:flex;align-items:center;gap:8px;">
         <button class="btn-outline" onclick="exportCSV()">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           Xuất CSV
         </button>
         <button class="btn-primary" onclick="openLeaveModal()">
-          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          Xin nghỉ phép
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+          Tạo đơn nghỉ
         </button>
       </div>
     </div>
 
-    <div style="flex:1;overflow-y:auto;background:#F2F6FA;">
 
-      <!-- Summary cards -->
-      <div class="summary-grid">
-        <div class="sum-card">
-          <p class="sum-card-label">Tổng phép năm</p>
-          <p class="sum-card-value" style="color:var(--primary);" id="sumTotal">12 <span style="font-size:14px;font-weight:600;color:#7C8FAC;">ngày</span></p>
-          <p class="sum-card-sub">Theo hợp đồng lao động</p>
-        </div>
-        <div class="sum-card">
-          <p class="sum-card-label">Đã sử dụng</p>
-          <p class="sum-card-value" style="color:#ea580c;" id="sumUsed">5 <span style="font-size:14px;font-weight:600;color:#7C8FAC;">ngày</span></p>
-          <p class="sum-card-sub">Tính đến hôm nay</p>
-        </div>
-        <div class="sum-card">
-          <p class="sum-card-label">Phép tồn</p>
-          <p class="sum-card-value" style="color:#16a34a;" id="sumRemaining">7 <span style="font-size:14px;font-weight:600;color:#7C8FAC;">ngày</span></p>
-          <p class="sum-card-sub">Có thể sử dụng</p>
-        </div>
-        <div class="sum-card">
-          <p class="sum-card-label">Phép chờ duyệt</p>
-          <p class="sum-card-value" style="color:#2563eb;" id="sumPending">1 <span style="font-size:14px;font-weight:600;color:#7C8FAC;">ngày</span></p>
-          <p class="sum-card-sub">Đang chờ phê duyệt</p>
-        </div>
+    <!-- Summary cards -->
+    <div class="summary-grid" style="padding:16px 24px;flex-shrink:0;">
+      <div class="sum-card">
+        <p class="sum-label">Tổng phép năm</p>
+        <p class="sum-value" id="sumTotal">—</p>
       </div>
-
-      <!-- Leave balance table -->
-      <div style="margin:14px 16px 0;background:white;border-radius:7px;box-shadow:0 2px 8px rgba(0,0,0,0.05);overflow:hidden;">
-        <div style="padding:14px 18px 12px;border-bottom:1px solid #EAEFF4;display:flex;align-items:center;justify-content:space-between;">
-          <p style="font-size:13.5px;font-weight:800;color:#2A3547;margin:0;">Số dư phép theo loại</p>
-          <select style="appearance:none;border:1px solid #e5eaef;border-radius:8px;padding:6px 28px 6px 10px;font-size:12.5px;color:#2A3547;font-family:inherit;outline:none;background:white url('data:image/svg+xml,%3Csvg xmlns=%22http://www.w3.org/2000/svg%22 width=%2210%22 height=%2210%22 viewBox=%220 0 24 24%22 fill=%22none%22 stroke=%22%236b7280%22 stroke-width=%222.5%22%3E%3Cpolyline points=%226 9 12 15 18 9%22/%3E%3C/svg%3E') no-repeat right 8px center;cursor:pointer;">
-            <option>Năm 2026</option>
-            <option>Năm 2025</option>
-          </select>
-        </div>
-        <div style="overflow-x:auto;">
-          <table class="leave-table">
-            <thead>
-              <tr>
-                <th style="min-width:200px;">Loại phép</th>
-                <th style="min-width:100px;">Tổng phép</th>
-                <th style="min-width:100px;">Đã dùng</th>
-                <th style="min-width:100px;">Phép tồn</th>
-                <th style="min-width:100px;">Chờ duyệt</th>
-                <th style="min-width:220px;">Tỉ lệ sử dụng</th>
-                <th style="min-width:100px;">Trạng thái</th>
-              </tr>
-            </thead>
-            <tbody id="leaveTableBody"></tbody>
-          </table>
-        </div>
+      <div class="sum-card">
+        <p class="sum-label">Đã sử dụng</p>
+        <p class="sum-value" id="sumUsed" style="color:#ea580c;">—</p>
       </div>
+      <div class="sum-card">
+        <p class="sum-label">Còn lại</p>
+        <p class="sum-value" id="sumRemaining" style="color:#16a34a;">—</p>
+      </div>
+      <div class="sum-card">
+        <p class="sum-label">Chờ duyệt</p>
+        <p class="sum-value" id="sumPending" style="color:#d97706;">—</p>
+      </div>
+    </div>
 
-      <!-- Detail cards -->
-      <div class="detail-grid">
+    <!-- Leave breakdown table -->
+    <div style="margin:0 24px 16px;background:white;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.05);overflow:hidden;flex-shrink:0;">
+      <div style="padding:14px 18px;border-bottom:1px solid #EAEFF4;">
+        <h2 style="font-size:14px;font-weight:700;color:#2A3547;margin:0;">Phân tích theo loại phép</h2>
+      </div>
+      <div style="overflow-x:auto;">
+        <table class="leave-table">
+          <thead>
+            <tr>
+              <th>Loại phép</th>
+              <th>Tổng</th>
+              <th>Đã dùng</th>
+              <th>Còn lại</th>
+              <th>Đang chờ</th>
+              <th style="min-width:160px;">Tỷ lệ sử dụng</th>
+              <th>Trạng thái</th>
+            </tr>
+          </thead>
+          <tbody id="leaveTableBody"></tbody>
+        </table>
+      </div>
+    </div>
 
-        <!-- Card: Leave history -->
-        <div class="card">
-          <div class="card-head">
-            <p class="card-head-title" style="display:flex;align-items:center;gap:8px;">
-              <span style="width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,#16a34a,#22c55e);display:inline-flex;align-items:center;justify-content:center;">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-              </span>
-              Lịch sử nghỉ phép
-            </p>
-            <a href="danh-sach-phieu-nghi.html" style="font-size:12px;color:var(--primary);font-weight:600;text-decoration:none;">Xem tất cả →</a>
-          </div>
-          <div class="card-body" id="leaveHistory"></div>
+    <!-- History and detail grid -->
+    <div class="detail-grid" style="padding:0 24px 16px;">
+
+      <!-- Leave history card -->
+      <div style="background:white;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.05);overflow:hidden;">
+        <div style="padding:14px 18px;border-bottom:1px solid #EAEFF4;display:flex;align-items:center;justify-content:space-between;">
+          <h2 style="font-size:14px;font-weight:700;color:#2A3547;margin:0;">Lịch sử nghỉ phép gần đây</h2>
         </div>
-
-        <!-- Card: Leave policy -->
-        <div class="card">
-          <div class="card-head">
-            <p class="card-head-title" style="display:flex;align-items:center;gap:8px;">
-              <span style="width:28px;height:28px;border-radius:8px;background:linear-gradient(135deg,var(--primary),var(--primary-dark));display:inline-flex;align-items:center;justify-content:center;">
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-              </span>
-              Chính sách nghỉ phép
-            </p>
-          </div>
-          <div class="card-body">
-            <div class="hist-row">
-              <span style="font-size:12.5px;color:#2A3547;flex:1;">Phép năm tích lũy mỗi tháng</span>
-              <span style="font-size:13px;font-weight:700;color:var(--primary);">1 ngày/tháng</span>
-            </div>
-            <div class="hist-row">
-              <span style="font-size:12.5px;color:#2A3547;flex:1;">Thâm niên từ 5 năm</span>
-              <span style="font-size:13px;font-weight:700;color:var(--primary);">+1 ngày/năm</span>
-            </div>
-            <div class="hist-row">
-              <span style="font-size:12.5px;color:#2A3547;flex:1;">Phép tồn được chuyển sang năm mới</span>
-              <span style="font-size:13px;font-weight:700;color:#16a34a;">Tối đa 5 ngày</span>
-            </div>
-            <div class="hist-row">
-              <span style="font-size:12.5px;color:#2A3547;flex:1;">Hạn sử dụng phép tồn</span>
-              <span style="font-size:13px;font-weight:700;color:#ea580c;">Q1 năm mới</span>
-            </div>
-            <div class="hist-row">
-              <span style="font-size:12.5px;color:#2A3547;flex:1;">Ngày làm việc áp dụng</span>
-              <span style="font-size:13px;font-weight:700;color:#2A3547;">Thứ 2 – Thứ 7</span>
-            </div>
-            <div class="hist-row">
-              <span style="font-size:12.5px;color:#2A3547;flex:1;">Thời hạn nộp đơn trước</span>
-              <span style="font-size:13px;font-weight:700;color:#2A3547;">Ít nhất 3 ngày</span>
-            </div>
-          </div>
-        </div>
-
+        <div id="leaveHistory" style="padding:12px 18px;"></div>
       </div>
 
     </div>
+
   </main>
 </div>
 
@@ -292,7 +171,6 @@
 <div id="leaveModal" style="display:none;position:fixed;inset:0;z-index:200;align-items:center;justify-content:center;">
   <div onclick="closeLeaveModal()" style="position:absolute;inset:0;background:rgba(0,0,0,0.3);backdrop-filter:blur(2px);"></div>
   <div style="position:relative;background:white;border-radius:12px;width:480px;max-width:95vw;max-height:90vh;overflow-y:auto;box-shadow:0 20px 60px rgba(0,0,0,0.2);">
-    <!-- Header -->
     <div style="padding:20px 24px;border-bottom:1px solid #EAEFF4;display:flex;align-items:center;justify-content:space-between;position:sticky;top:0;background:white;z-index:1;">
       <div style="display:flex;align-items:center;gap:10px;">
         <div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,var(--primary),var(--primary-dark));display:flex;align-items:center;justify-content:center;">
@@ -304,24 +182,17 @@
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
       </button>
     </div>
-    <!-- Form -->
     <form id="leaveForm" onsubmit="submitLeaveForm(event)" style="padding:20px 24px;">
-
-      <!-- Balance preview -->
       <div id="balancePreview" style="margin-bottom:16px;background:#F2F6FA;border-radius:8px;padding:12px 16px;display:flex;gap:16px;"></div>
-
-      <!-- Leave type -->
       <div style="margin-bottom:16px;">
         <label style="font-size:12.5px;font-weight:600;color:#2A3547;display:block;margin-bottom:6px;">Loại nghỉ phép <span style="color:#ef4444;">*</span></label>
-        <select id="leaveType" required style="width:100%;border:1px solid #e5eaef;border-radius:7px;padding:9px 14px;font-size:13px;color:#2A3547;font-family:inherit;outline:none;background:white;appearance:none;" onchange="recalcDays()">
+        <select id="leaveType" required style="width:100%;border:1px solid #e5eaef;border-radius:7px;padding:9px 14px;font-size:13px;color:#2A3547;font-family:inherit;outline:none;background:white;" onchange="recalcDays()">
           <option value="">-- Chọn loại phép --</option>
           <option value="annual">Nghỉ phép năm</option>
           <option value="sick">Nghỉ ốm</option>
           <option value="unpaid">Nghỉ không lương</option>
         </select>
       </div>
-
-      <!-- Date range -->
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:16px;">
         <div>
           <label style="font-size:12.5px;font-weight:600;color:#2A3547;display:block;margin-bottom:6px;">Từ ngày <span style="color:#ef4444;">*</span></label>
@@ -332,23 +203,15 @@
           <input type="date" id="leaveEnd" required style="width:100%;border:1px solid #e5eaef;border-radius:7px;padding:9px 14px;font-size:13px;color:#2A3547;font-family:inherit;outline:none;" oninput="recalcDays()" />
         </div>
       </div>
-
-      <!-- Days count -->
       <div style="margin-bottom:14px;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:12px 16px;display:flex;align-items:center;justify-content:space-between;">
         <span style="font-size:13px;color:#5A6A85;font-weight:500;">Số ngày nghỉ (thứ 2 – thứ 7)</span>
         <span id="daysCount" style="font-size:22px;font-weight:800;color:#16a34a;">—</span>
       </div>
-
-      <!-- Warning -->
       <div id="leaveWarning" style="display:none;margin-bottom:14px;background:#fef2f2;border:1px solid #fecaca;border-radius:7px;padding:10px 14px;font-size:12.5px;color:#dc2626;font-weight:600;"></div>
-
-      <!-- Reason -->
       <div style="margin-bottom:20px;">
         <label style="font-size:12.5px;font-weight:600;color:#2A3547;display:block;margin-bottom:6px;">Lý do <span style="font-weight:400;color:#7C8FAC;">(tuỳ chọn)</span></label>
         <textarea id="leaveReason" rows="3" placeholder="Mô tả lý do nghỉ phép..." style="width:100%;border:1px solid #e5eaef;border-radius:7px;padding:9px 14px;font-size:13px;color:#2A3547;font-family:inherit;outline:none;resize:vertical;box-sizing:border-box;"></textarea>
       </div>
-
-      <!-- Actions -->
       <div style="display:flex;gap:10px;">
         <button type="button" onclick="closeLeaveModal()" class="btn-outline" style="flex:1;justify-content:center;">Hủy</button>
         <button type="submit" id="leaveSubmitBtn" class="btn-primary" style="flex:2;justify-content:center;">
@@ -362,283 +225,6 @@
 
 <div class="toast" id="toast"></div>
 
-<script>
-  // Auth guard
-  const _s = DB.auth.requireAuth(); if(!_s) throw 0;
-  const currentUser = _s.user;
-
-  // ===== CONSTANTS =====
-  const ANNUAL_TOTAL   = 12;
-  const SICK_TOTAL     = 30;
-  const MATERNITY_TOTAL = 180;
-
-  const LEAVE_TYPE_NAMES = { annual: 'Nghỉ phép năm', sick: 'Nghỉ ốm', unpaid: 'Nghỉ không lương' };
-  const STATUS_PILL = {
-    approved: '<span class="status-pill pill-green">Đã duyệt</span>',
-    rejected:  '<span class="status-pill" style="background:#fee2e2;color:#ef4444;">Từ chối</span>',
-    pending:   '<span class="status-pill pill-orange">Chờ duyệt</span>',
-  };
-
-  // ===== HELPERS =====
-  function fmtD(iso) { return iso ? iso.split('-').reverse().join('/') : '—'; }
-  function setVal(id, n) {
-    document.getElementById(id).innerHTML = n + ' <span style="font-size:14px;font-weight:600;color:#7C8FAC;">ngày</span>';
-  }
-
-  // Count Mon-Sat working days between two Date objects (inclusive)
-  function countWorkDays(start, end) {
-    let days = 0;
-    const cur = new Date(start);
-    while (cur <= end) {
-      if (cur.getDay() !== 0) days++; // exclude Sunday
-      cur.setDate(cur.getDate() + 1);
-    }
-    return days;
-  }
-
-  // ===== LOAD & RENDER PAGE DATA =====
-  function loadLeaveData() {
-    const empId  = currentUser.id;
-    const bal    = DB.leaves.getBalance(empId);
-    const history = DB.leaves.getHistory(empId).sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
-
-    const usedAnnual    = ANNUAL_TOTAL   - (bal.annual    || 0);
-    const usedSick      = SICK_TOTAL     - (bal.sick      || 0);
-    const usedMaternity = MATERNITY_TOTAL - (bal.maternity || 0);
-
-    const pendingDays   = history.filter(l => l.status === 'pending').reduce((s, l) => s + (l.totalDays || 0), 0);
-    const totalUsed     = history.filter(l => l.status === 'approved').reduce((s, l) => s + (l.totalDays || 0), 0);
-    const totalRemaining = (bal.annual || 0) + (bal.sick || 0);
-
-    setVal('sumTotal',     ANNUAL_TOTAL);
-    setVal('sumUsed',      totalUsed);
-    setVal('sumRemaining', totalRemaining);
-    setVal('sumPending',   pendingDays);
-
-    // Leave type breakdown table
-    const leaveTypes = [
-      { label: 'Nghỉ phép năm',    color: '#16a34a', total: ANNUAL_TOTAL,    used: usedAnnual,    remaining: bal.annual    || 0,
-        pending: history.filter(l => l.leaveType === 'annual'   && l.status === 'pending').reduce((s, l) => s + l.totalDays, 0) },
-      { label: 'Nghỉ thai sản',    color: '#2563eb', total: MATERNITY_TOTAL, used: usedMaternity, remaining: bal.maternity || 0, pending: 0 },
-      { label: 'Nghỉ ốm',          color: '#ea580c', total: SICK_TOTAL,      used: usedSick,      remaining: bal.sick      || 0,
-        pending: history.filter(l => l.leaveType === 'sick'     && l.status === 'pending').reduce((s, l) => s + l.totalDays, 0) },
-      { label: 'Nghỉ không lương', color: '#7C8FAC', total: '—',
-        used: history.filter(l => l.leaveType === 'unpaid' && l.status === 'approved').reduce((s, l) => s + l.totalDays, 0),
-        remaining: bal.unpaid || 0,
-        pending:   history.filter(l => l.leaveType === 'unpaid' && l.status === 'pending').reduce((s, l) => s + l.totalDays, 0) },
-    ];
-
-    const pct = (used, total) => typeof total === 'number' && total > 0 ? Math.round(used / total * 100) : 0;
-    const statusPillFn = (remaining) => typeof remaining === 'number' && remaining > 0
-      ? '<span class="status-pill pill-green">Còn phép</span>'
-      : '<span class="status-pill" style="background:#fee2e2;color:#ef4444;">Hết phép</span>';
-
-    document.getElementById('leaveTableBody').innerHTML = leaveTypes.map(t => {
-      const p = pct(t.used, t.total);
-      return `<tr>
-        <td><div style="display:flex;align-items:center;gap:8px;"><div style="width:8px;height:8px;border-radius:50%;background:${t.color};flex-shrink:0;"></div><span style="font-weight:600;color:#2A3547;">${t.label}</span></div></td>
-        <td style="font-weight:700;color:#2A3547;">${typeof t.total === 'number' ? t.total + ' ngày' : t.total}</td>
-        <td style="color:#ea580c;font-weight:600;">${t.used} ngày</td>
-        <td style="color:#16a34a;font-weight:700;">${t.remaining} ngày</td>
-        <td style="color:#2563eb;font-weight:600;">${t.pending} ngày</td>
-        <td><div class="progress-wrap"><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:${p}%;background:${t.color};"></div></div><span style="font-size:12px;font-weight:600;color:#2A3547;min-width:32px;">${p > 0 ? p + '%' : '—'}</span></div></td>
-        <td>${statusPillFn(t.remaining)}</td>
-      </tr>`;
-    }).join('');
-
-    // History card
-    const histEl = document.getElementById('leaveHistory');
-    if (!history.length) {
-      histEl.innerHTML = '<p style="font-size:13px;color:#7C8FAC;text-align:center;padding:20px 0;">Chưa có đơn nghỉ phép</p>';
-    } else {
-      histEl.innerHTML = history.slice(0, 6).map(l => {
-        const dateRange = l.startDate === l.endDate
-          ? fmtD(l.startDate) + ' • ' + l.totalDays + ' ngày'
-          : fmtD(l.startDate) + ' – ' + fmtD(l.endDate) + ' • ' + l.totalDays + ' ngày';
-        return `<div class="hist-row">
-          <div style="flex:1;">
-            <p style="font-size:13px;font-weight:600;color:#2A3547;margin:0;">${l.leaveTypeName || l.leaveType}</p>
-            <p class="hist-date">${dateRange}</p>
-          </div>
-          ${STATUS_PILL[l.status] || ''}
-        </div>`;
-      }).join('');
-    }
-  }
-
-  // ===== EXPORT CSV =====
-  function exportCSV() {
-    const emp     = DB.employees.getById(currentUser.id);
-    const bal     = DB.leaves.getBalance(currentUser.id);
-    const history = DB.leaves.getHistory(currentUser.id).sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
-    const STATUS_MAP = { approved: 'Đã duyệt', pending: 'Chờ duyệt', rejected: 'Từ chối' };
-
-    if (!emp) { DB.utils.showToast('Không có dữ liệu để xuất'); return; }
-
-    const rows = [
-      ['THÔNG TIN PHÉP TỒN'],
-      [],
-      ['THÔNG TIN NHÂN VIÊN'],
-      ['Họ và tên',   emp.name],
-      ['Mã nhân viên', emp.code],
-      ['Vị trí',      emp.position || '—'],
-      ['Đơn vị',      emp.unit     || '—'],
-      [],
-      ['SỐ DƯ PHÉP'],
-      ['Loại phép',         'Tổng',            'Đã dùng',                           'Còn lại'],
-      ['Nghỉ phép năm',     ANNUAL_TOTAL,       ANNUAL_TOTAL    - (bal.annual    || 0), bal.annual    || 0],
-      ['Nghỉ ốm',           SICK_TOTAL,         SICK_TOTAL      - (bal.sick      || 0), bal.sick      || 0],
-      ['Nghỉ thai sản',     MATERNITY_TOTAL,    MATERNITY_TOTAL - (bal.maternity || 0), bal.maternity || 0],
-      ['Nghỉ không lương',  '—',
-        history.filter(l => l.leaveType === 'unpaid' && l.status === 'approved').reduce((s, l) => s + l.totalDays, 0), '—'],
-      [],
-      ['LỊCH SỬ NGHỈ PHÉP'],
-      ['Loại phép', 'Từ ngày', 'Đến ngày', 'Số ngày', 'Lý do', 'Trạng thái', 'Ngày tạo'],
-      ...history.map(l => [
-        l.leaveTypeName || l.leaveType,
-        fmtD(l.startDate),
-        fmtD(l.endDate),
-        l.totalDays,
-        l.reason || '—',
-        STATUS_MAP[l.status] || l.status,
-        l.createdAt ? l.createdAt.slice(0, 10).split('-').reverse().join('/') : '—',
-      ]),
-    ];
-
-    if (!history.length) rows.push(['Chưa có đơn nghỉ phép']);
-
-    const esc = v => `"${String(v === null || v === undefined ? '' : v).replace(/"/g, '""')}"`;
-    const csv  = rows.map(r => r.map(esc).join(',')).join('\r\n');
-    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8;' });
-    const url  = URL.createObjectURL(blob);
-    const a    = document.createElement('a');
-    a.href     = url;
-    a.download = `Phep_ton_${emp.code}_${new Date().toISOString().slice(0, 10)}.csv`;
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    DB.utils.showToast('Xuất file thành công!');
-  }
-
-  // ===== LEAVE REQUEST MODAL =====
-  function openLeaveModal() {
-    document.getElementById('leaveForm').reset();
-    document.getElementById('daysCount').textContent = '—';
-    document.getElementById('leaveWarning').style.display = 'none';
-
-    // Show current balance
-    const bal = DB.leaves.getBalance(currentUser.id);
-    document.getElementById('balancePreview').innerHTML = [
-      { label: 'Phép năm còn lại', value: (bal.annual || 0) + ' ngày', color: '#16a34a' },
-      { label: 'Nghỉ ốm còn lại',  value: (bal.sick   || 0) + ' ngày', color: '#ea580c' },
-    ].map(b => `
-      <div style="flex:1;text-align:center;">
-        <p style="font-size:18px;font-weight:800;color:${b.color};margin:0;">${b.value}</p>
-        <p style="font-size:11px;color:#7C8FAC;margin:3px 0 0;">${b.label}</p>
-      </div>
-    `).join('<div style="width:1px;background:#EAEFF4;"></div>');
-
-    // Set min date to today
-    const today = new Date().toISOString().slice(0, 10);
-    document.getElementById('leaveStart').min = today;
-    document.getElementById('leaveEnd').min   = today;
-
-    document.getElementById('leaveModal').style.display = 'flex';
-  }
-
-  function closeLeaveModal() {
-    document.getElementById('leaveModal').style.display = 'none';
-  }
-
-  function recalcDays() {
-    const startVal   = document.getElementById('leaveStart').value;
-    const endVal     = document.getElementById('leaveEnd').value;
-    const leaveType  = document.getElementById('leaveType').value;
-    const warning    = document.getElementById('leaveWarning');
-    const daysEl     = document.getElementById('daysCount');
-
-    warning.style.display = 'none';
-    daysEl.textContent = '—';
-    if (!startVal || !endVal) return;
-
-    const start = new Date(startVal);
-    const end   = new Date(endVal);
-
-    if (end < start) {
-      warning.textContent = 'Đến ngày phải sau hoặc bằng Từ ngày';
-      warning.style.display = 'block';
-      return;
-    }
-
-    const days = countWorkDays(start, end);
-    daysEl.textContent = days + ' ngày';
-
-    // Validate balance for annual leave
-    if (leaveType === 'annual') {
-      const remaining = DB.leaves.getBalance(currentUser.id).annual || 0;
-      if (days > remaining) {
-        warning.textContent = `Số ngày nghỉ (${days}) vượt quá phép năm còn lại (${remaining} ngày)`;
-        warning.style.display = 'block';
-      }
-    }
-  }
-
-  function submitLeaveForm(e) {
-    e.preventDefault();
-    const leaveType = document.getElementById('leaveType').value;
-    const startVal  = document.getElementById('leaveStart').value;
-    const endVal    = document.getElementById('leaveEnd').value;
-    const reason    = document.getElementById('leaveReason').value.trim();
-
-    const start = new Date(startVal);
-    const end   = new Date(endVal);
-
-    if (end < start) {
-      DB.utils.showToast('Đến ngày phải sau hoặc bằng Từ ngày');
-      return;
-    }
-
-    const totalDays = countWorkDays(start, end);
-
-    if (leaveType === 'annual') {
-      const remaining = DB.leaves.getBalance(currentUser.id).annual || 0;
-      if (totalDays > remaining) {
-        DB.utils.showToast(`Số ngày nghỉ vượt quá phép còn lại (${remaining} ngày)`);
-        return;
-      }
-    }
-
-    const btn = document.getElementById('leaveSubmitBtn');
-    btn.disabled = true;
-    btn.style.opacity = '0.7';
-
-    try {
-      DB.leaves.submit({
-        employeeId:    currentUser.id,
-        leaveType:     leaveType,
-        leaveTypeName: LEAVE_TYPE_NAMES[leaveType] || leaveType,
-        startDate:     startVal,
-        endDate:       endVal,
-        totalDays:     totalDays,
-        reason:        reason,
-      });
-      closeLeaveModal();
-      DB.utils.showToast('Gửi đơn nghỉ phép thành công!');
-      loadLeaveData();
-    } catch (err) {
-      DB.utils.showToast('Có lỗi xảy ra, vui lòng thử lại');
-    } finally {
-      btn.disabled = false;
-      btn.style.opacity = '1';
-    }
-  }
-
-  // Close modal on Escape
-  document.addEventListener('keydown', e => { if (e.key === 'Escape') closeLeaveModal(); });
-
-  // ===== INIT =====
-  loadLeaveData();
-</script>
+<script src="../js/xem-phep-ton.js"></script>
 </body>
 </html>

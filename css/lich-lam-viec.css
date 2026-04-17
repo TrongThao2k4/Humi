@@ -1,0 +1,187 @@
+:root { --primary:#5D87FF; --primary-dark:#4570EA; --primary-rgb:93,135,255; }
+    * { font-family: 'Plus Jakarta Sans', sans-serif; box-sizing: border-box; }
+    body { background: #F2F6FA; margin: 0; }
+
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #DFE5EF; border-radius: 4px; }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 240px 1fr;
+      grid-template-rows: 64px 1fr;
+      min-height: 100vh;
+    }
+    .sidebar {
+      grid-column: 1; grid-row: 1 / 3;
+      background: white; border-right: 1px solid #e5eaef;
+      display: flex; flex-direction: column;
+    }
+    .topbar {
+      grid-column: 2; grid-row: 1;
+      background: white; border-bottom: 1px solid #e5eaef;
+      box-shadow: 0 7px 30px 0 rgba(90,114,123,0.11);
+      display: flex; align-items: center; padding: 0 24px;
+      justify-content: space-between; z-index: 10;
+    }
+    .main-content {
+      grid-column: 2; grid-row: 2;
+      overflow: hidden; display: flex; flex-direction: column;
+    }
+
+    /* Two-column body inside main */
+    .content-body {
+      flex: 1; display: flex; overflow: hidden;
+    }
+    .legend-panel {
+      width: 300px; flex-shrink: 0;
+      background: white; border-right: 1px solid #e5eaef;
+      overflow-y: auto; padding: 16px;
+    }
+    .legend-row {
+      display: flex; align-items: center; gap: 10px;
+      margin-bottom: 8px; font-size: 12px; color: #5A6A85; font-weight: 500;
+    }
+    .lp {
+      display: inline-flex; align-items: center; justify-content: center;
+      padding: 3px 8px; border-radius: 6px;
+      font-size: 11px; font-weight: 700;
+      min-width: 116px; width: 116px; flex-shrink: 0;
+      white-space: nowrap; position: relative;
+    }
+    .cal-section {
+      flex: 1; display: flex; flex-direction: column; overflow: hidden; padding: 16px; gap: 12px;
+    }
+    .cal-nav-bar {
+      display: flex; align-items: center; justify-content: space-between;
+      padding-bottom: 12px; border-bottom: 1px solid #e5eaef; flex-shrink: 0;
+    }
+    .cal-nav-btn {
+      width: 32px; height: 32px; border: 1px solid #e5eaef; background: white;
+      border-radius: 7px; cursor: pointer;
+      display: flex; align-items: center; justify-content: center; color: #5A6A85;
+    }
+    .cal-nav-btn:hover { background: #F2F6FA; }
+    .sidebar-item {
+      display: flex; align-items: center; gap: 12px;
+      padding: 10px 12px; border-radius: 7px; cursor: pointer;
+      font-size: 13px; font-weight: 500; color: #5A6A85;
+      text-decoration: none; transition: all 0.15s; margin-bottom: 2px;
+    }
+    .sidebar-item:hover { background: #F2F6FA; }
+    .sidebar-item.active { background: rgba(var(--primary-rgb),0.1); color: var(--primary); font-weight: 600; }
+    .sidebar-item.active svg { stroke: var(--primary); }
+    .logo-mark { background: linear-gradient(135deg, var(--primary), var(--primary-dark)); }
+
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(6px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+    .fade-in { animation: fadeInUp 0.35s ease forwards; }
+
+    /* Calendar */
+    .cal-grid {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      border-left: 1px solid #e5eaef;
+      border-top: 1px solid #e5eaef;
+    }
+    .cal-header-cell {
+      background: #F2F6FA; font-size: 12px; font-weight: 700; color: #2A3547;
+      text-align: center; padding: 10px 4px;
+      border-right: 1px solid #e5eaef; border-bottom: 1px solid #e5eaef;
+    }
+    .cal-header-cell.sunday { background: #f0fdf4; color: #15803d; }
+
+    .cal-day {
+      min-height: 92px; border-right: 1px solid #e5eaef; border-bottom: 1px solid #e5eaef;
+      padding: 6px 6px 6px 7px; position: relative; background: white; transition: background 0.12s;
+    }
+    .cal-day:hover { background: #fafafa; }
+    .cal-day.other-month { background: #fafafa; }
+    .cal-day.other-month .day-num { color: #DFE5EF; }
+    .cal-day.sunday { background: #f0fdf4; }
+    .cal-day.today .day-num {
+      background: var(--primary); color: white;
+      border-radius: 50%; width: 22px; height: 22px;
+      display: inline-flex; align-items: center; justify-content: center;
+    }
+
+    .day-header {
+      display: flex; align-items: center; justify-content: space-between;
+      margin-bottom: 4px;
+    }
+    .day-num {
+      font-size: 12px; font-weight: 600; color: #2A3547;
+      min-width: 22px; min-height: 22px;
+      display: inline-flex; align-items: center; justify-content: center;
+    }
+    .day-add-btn {
+      width: 16px; height: 16px; border-radius: 50%;
+      border: none; background: transparent; cursor: pointer;
+      display: flex; align-items: center; justify-content: center;
+      opacity: 0; transition: opacity 0.15s; color: #7C8FAC; flex-shrink: 0;
+    }
+    .cal-day:hover .day-add-btn { opacity: 1; }
+    .day-add-btn:hover { background: #f0f0f8; color: var(--primary); }
+
+    .shift-pill {
+      display: flex; align-items: center; gap: 4px;
+      padding: 2px 6px; border-radius: 6px;
+      font-size: 10.5px; font-weight: 700; margin-bottom: 3px;
+      cursor: pointer; transition: opacity 0.15s;
+      white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      position: relative;
+    }
+    .shift-pill:hover { opacity: 0.82; }
+    /* Ca làm việc – lịch đã lưu từ chia-ca */
+    .sp-planned   { background: white; color: #16a34a; border: 1.5px solid #86efac; }
+    /* Chấm công đã duyệt */
+    .sp-approved  { background: #16a34a; color: white; }
+    /* Chấm công bị từ chối */
+    .sp-rejected  { background: #dc2626; color: white; }
+    /* Chấm công chờ duyệt */
+    .sp-pending   { background: white; color: #ea580c; border: 1.5px dashed #ea580c; }
+    /* Đang làm việc (vào chưa ra) */
+    .sp-active    { background: white; color: #16a34a; border: 1.5px solid #86efac; }
+    /* Nghỉ phép đã duyệt */
+    .sp-leave-ok  { background: #16a34a; color: white; }
+    /* Nghỉ phép bị từ chối */
+    .sp-leave-no  { background: #dc2626; color: white; }
+    /* Nghỉ phép chờ duyệt */
+    .sp-leave-wait{ background: white; color: var(--primary); border: 1.5px solid #c4b5fd; }
+    /* Chấm công đã duyệt – chấm đỏ góc */
+    .sp-approved::after, .sp-active::after, .sp-emp-request::after, .sp-ot-pending::after {
+      content: ''; position: absolute; top: 2px; right: 3px;
+      width: 5px; height: 5px; border-radius: 50%; background: #dc2626;
+    }
+    /* Công nhân viên yêu cầu tạo (như approved nhưng label khác) */
+    .sp-emp-request { background: #16a34a; color: white; }
+    /* OT chờ duyệt – outline + chấm đỏ */
+    .sp-ot-pending  { background: white; color: #2A3547; border: 1.5px solid #e5eaef; }
+    /* Công quản lý tạo tay – outline + dấu + */
+    .sp-manual      { background: white; color: #2A3547; border: 1.5px solid #e5eaef; }
+    /* Chấm công ngoài IP – outline cam với ▲ */
+    .sp-out-ip      { background: white; color: #ea580c; border: 1.5px solid #fca5a5; }
+    /* Ngày lễ */
+    .sp-holiday     { background: #0f766e; color: white; }
+    /* Ngày bù lễ */
+    .sp-comp-day    { background: #3b82f6; color: white; }
+    /* Yêu cầu tạo công */
+    .sp-create-req  { background: white; color: #2A3547; border: 1.5px solid #e5eaef; }
+    /* Hỗ trợ đơn vị khác */
+    .sp-support     { background: #6366f1; color: white; }
+
+    /* Legend */
+    .legend-pill {
+      display: inline-flex; align-items: center; justify-content: center;
+      padding: 3px 10px; border-radius: 20px;
+      font-size: 11px; font-weight: 700; min-width: 120px; width: 120px; flex-shrink: 0;
+    }
+    .legend-green   { background: #16a34a; color: white; }
+    .legend-red     { background: #dc2626; color: white; }
+
+    .btn-outline { display:inline-flex; align-items:center; gap:6px; background:white; border:1px solid #e5eaef; border-radius:7px; padding:7px 14px; font-size:13px; font-weight:500; color:#2A3547; cursor:pointer; transition:all 0.15s; font-family:inherit; }
+    .btn-outline:hover { background:#F2F6FA; }
+    .btn-primary { display:inline-flex; align-items:center; gap:6px; background:linear-gradient(135deg,var(--primary),var(--primary-dark)); color:white; border:none; border-radius:7px; padding:8px 16px; font-size:13px; font-weight:600; cursor:pointer; font-family:inherit; }
+    .btn-primary:hover { opacity:0.9; }

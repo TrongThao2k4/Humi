@@ -5,628 +5,135 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Humi - Duyệt Công</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="db.js"></script>
-  <script src="theme.js"></script>
+  <script src="../js/db.js"></script>
+  <script src="../js/theme.js"></script>
+  <script>(function(){var o=console.warn;console.warn=function(){var m=Array.prototype.join.call(arguments,' ');if(m.indexOf('cdn.tailwindcss.com should not be used in production')!==-1)return;return o.apply(console,arguments);};})();</script>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-  <style>
-    :root { --primary:#5D87FF; --primary-dark:#4570EA; --primary-rgb:93,135,255; }
-    * { font-family: 'Plus Jakarta Sans', sans-serif; box-sizing: border-box; }
-    body { background: #F2F6FA; margin: 0; }
 
-    ::-webkit-scrollbar { width: 4px; height: 4px; }
-    ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: #DFE5EF; border-radius: 4px; }
-
-    /* Layout */
-    .layout {
-      display: grid;
-      grid-template-columns: 240px 1fr;
-      grid-template-rows: 64px 1fr;
-      min-height: 100vh;
-    }
-
-    /* Sidebar */
-    .sidebar {
-      grid-column: 1;
-      grid-row: 1 / 3;
-      background: white;
-      border-right: 1px solid #e5eaef;
-      display: flex;
-      flex-direction: column;
-    }
-
-    /* Topbar */
-    .topbar {
-      grid-column: 2;
-      grid-row: 1;
-      background: white;
-      border-bottom: 1px solid #e5eaef;
-      box-shadow: 0 7px 30px 0 rgba(90,114,123,0.11);
-      display: flex;
-      align-items: center;
-      padding: 0 24px;
-      justify-content: space-between;
-      z-index: 10;
-    }
-
-    /* Main */
-    .main-content {
-      grid-column: 2;
-      grid-row: 2;
-      padding: 0;
-      overflow: hidden;
-      display: flex;
-      flex-direction: column;
-    }
-
-    /* Sidebar items */
-    .sidebar-item {
-      display: flex;
-      align-items: center;
-      gap: 12px;
-      padding: 10px 12px;
-      border-radius: 7px;
-      cursor: pointer;
-      font-size: 13px;
-      font-weight: 500;
-      color: #5A6A85;
-      text-decoration: none;
-      transition: all 0.15s;
-      margin-bottom: 2px;
-    }
-    .sidebar-item:hover { background: #F2F6FA; }
-    .sidebar-item.active {
-      background: rgba(93, 135, 255, 0.1);
-      color: var(--primary);
-      font-weight: 600;
-    }
-    .sidebar-item.active svg { stroke: var(--primary); }
-
-    /* Attendance pill badges */
-    .att-pill {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      padding: 4px 10px;
-      border-radius: 999px;
-      font-size: 12px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.15s;
-    }
-    .att-green { background: #16a34a; color: white; }
-    .att-green:hover { background: #15803d; }
-    .att-orange { background: #ea580c; color: white; }
-    .att-purple { background: var(--primary); color: white; }
-    .att-outline-orange { background: white; color: #ea580c; border: 1.5px solid #ea580c; }
-    .att-outline-gray { background: #F2F6FA; color: #5A6A85; border: 1.5px solid #e5eaef; }
-
-    /* Progress badge */
-    .progress-badge {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      padding: 3px 12px;
-      border-radius: 999px;
-      font-size: 12px;
-      font-weight: 600;
-      text-decoration: none;
-      color: white;
-      letter-spacing: 0.01em;
-      min-width: 56px;
-    }
-    .progress-purple { background: var(--primary); }
-    .progress-green { background: #16a34a; }
-    .progress-gray { background: #e5eaef; color: #2A3547; }
-
-    /* Table */
-    .att-table { width: 100%; border-collapse: collapse; }
-    .att-table th {
-      background: #F2F6FA;
-      font-size: 12px;
-      font-weight: 600;
-      color: #5A6A85;
-      padding: 12px 10px;
-      text-align: center;
-      white-space: nowrap;
-      position: sticky;
-      top: 0;
-      z-index: 5;
-      border-bottom: 1px solid #e5eaef;
-    }
-    .att-table th.col-employee {
-      text-align: left;
-      padding-left: 20px;
-      min-width: 220px;
-    }
-    .att-table th.col-summary {
-      min-width: 100px;
-    }
-    .att-table th.col-day {
-      min-width: 90px;
-    }
-    .att-table th.col-sunday {
-      background: #dcfce7;
-      color: #166534;
-      min-width: 90px;
-    }
-
-    .att-table td {
-      padding: 0 10px;
-      vertical-align: middle;
-      border-bottom: 1px solid #f5f5f8;
-      text-align: center;
-    }
-    .att-table td.col-employee {
-      text-align: left;
-      padding-left: 20px;
-    }
-    .att-table tr:hover td { background: #fafafa; }
-    .att-table tr:last-child td { border-bottom: none; }
-
-    /* Row height */
-    .att-row td { height: 72px; }
-
-    /* Sunday column highlight */
-    .sunday-col { background: rgba(220, 252, 231, 0.3); }
-
-    /* Filter panel overlay */
-    .filter-overlay {
-      position: fixed;
-      inset: 0;
-      background: rgba(0,0,0,0.15);
-      z-index: 100;
-      display: none;
-      backdrop-filter: blur(2px);
-    }
-    .filter-overlay.open { display: block; }
-
-    /* Filter panel */
-    .filter-panel {
-      position: fixed;
-      top: 0;
-      right: -420px;
-      width: 380px;
-      height: 100vh;
-      background: white;
-      z-index: 101;
-      box-shadow: -4px 0 30px rgba(0,0,0,0.12);
-      display: flex;
-      flex-direction: column;
-      transition: right 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-    }
-    .filter-panel.open { right: 0; }
-
-    /* Detail panel */
-    .detail-panel {
-      position: fixed;
-      top: 0; right: -520px;
-      width: 500px; height: 100vh;
-      background: white;
-      z-index: 102;
-      box-shadow: -4px 0 30px rgba(0,0,0,0.14);
-      display: flex; flex-direction: column;
-      transition: right 0.3s cubic-bezier(0.4,0,0.2,1);
-    }
-    .detail-panel.open { right: 0; }
-    .detail-row {
-      display: grid; grid-template-columns: 160px 1fr;
-      align-items: flex-start; padding: 10px 0;
-      border-bottom: 1px solid #f5f5f8; gap: 8px;
-    }
-    .detail-row:last-child { border-bottom: none; }
-    .detail-label { font-size: 12px; color: #7C8FAC; display:flex; align-items:center; gap:6px; padding-top:1px; }
-    .detail-value { font-size: 13px; color: #2A3547; font-weight: 500; }
-    .detail-value.green { color: #16a34a; }
-    .toggle-wrap { display:flex; align-items:center; gap:8px; }
-    .toggle-switch { position:relative; width:38px; height:22px; cursor:pointer; }
-    .toggle-switch input { opacity:0; width:0; height:0; }
-    .toggle-slider {
-      position:absolute; inset:0; border-radius:11px;
-      background:#e5eaef; transition:background 0.2s;
-    }
-    .toggle-slider:before {
-      content:''; position:absolute; width:16px; height:16px;
-      border-radius:50%; background:white; left:3px; top:3px;
-      transition:transform 0.2s; box-shadow:0 1px 3px rgba(0,0,0,0.2);
-    }
-    .toggle-switch input:checked + .toggle-slider { background:#3B82F6; }
-    .toggle-switch input:checked + .toggle-slider:before { transform:translateX(16px); }
-    .face-tab { padding:5px 12px; border:none; background:none; font-size:12px; font-weight:600; color:#7C8FAC; cursor:pointer; border-bottom:2px solid transparent; transition:all 0.15s; font-family:inherit; }
-    .face-tab.active { color:var(--primary); border-bottom-color:var(--primary); }
-    .det-btn { flex:1; padding:10px 6px; border-radius:7px; border:none; font-size:12.5px; font-weight:700; cursor:pointer; font-family:inherit; transition:opacity 0.15s; }
-    .det-btn:hover { opacity:0.88; }
-    /* Chi tiết popup */
-    .chitiet-overlay { display:none; position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:200; align-items:center; justify-content:center; }
-    .chitiet-overlay.open { display:flex; }
-    .chitiet-box { background:white; border-radius:7px; width:420px; box-shadow:0 8px 40px rgba(0,0,0,0.18); overflow:hidden; }
-    .chitiet-field label { display:block; font-size:11px; font-weight:600; color:#5A6A85; margin-bottom:6px; text-transform:uppercase; letter-spacing:0.04em; }
-    .chitiet-input { width:100%; box-sizing:border-box; padding:10px 12px; border:1px solid #e5eaef; border-radius:7px; font-size:13px; font-family:inherit; color:#2A3547; outline:none; transition:border 0.15s; }
-    .chitiet-input:focus { border-color:var(--primary); }
-
-    /* Filter tag chip */
-    .filter-chip {
-      display: inline-flex;
-      align-items: center;
-      gap: 6px;
-      padding: 4px 10px;
-      border-radius: 6px;
-      background: #f0f0fe;
-      border: 1px solid #c7d2fe;
-      font-size: 12px;
-      color: #4338ca;
-      font-weight: 500;
-    }
-    .filter-chip button {
-      background: none;
-      border: none;
-      cursor: pointer;
-      color: var(--primary);
-      padding: 0;
-      line-height: 1;
-      font-size: 14px;
-      display: flex;
-      align-items: center;
-    }
-
-    /* Filter input */
-    .filter-input {
-      width: 100%;
-      padding: 10px 12px;
-      border: 1px solid #e5eaef;
-      border-radius: 7px;
-      font-size: 13px;
-      outline: none;
-      transition: border-color 0.2s;
-      font-family: inherit;
-      color: #2A3547;
-    }
-    .filter-input:focus { border-color: var(--primary); box-shadow: 0 0 0 3px rgba(var(--primary-rgb),0.08); }
-
-    /* Buttons */
-    .btn-primary {
-      background: linear-gradient(135deg, #2563EB, #1d4ed8);
-      color: white;
-      border: none;
-      border-radius: 7px;
-      padding: 9px 18px;
-      font-size: 13px;
-      font-weight: 600;
-      cursor: pointer;
-      transition: all 0.2s;
-      font-family: inherit;
-    }
-    .btn-primary:hover { opacity: 0.92; transform: translateY(-1px); }
-
-    .btn-secondary {
-      background: white;
-      color: #2A3547;
-      border: 1px solid #e5eaef;
-      border-radius: 7px;
-      padding: 9px 16px;
-      font-size: 13px;
-      font-weight: 500;
-      cursor: pointer;
-      display: flex;
-      align-items: center;
-      gap: 6px;
-      transition: all 0.15s;
-      font-family: inherit;
-    }
-    .btn-secondary:hover { background: #F2F6FA; border-color: #DFE5EF; }
-
-    /* Icon button */
-    .icon-btn {
-      width: 34px;
-      height: 34px;
-      border-radius: 8px;
-      border: 1px solid #e5eaef;
-      background: white;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      transition: all 0.15s;
-    }
-    .icon-btn:hover { background: #f5f3ff; border-color: #c4b5fd; }
-
-    /* Active filter bar tag */
-    .active-filter-tag {
-      display: inline-flex;
-      align-items: center;
-      gap: 4px;
-      padding: 3px 10px;
-      border-radius: 6px;
-      background: #ECF2FF;
-      font-size: 12px;
-      font-weight: 600;
-      color: var(--primary);
-      cursor: pointer;
-    }
-
-    /* Logo mark */
-    .logo-mark {
-      background: linear-gradient(135deg, var(--primary), var(--primary-dark));
-    }
-
-    /* Pagination arrows */
-    .page-btn {
-      width: 28px;
-      height: 28px;
-      border-radius: 6px;
-      border: 1px solid #e5eaef;
-      background: white;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      cursor: pointer;
-      transition: all 0.15s;
-    }
-    .page-btn:hover { background: #f5f3ff; border-color: #c4b5fd; }
-    .page-btn:disabled { opacity: 0.4; cursor: not-allowed; }
-
-    /* Slide-in animation */
-    @keyframes fadeInUp {
-      from { opacity: 0; transform: translateY(6px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-    .fade-in { animation: fadeInUp 0.35s ease forwards; }
-
-    /* Scrollable table wrapper */
-    .table-scroll {
-      overflow-x: auto;
-      overflow-y: auto;
-      flex: 1;
-    }
-
-    /* Empty circle for no-attendance */
-    .att-empty {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      width: 20px;
-      height: 20px;
-      border-radius: 50%;
-      border: 1.5px solid #DFE5EF;
-      cursor: pointer;
-    }
-    .att-empty:hover { border-color: var(--primary); }
-  </style>
+  <link rel="stylesheet" href="../css/duyet-cong.css">
 </head>
 <body>
 
 <div class="layout">
 
-  <!-- ===== SIDEBAR ===== -->
+  <!-- SIDEBAR -->
   <aside class="sidebar">
-    <!-- Logo -->
     <div style="display:flex;align-items:center;gap:10px;padding:20px;border-bottom:1px solid #f5f5f8;">
       <div class="logo-mark" style="width:32px;height:32px;border-radius:7px;display:flex;align-items:center;justify-content:center;">
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5">
-          <path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>
-        </svg>
+        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/></svg>
       </div>
       <span style="font-size:22px;font-weight:800;letter-spacing:-0.5px;color:#2A3547;">Humi</span>
     </div>
-
-    <!-- User -->
-    <div style="padding:16px;border-bottom:1px solid #f5f5f8;">
-      <div style="display:flex;align-items:center;gap:12px;padding:8px;border-radius:7px;cursor:pointer;">
-        <div style="position:relative;">
-          <img src="https://i.pravatar.cc/40?img=47" alt="" style="width:40px;height:40px;border-radius:50%;border:2px solid #ECF2FF;" />
-          <div style="position:absolute;bottom:0;right:0;width:10px;height:10px;background:#34d399;border-radius:50%;border:2px solid white;"></div>
-        </div>
-        <div style="flex:1;">
-          <p style="font-size:13px;font-weight:700;color:#2A3547;margin:0;">Tiểu Nhi</p>
-          <p style="font-size:11px;color:#7C8FAC;margin:0;">Quản lý</p>
-        </div>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7C8FAC" stroke-width="2">
-          <circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/>
-        </svg>
-      </div>
-    </div>
-
-    <!-- Nav -->
     <nav style="padding:12px;overflow-y:auto;">
       <p style="font-size:10px;font-weight:600;color:#7C8FAC;letter-spacing:0.1em;text-transform:uppercase;padding:0 12px 8px;margin:0;">Menu</p>
-
-      <a href="index.html" class="sidebar-item">
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/>
-          <rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/>
-        </svg>
-        Trang chủ
-      </a>
-
-      <a href="duyet-cong.html" class="sidebar-item active">
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/>
-        </svg>
-        Duyệt công
-      </a>
-
-      <a href="danh-sach-phieu-nghi.html" class="sidebar-item">
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><polyline points="9 15 11 17 15 13"/></svg>
-        Duyệt phép
-      </a>
-
-      <a href="danh-sach-nhan-vien.html" class="sidebar-item">
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/>
-          <path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/>
-        </svg>
-        Nhân viên
-      </a>
-
-      <a href="lich-lam-viec.html" class="sidebar-item">
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/>
-          <line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/>
-        </svg>
-        Lịch làm việc
-      </a>
-
-      <a href="chia-ca.html" class="sidebar-item">
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/>
-        </svg>
-        Đăng ký ca
-      </a>
-
+      <a href="../index.html" class="sidebar-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Trang chủ</a>
+      <a href="duyet-cong.html" class="sidebar-item active"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>Duyệt công</a>
+      <a href="danh-sach-phieu-nghi.html" class="sidebar-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><polyline points="9 15 11 17 15 13"/></svg>Duyệt phép</a>
+      <a href="danh-sach-nhan-vien.html" class="sidebar-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>Nhân viên</a>
+      <a href="lich-lam-viec.html" class="sidebar-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Lịch làm việc</a>
+      <a href="chia-ca.html" class="sidebar-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Đăng ký ca</a>
       <div style="margin:8px 4px;border-top:1px solid #EAEFF4;"></div>
-
-      <a href="xem-phep-ton.html" class="sidebar-item">
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/>
-        </svg>
-        Xem phép tồn
-      </a>
-
-      <a href="xem-thu-nhap.html" class="sidebar-item">
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <line x1="12" y1="1" x2="12" y2="23"/>
-          <path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/>
-        </svg>
-        Xem thu nhập
-      </a>
-
-      <a href="hop-thu.html" class="sidebar-item">
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/>
-          <polyline points="22,6 12,13 2,6"/>
-        </svg>
-        Hộp thư
-      </a>
+      <a href="xem-phep-ton.html" class="sidebar-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20 21v-2a4 4 0 00-4-4H8a4 4 0 00-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>Xem phép tồn</a>
+      <a href="xem-thu-nhap.html" class="sidebar-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>Xem thu nhập</a>
+      <a href="hop-thu.html" class="sidebar-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>Hộp thư</a>
     </nav>
-
-    <!-- Settings -->
-    <div style="padding:12px;border-top:1px solid #f5f5f8;">
-      <a href="cai-dat.html" class="sidebar-item">
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="12" r="3"/>
-          <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
-        </svg>
-        Cài đặt
-      </a>
-      <button onclick="doLogout()" class="sidebar-item flex items-center gap-3 px-3 py-2.5 rounded-xl cursor-pointer transition-all w-full text-red-500 hover:bg-red-50" style="border:none;background:none;font-family:inherit;">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-        <span class="text-sm font-500">Đăng xuất</span>
-      </button>
-    </div>
   </aside>
 
   <!-- ===== TOPBAR ===== -->
   <header class="topbar">
-    <!-- Search -->
     <div style="flex:1;max-width:460px;">
       <div style="display:flex;align-items:center;gap:10px;background:#F2F6FA;border:1px solid #e5eaef;border-radius:7px;padding:9px 16px;">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7C8FAC" stroke-width="2">
-          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-        </svg>
-        <input placeholder="Tìm kiếm..." style="background:transparent;border:none;outline:none;font-size:13px;color:#2A3547;flex:1;font-family:inherit;" />
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7C8FAC" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" placeholder="Tìm kiếm..." style="background:transparent;border:none;outline:none;font-size:13px;color:#2A3547;flex:1;font-family:inherit;" />
         <kbd style="font-size:10px;color:#7C8FAC;background:#EAEFF4;border-radius:5px;padding:2px 6px;font-family:monospace;">⌘K</kbd>
       </div>
     </div>
-    <!-- Right -->
     <div style="display:flex;align-items:center;gap:12px;">
       <button style="position:relative;padding:10px;border-radius:7px;background:transparent;border:none;cursor:pointer;">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2A3547" stroke-width="2">
-          <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-          <path d="M13.73 21a2 2 0 01-3.46 0"/>
-        </svg>
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2A3547" stroke-width="2"><path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/><path d="M13.73 21a2 2 0 01-3.46 0"/></svg>
         <span style="position:absolute;top:8px;right:8px;width:8px;height:8px;background:#ef4444;border-radius:50%;border:2px solid white;"></span>
       </button>
       <div style="width:1px;height:32px;background:#e5eaef;"></div>
-      <div style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:6px 10px;border-radius:7px;">
-        <img src="https://i.pravatar.cc/32?img=47" alt="" style="width:32px;height:32px;border-radius:50%;border:2px solid #ECF2FF;" />
-        <div>
-          <p style="font-size:13px;font-weight:600;color:#2A3547;margin:0;line-height:1.2;">Tiểu Nhi</p>
-          <p style="font-size:11px;color:#7C8FAC;margin:0;">Quản lý</p>
+      <div style="position:relative;">
+        <div onclick="toggleUserDropdown()" style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:6px 10px;border-radius:7px;user-select:none;" id="topbarUserBtn">
+          <img id="topbarAvatar" src="https://i.pravatar.cc/32?img=47" alt="" style="width:32px;height:32px;border-radius:50%;border:2px solid #ECF2FF;" />
+          <div>
+            <p id="topbarName" style="font-size:13px;font-weight:600;color:#2A3547;margin:0;line-height:1.2;">—</p>
+            <p id="topbarRole" style="font-size:11px;color:#7C8FAC;margin:0;">—</p>
+          </div>
+          <svg id="topbarChevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7C8FAC" stroke-width="2" style="margin-left:4px;transition:transform 0.2s;"><polyline points="6 9 12 15 18 9"/></svg>
         </div>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7C8FAC" stroke-width="2" style="margin-left:4px;">
-          <polyline points="6 9 12 15 18 9"/>
-        </svg>
+        <div id="userDropdown" style="display:none;position:absolute;top:calc(100% + 8px);right:0;width:220px;background:white;border:1px solid #e5eaef;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.10);z-index:999;overflow:hidden;">
+          <div style="padding:14px 16px;border-bottom:1px solid #F2F6FA;display:flex;align-items:center;gap:10px;">
+            <img id="dropdownAvatar" src="https://i.pravatar.cc/36?img=47" alt="" style="width:36px;height:36px;border-radius:50%;border:2px solid #ECF2FF;flex-shrink:0;" />
+            <div>
+              <p id="dropdownName" style="font-size:13px;font-weight:700;color:#2A3547;margin:0;line-height:1.3;">—</p>
+              <p id="dropdownRole" style="font-size:11px;color:#7C8FAC;margin:0;">—</p>
+            </div>
+          </div>
+          <div style="padding:6px;">
+            <a href="cai-dat.html" style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:7px;font-size:13px;color:#2A3547;text-decoration:none;transition:background 0.12s;" onmouseover="this.style.background='#F2F6FA'" onmouseout="this.style.background='transparent'">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5A6A85" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+              Cài đặt
+            </a>
+            <div style="height:1px;background:#F2F6FA;margin:4px 0;"></div>
+            <button onclick="doLogout()" style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:7px;font-size:13px;color:#ef4444;width:100%;border:none;background:transparent;cursor:pointer;font-family:inherit;transition:background 0.12s;" onmouseover="this.style.background='#fef2f2'" onmouseout="this.style.background='transparent'">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+              Đăng xuất
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   </header>
 
   <!-- ===== MAIN CONTENT ===== -->
-  <main class="main-content fade-in">
-
-    <!-- Toolbar -->
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 24px;background:white;border-bottom:1px solid #e5eaef;">
-      <div style="display:flex;align-items:center;gap:10px;">
-        <!-- Week navigator -->
-        <div style="display:flex;align-items:center;gap:4px;background:#F2F6FA;border:1px solid #e5eaef;border-radius:7px;padding:4px 6px;">
-          <button onclick="changeWeek(-1)" style="width:28px;height:28px;border:none;background:white;border-radius:7px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#2A3547" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
-          </button>
-          <div style="display:flex;align-items:center;gap:6px;padding:0 8px;">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-            <span id="weekLabel" style="font-size:13px;font-weight:600;color:#2A3547;white-space:nowrap;min-width:180px;text-align:center;"></span>
-          </div>
-          <button onclick="changeWeek(1)" style="width:28px;height:28px;border:none;background:white;border-radius:7px;cursor:pointer;display:flex;align-items:center;justify-content:center;box-shadow:0 1px 3px rgba(0,0,0,0.08);">
-            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#2A3547" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
-          </button>
+  <main class="main-content fade-in" style="padding:0;overflow:hidden;display:flex;flex-direction:column;">
+    <!-- Toolbar row 1: week nav + search + actions -->
+    <div style="display:flex;align-items:center;gap:10px;padding:10px 20px;background:white;border-bottom:1px solid #e5eaef;flex-shrink:0;">
+      <!-- Week navigator: arrows inside the same box -->
+      <div style="display:flex;align-items:center;border:1px solid #e5eaef;border-radius:8px;overflow:hidden;flex-shrink:0;background:white;">
+        <button onclick="changeWeek(-1)" style="border:none;background:transparent;width:32px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#5A6A85;border-right:1px solid #e5eaef;" onmouseover="this.style.background='#F2F6FA'" onmouseout="this.style.background='transparent'">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
+        </button>
+        <div style="display:flex;align-items:center;gap:7px;padding:0 14px;">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#7C8FAC" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+          <span id="weekLabel" style="font-size:13px;font-weight:600;color:#2A3547;white-space:nowrap;"></span>
         </div>
-        <!-- Search by employee -->
-        <div style="display:flex;align-items:center;gap:8px;background:#F2F6FA;border:1px solid #e5eaef;border-radius:7px;padding:8px 14px;min-width:260px;">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7C8FAC" stroke-width="2">
-            <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-          </svg>
-          <input id="empSearch" placeholder="Tìm kiếm theo tên, mã nhân viên" style="background:transparent;border:none;outline:none;font-size:12.5px;color:#2A3547;flex:1;font-family:inherit;" />
-        </div>
+        <button onclick="changeWeek(1)" style="border:none;background:transparent;width:32px;height:36px;display:flex;align-items:center;justify-content:center;cursor:pointer;color:#5A6A85;border-left:1px solid #e5eaef;" onmouseover="this.style.background='#F2F6FA'" onmouseout="this.style.background='transparent'">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="9 18 15 12 9 6"/></svg>
+        </button>
       </div>
-      <div style="display:flex;align-items:center;gap:10px;">
-        <button class="btn-secondary" id="exportBtn">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/>
-            <polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/>
-          </svg>
+      <!-- Search (flex-grow) -->
+      <div style="position:relative;flex:1;min-width:0;">
+        <svg style="position:absolute;left:10px;top:50%;transform:translateY(-50%);pointer-events:none;" width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#7C8FAC" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input id="empSearch" type="text" placeholder="Tìm kiếm theo tên, mã nhân viên" style="padding:8px 12px 8px 32px;border:1px solid #e5eaef;border-radius:8px;font-size:13px;font-family:inherit;color:#2A3547;outline:none;width:100%;" />
+      </div>
+      <!-- Action buttons -->
+      <div style="display:flex;align-items:center;gap:8px;flex-shrink:0;">
+        <button class="btn-outline" onclick="exportData()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           Xuất dữ liệu
         </button>
-        <button class="btn-primary" onclick="openFilter()">
+        <button onclick="openConditionModal()" class="btn-primary">
           Duyệt theo điều kiện
         </button>
       </div>
     </div>
-
-    <!-- Filter bar -->
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:10px 24px;background:#fafafa;border-bottom:1px solid #e5eaef;">
-      <div style="display:flex;align-items:center;gap:8px;">
-        <span style="font-size:12px;color:#5A6A85;font-weight:500;">Bộ lọc đang áp dụng:</span>
-        <span class="active-filter-tag">Đơn vị(1)</span>
-        <a href="#" style="font-size:12px;font-weight:600;color:var(--primary);text-decoration:none;margin-left:4px;">Đặt lại</a>
-      </div>
-      <div style="display:flex;align-items:center;gap:8px;">
-        <span style="font-size:12px;color:#5A6A85;">1 - 5 trong số 5</span>
-        <button class="page-btn">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2A3547" stroke-width="2.5">
-            <polyline points="15 18 9 12 15 6"/>
-          </svg>
-        </button>
-        <button class="page-btn">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#2A3547" stroke-width="2.5">
-            <polyline points="9 18 15 12 9 6"/>
-          </svg>
-        </button>
-        <button class="icon-btn" title="Cài đặt cột">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#5A6A85" stroke-width="2">
-            <circle cx="12" cy="12" r="3"/>
-            <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/>
-          </svg>
-        </button>
-        <button class="icon-btn" onclick="openFilter()" title="Bộ lọc">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#5A6A85" stroke-width="2">
-            <polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/>
-          </svg>
-        </button>
-      </div>
+    <!-- Toolbar row 2: active filters -->
+    <div style="display:flex;align-items:center;gap:8px;padding:8px 20px;background:white;border-bottom:1px solid #e5eaef;flex-shrink:0;min-height:40px;">
+      <span style="font-size:12px;color:#7C8FAC;flex-shrink:0;">Bộ lọc đang áp dụng:</span>
+      <button onclick="openFilter()" style="border:1px solid #e5eaef;background:white;color:#5A6A85;width:28px;height:28px;border-radius:6px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;" onmouseover="this.style.background='#F2F6FA'" onmouseout="this.style.background='white'">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"/></svg>
+      </button>
+      <span id="activeFilterTag" class="active-filter-tag" style="font-size:12px;font-weight:600;color:var(--primary);background:#f0edff;padding:3px 10px;border-radius:20px;">Tất cả</span>
+      <a id="filterResetLink" href="javascript:void(0)" onclick="resetFilter1()" style="display:none;font-size:12px;font-weight:600;color:var(--primary);text-decoration:none;">Đặt lại</a>
     </div>
 
+
     <!-- Table -->
-    <div class="table-scroll" style="background:white;">
+    <div class="table-scroll" style="background:white;flex:1;overflow:auto;">
       <table class="att-table">
         <thead>
           <tr>
@@ -634,31 +141,31 @@
             <th class="col-summary" style="line-height:1.3;border-bottom:none;">Công đã<br>duyệt/<br>Công đã chấm</th>
             <th class="col-day">
               Thứ 2<br>
-              <span class="week-date-label" style="font-weight:400;font-size:11px;color:#7C8FAC;">09/03/2026</span>
+              <span class="week-date-label" style="font-weight:400;font-size:11px;color:#7C8FAC;"></span>
             </th>
             <th class="col-day">
               Thứ 3<br>
-              <span class="week-date-label" style="font-weight:400;font-size:11px;color:#7C8FAC;">10/03/2026</span>
+              <span class="week-date-label" style="font-weight:400;font-size:11px;color:#7C8FAC;"></span>
             </th>
             <th class="col-day">
               Thứ 4<br>
-              <span class="week-date-label" style="font-weight:400;font-size:11px;color:#7C8FAC;">11/03/2026</span>
+              <span class="week-date-label" style="font-weight:400;font-size:11px;color:#7C8FAC;"></span>
             </th>
             <th class="col-day">
               Thứ 5<br>
-              <span class="week-date-label" style="font-weight:400;font-size:11px;color:#7C8FAC;">12/03/2026</span>
+              <span class="week-date-label" style="font-weight:400;font-size:11px;color:#7C8FAC;"></span>
             </th>
             <th class="col-day">
               Thứ 6<br>
-              <span class="week-date-label" style="font-weight:400;font-size:11px;color:#7C8FAC;">13/03/2026</span>
+              <span class="week-date-label" style="font-weight:400;font-size:11px;color:#7C8FAC;"></span>
             </th>
             <th class="col-day">
               Thứ 7<br>
-              <span class="week-date-label" style="font-weight:400;font-size:11px;color:#7C8FAC;">14/03/2026</span>
+              <span class="week-date-label" style="font-weight:400;font-size:11px;color:#7C8FAC;"></span>
             </th>
             <th class="col-sunday" style="font-weight:700;">
               CN<br>
-              <span class="week-date-label" style="font-weight:500;font-size:11px;">15/03/2026</span>
+              <span class="week-date-label" style="font-weight:500;font-size:11px;"></span>
             </th>
           </tr>
         </thead>
@@ -668,6 +175,62 @@
       </table>
     </div>
   </main>
+</div>
+
+<!-- ===== CONDITION OVERLAY / MODAL ===== -->
+<div id="conditionOverlay" onclick="closeConditionModal()" style="display:none;position:fixed;inset:0;background:rgba(15,23,42,0.22);z-index:210;backdrop-filter:blur(2px);"></div>
+<div id="conditionModal" style="display:none;position:fixed;left:50%;top:50%;transform:translate(-50%,-50%);width:min(560px,calc(100vw - 32px));max-height:calc(100vh - 32px);background:white;border:1px solid #e5eaef;border-radius:22px;box-shadow:0 28px 90px rgba(15,23,42,0.22);z-index:211;overflow:hidden;flex-direction:column;">
+  <div style="display:flex;align-items:flex-start;justify-content:space-between;padding:18px 20px;border-bottom:1px solid #eef2f7;gap:16px;">
+    <div>
+      <p style="margin:0;font-size:16px;font-weight:800;color:#2A3547;">Duyệt theo điều kiện</p>
+      <p style="margin:6px 0 0;font-size:12px;color:#7C8FAC;line-height:1.5;">Duyệt hàng loạt các ca đang hiển thị theo bộ lọc hiện tại hoặc toàn bộ bảng.</p>
+    </div>
+    <button onclick="closeConditionModal()" style="border:none;background:#F2F6FA;width:34px;height:34px;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#2A3547" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+  <div style="padding:18px 20px 8px;overflow:auto;flex:1;min-height:0;display:grid;gap:16px;">
+    <div style="font-size:13px;color:#5A6A85;line-height:1.6;" id="conditionSummary">Đang tính số ca phù hợp...</div>
+    <div>
+      <label style="display:block;font-size:12px;font-weight:700;color:#2A3547;margin-bottom:6px;">Phạm vi áp dụng</label>
+      <select id="conditionScope" class="filter-select" style="width:100%;" onchange="renderConditionSummary()">
+        <option value="visible">Chỉ nhân viên đang hiển thị theo bộ lọc</option>
+        <option value="all">Tất cả nhân viên trong bảng</option>
+      </select>
+    </div>
+    <div>
+      <label style="display:block;font-size:12px;font-weight:700;color:#2A3547;margin-bottom:6px;">Ca nào</label>
+      <select id="conditionShift" class="filter-select" style="width:100%;" onchange="renderConditionSummary()">
+        <option value="">Tất cả ca</option>
+      </select>
+    </div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+      <div>
+        <label style="display:block;font-size:12px;font-weight:700;color:#2A3547;margin-bottom:6px;">Từ ngày</label>
+        <input id="conditionDateFrom" type="date" class="filter-select" style="width:100%;" onchange="renderConditionSummary()" />
+      </div>
+      <div>
+        <label style="display:block;font-size:12px;font-weight:700;color:#2A3547;margin-bottom:6px;">Đến ngày</label>
+        <input id="conditionDateTo" type="date" class="filter-select" style="width:100%;" onchange="renderConditionSummary()" />
+      </div>
+    </div>
+    <div>
+      <label style="display:block;font-size:12px;font-weight:700;color:#2A3547;margin-bottom:6px;">Trạng thái cần duyệt</label>
+      <select id="conditionStatus" class="filter-select" style="width:100%;" onchange="renderConditionSummary()">
+        <option value="pending">Chỉ ca đang chờ duyệt</option>
+        <option value="pending-rejected">Ca chờ duyệt và bị từ chối</option>
+        <option value="all">Tất cả ca chưa duyệt</option>
+      </select>
+    </div>
+    <div>
+      <label style="display:block;font-size:12px;font-weight:700;color:#2A3547;margin-bottom:6px;">Ghi chú duyệt hàng loạt</label>
+      <textarea id="conditionNote" class="chitiet-input" rows="3" placeholder="Ghi chú cho thao tác duyệt hàng loạt..." style="resize:none;width:100%;"></textarea>
+    </div>
+  </div>
+  <div style="display:flex;justify-content:space-between;align-items:center;padding:14px 20px;border-top:1px solid #eef2f7;background:#fafbfd;flex-shrink:0;gap:10px;">
+    <button onclick="closeConditionModal()" style="border:1px solid #dbe2ea;background:white;color:#2A3547;padding:10px 16px;border-radius:10px;font-size:13px;font-weight:600;cursor:pointer;">Hủy</button>
+    <button onclick="bulkApproveByCondition()" style="border:none;background:linear-gradient(135deg,var(--primary),#1d4ed8);color:white;padding:10px 18px;border-radius:10px;font-size:13px;font-weight:700;cursor:pointer;flex:1;">Duyệt theo điều kiện</button>
+  </div>
 </div>
 
 <!-- ===== DETAIL OVERLAY ===== -->
@@ -852,11 +415,7 @@
       <div class="chitiet-field">
         <label>Ca làm việc</label>
         <select id="ct-shift" class="chitiet-input">
-          <option>Ca CHTT 101 (08:00 – 22:00)</option>
-          <option>Ca sáng (08:00 – 15:00)</option>
-          <option>Ca chiều (15:00 – 22:00)</option>
-          <option>Ca hành chính (09:00 – 18:00)</option>
-          <option>Ca đêm (22:00 – 06:00)</option>
+          <option value="">— Chọn ca —</option>
         </select>
       </div>
       <div style="display:flex;gap:12px;">
@@ -890,7 +449,7 @@
   <div style="display:flex;align-items:center;justify-content:space-between;padding:20px 24px;border-bottom:1px solid #e5eaef;">
     <h2 style="font-size:18px;font-weight:700;color:#2A3547;margin:0;">Bộ lọc</h2>
     <div style="display:flex;align-items:center;gap:12px;">
-      <a href="#" style="font-size:13px;font-weight:600;color:var(--primary);text-decoration:none;">Đặt lại</a>
+      <a href="javascript:void(0)" onclick="resetFilter2()" style="font-size:13px;font-weight:600;color:var(--primary);text-decoration:none;cursor:pointer;">Đặt lại</a>
       <button onclick="closeFilter()" style="background:none;border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;width:28px;height:28px;border-radius:8px;color:#5A6A85;font-size:18px;transition:background 0.15s;"
         onmouseover="this.style.background='#EAEFF4'" onmouseout="this.style.background='none'">
         <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
@@ -917,35 +476,9 @@
     <!-- Đơn vị -->
     <div style="margin-bottom:20px;">
       <label style="display:block;font-size:12px;font-weight:600;color:#5A6A85;margin-bottom:8px;letter-spacing:0.02em;text-transform:uppercase;">Đơn vị</label>
-      <div class="filter-input" style="display:flex;flex-wrap:wrap;gap:6px;min-height:42px;align-items:flex-start;padding-top:8px;">
-        <span class="filter-chip">
-          CH 613 Âu Cơ – Tân Phú – HCM
-          <button onclick="removeChip(this)">×</button>
-        </span>
-      </div>
+      <div id="unitFilterList" style="display:flex;flex-direction:column;gap:6px;"></div>
     </div>
 
-    <!-- Vị trí Công việc -->
-    <div style="margin-bottom:20px;">
-      <label style="display:block;font-size:12px;font-weight:600;color:#5A6A85;margin-bottom:8px;letter-spacing:0.02em;text-transform:uppercase;">Vị Trí Công việc</label>
-      <div class="filter-input" style="display:flex;flex-wrap:wrap;gap:6px;min-height:42px;align-items:flex-start;padding-top:8px;">
-        <span class="filter-chip">
-          Nhân viên bán hàng
-          <button onclick="removeChip(this)">×</button>
-        </span>
-      </div>
-    </div>
-
-    <!-- Loại ca -->
-    <div style="margin-bottom:20px;">
-      <label style="display:block;font-size:12px;font-weight:600;color:#5A6A85;margin-bottom:8px;letter-spacing:0.02em;text-transform:uppercase;">Loại ca</label>
-      <div class="filter-input" style="display:flex;flex-wrap:wrap;gap:6px;min-height:42px;align-items:flex-start;padding-top:8px;">
-        <span class="filter-chip">
-          Ca CH 8:00 - 15:00
-          <button onclick="removeChip(this)">×</button>
-        </span>
-      </div>
-    </div>
   </div>
 
   <!-- Footer buttons -->
@@ -961,655 +494,6 @@
   </div>
 </div>
 
-<script>
-  // Auth guard
-  const _s = DB.auth.requireAuth(); if(!_s) throw 0;
-  const currentUser = _s.user;
-
-  // ===== DATA from DB =====
-const ROLE_MAP = { manager:'Quản lý', employee:'Nhân viên', admin:'Quản trị' };
-
-function getApprovedLeave(employeeId, dateStr) {
-  return DB.leaves.getAll().find(l =>
-    l.employeeId === employeeId &&
-    l.status === 'approved' &&
-    l.startDate <= dateStr && l.endDate >= dateStr
-  ) || null;
-}
-
-function fmtLeaveLabel(l) {
-  if (!l) return '';
-  const type = l.leaveTypeName || l.leaveType || 'Nghỉ phép';
-  const days = l.totalDays || 1;
-  // Short label like "Pm(1 ng)"
-  const short = type.includes('năm') || type.includes('annual') ? 'Pm' :
-                type.includes('ốm') || type.includes('sick') ? 'Pốm' :
-                type.includes('thai') || type.includes('maternity') ? 'Pthai' : 'Ptn';
-  return `${short}(${days} ng)`;
-}
-
-function buildWeekDays(employeeId, weekMonday) {
-  const days = [];
-  for (let i = 0; i < 7; i++) {
-    const d = new Date(weekMonday);
-    d.setDate(d.getDate() + i);
-    const dateStr = d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
-    const allRecs = DB.attendance.getAll({employeeId, date:dateStr});
-    const rec = allRecs[0];
-    if (!rec) {
-      const leave = getApprovedLeave(employeeId, dateStr);
-      days.push(leave ? {leave:true, label:fmtLeaveLabel(leave)} : {empty:true});
-      continue;
-    }
-    let checkOut = rec.checkOut || null;
-    if (rec.checkIn && !checkOut) {
-      const [h, m] = rec.checkIn.split(':').map(Number);
-      checkOut = String((h + 8) % 24).padStart(2, '0') + ':' + String(m).padStart(2, '0');
-    }
-    const _statuses = ['approved','approved','approved','pending','pending','rejected'];
-    const approvalStatus = rec.approvalStatus || _statuses[Math.floor(Math.random() * _statuses.length)];
-    const faceImageIn  = allRecs.map(r => r.faceImageIn).find(Boolean)  || null;
-    const faceImageOut = allRecs.map(r => r.faceImageOut).find(Boolean) || null;
-    // Chuẩn hóa tất cả records cho multi-shift
-    const records = allRecs.map(function(r) {
-      var co = r.checkOut || null;
-      if (r.checkIn && !co) {
-        var p = r.checkIn.split(':').map(Number);
-        co = String((p[0]+8)%24).padStart(2,'0') + ':' + String(p[1]).padStart(2,'0');
-      }
-      return { id:r.id, shiftId:r.shiftId||null, checkIn:r.checkIn||null, checkOut:co, approvalStatus:r.approvalStatus||'pending', status:r.status||'present' };
-    });
-    days.push({
-      checkIn: rec.checkIn || null,
-      checkOut,
-      status: rec.status || 'present',
-      approvalStatus,
-      date: dateStr,
-      faceImageIn,
-      faceImageOut,
-      records  // tất cả ca trong ngày
-    });
-  }
-  return days;
-}
-
-function getBaseMonday() {
-  // Use current week's Monday
-  const now = new Date();
-  const day = now.getDay();
-  const diff = day===0 ? -6 : 1-day;
-  const mon = new Date(now);
-  mon.setDate(now.getDate()+diff);
-  return mon;
-}
-
-function buildEmployees(weekMondayDate) {
-  return DB.employees.getAll().map(emp => {
-    const days = buildWeekDays(emp.id, weekMondayDate);
-    // Count worked hours: each day with checkIn = 8h, each with checkOut counted
-    let workedHours = 0;
-    days.forEach(d => {
-      if (d.empty || d.leave || !d.checkIn) return;
-      if (d.checkIn && d.checkOut) {
-        const [ih,im] = d.checkIn.split(':').map(Number);
-        const [oh,om] = d.checkOut.split(':').map(Number);
-        workedHours += Math.round(((oh*60+om)-(ih*60+im))/60);
-      }
-    });
-    // Scheduled: Mon–Fri × 8h = 40h per week
-    const scheduledHours = 5 * 8;
-    return {
-      id: emp.id, name: emp.name, code: emp.code,
-      branch: emp.unit, role: ROLE_MAP[emp.roleId]||'Nhân viên',
-      avatar: emp.avatar||('https://i.pravatar.cc/36?img='+(Math.abs((emp.id||'x').charCodeAt(2)%50)+1)),
-      faceImage: emp.faceImage || null,
-      worked: workedHours, scheduled: scheduledHours,
-      days
-    };
-  });
-}
-
-let _baseMonday = getBaseMonday();
-let employees = buildEmployees(_baseMonday);
-
-// Khi Supabase sync xong → rebuild data và re-render bảng
-window.addEventListener('humi_synced', function() {
-  employees = buildEmployees(_baseMonday);
-  reRender();
-});
-
-function renderDayCell(day, isSunday) {
-  const bgStyle = isSunday ? 'background:rgba(220,252,231,0.35);' : '';
-  const tdStyle = `${bgStyle}padding:0 8px;text-align:center;vertical-align:middle;height:72px;border-bottom:1px solid #f5f5f8;`;
-  const circle = `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style="cursor:pointer;flex-shrink:0;" title="Thêm chấm công">
-    <circle cx="8" cy="8" r="7" stroke="#DFE5EF" stroke-width="1.25" stroke-dasharray="3 2"/>
-    <line x1="8" y1="4.5" x2="8" y2="11.5" stroke="#DFE5EF" stroke-width="1.25" stroke-linecap="round"/>
-    <line x1="4.5" y1="8" x2="11.5" y2="8" stroke="#DFE5EF" stroke-width="1.25" stroke-linecap="round"/>
-  </svg>`;
-
-  // Empty
-  if (day.empty) {
-    return `<td style="${tdStyle}">
-      <div style="display:flex;align-items:center;justify-content:center;height:100%;">${circle}</div>
-    </td>`;
-  }
-
-  // Ngày lễ
-  if (day.type === 'holiday') {
-    const pill = `<span style="display:inline-flex;align-items:center;padding:3px 12px;border-radius:999px;font-size:11px;font-weight:600;color:white;background:#0d9488;white-space:nowrap;">${day.label||'Quốc Khánh'}</span>`;
-    return `<td style="${tdStyle}"><div style="display:flex;align-items:center;justify-content:center;gap:5px;">${pill}</div></td>`;
-  }
-
-  // Ngày bù lễ
-  if (day.type === 'holiday_comp') {
-    const pill = `<span style="display:inline-flex;align-items:center;padding:3px 12px;border-radius:999px;font-size:11px;font-weight:600;color:white;background:#3B82F6;white-space:nowrap;">${day.label||'Ngày bù lễ'}</span>`;
-    return `<td style="${tdStyle}"><div style="display:flex;align-items:center;justify-content:center;gap:5px;">${pill}</div></td>`;
-  }
-
-  // Hỗ trợ đơn vị khác
-  if (day.type === 'support') {
-    const pill = `<span style="display:inline-flex;align-items:center;padding:3px 12px;border-radius:999px;font-size:11px;font-weight:600;color:white;background:var(--primary-dark);white-space:nowrap;">Hỗ trợ</span>`;
-    return `<td style="${tdStyle}"><div style="display:flex;align-items:center;justify-content:center;gap:5px;">${pill}${circle}</div></td>`;
-  }
-
-  // Nghỉ phép
-  if (day.leave) {
-    const leaveStatus = day.leaveStatus || 'approved';
-    const leaveBg = leaveStatus === 'approved' ? '#16a34a'
-                  : leaveStatus === 'rejected'  ? '#dc2626' : 'white';
-    const leaveColor = leaveStatus === 'pending' ? 'var(--primary)' : 'white';
-    const leaveBorder = leaveStatus === 'pending' ? 'border:1.5px solid #c4b5fd;' : '';
-    const leavePill = `<span style="display:inline-flex;align-items:center;padding:3px 10px;border-radius:999px;font-size:11px;font-weight:600;color:${leaveColor};background:${leaveBg};white-space:nowrap;${leaveBorder}">${day.label}</span>`;
-    return `<td style="${tdStyle}">
-      <div style="display:inline-flex;align-items:center;gap:4px;">${leavePill}${circle}</div>
-    </td>`;
-  }
-
-  // Render từng ca thành một pill
-  function makePill(rec) {
-    var ci = rec.checkIn, co = rec.checkOut, approval = rec.approvalStatus || 'pending';
-    var label = ci || '—';
-    if (ci && co) {
-      var ih = parseInt(ci)*60 + parseInt(ci.split(':')[1]);
-      var oh = parseInt(co)*60 + parseInt(co.split(':')[1]);
-      var mins = oh - ih;
-      if (mins > 0) label = String(Math.floor(mins/60)).padStart(2,'0') + ':' + String(mins%60).padStart(2,'0');
-    }
-    var da = `data-checkin="${ci||''}" data-checkout="${co||''}" data-approval="${approval}" data-shiftid="${rec.shiftId||''}" data-recid="${rec.id||''}"`;
-    var ps = approval === 'approved'
-      ? 'background:#16a34a;color:white;border:none;'
-      : approval === 'rejected'
-      ? 'background:#dc2626;color:white;border:none;'
-      : 'background:white;color:#ea580c;border:1.5px dashed #ea580c;';
-    return `<span class="att-pill-click" ${da} style="display:inline-flex;align-items:center;padding:3px 10px;border-radius:999px;font-size:12px;font-weight:600;white-space:nowrap;cursor:pointer;${ps}">${label}</span>`;
-  }
-
-  const records = day.records && day.records.length ? day.records : [{
-    id: null, shiftId: null,
-    checkIn: day.checkIn, checkOut: day.checkOut,
-    approvalStatus: day.approvalStatus || 'pending', status: day.status
-  }];
-
-  const pills = records.map(makePill).join('');
-  return `<td style="${tdStyle}">
-    <div style="display:flex;align-items:center;justify-content:center;gap:5px;height:100%;">
-      <div style="display:flex;flex-direction:column;align-items:center;gap:3px;">${pills}</div>
-      ${circle}
-    </div>
-  </td>`;
-}
-
-function dayHours(day) {
-  if (!day.checkIn || !day.checkOut) return 0;
-  const [ih,im] = day.checkIn.split(':').map(Number);
-  const [oh,om] = day.checkOut.split(':').map(Number);
-  return Math.max(0, Math.round(((oh*60+om)-(ih*60+im))/60));
-}
-
-function renderTable() {
-  const tbody = document.getElementById('attendanceTable');
-  tbody.innerHTML = employees.map(emp => {
-    // Công đã duyệt
-    const approvedH = emp.days.reduce((s,d) => d.approvalStatus === 'approved' ? s + dayHours(d) : s, 0);
-    // Tổng đã chấm (approved + rejected + pending)
-    const stampedH  = emp.days.reduce((s,d) => (d.checkIn && d.checkOut) ? s + dayHours(d) : s, 0);
-    const dayCells = emp.days.map((d, i) => renderDayCell(d, i === 6)).join('');
-
-    return `<tr class="att-row" data-empid="${emp.id}" style="transition:background 0.12s;">
-      <td class="col-employee" style="padding:0 12px 0 20px;vertical-align:middle;height:72px;border-bottom:1px solid #f5f5f8;">
-        <div style="display:flex;align-items:center;gap:10px;">
-          <img src="${emp.avatar}" alt="" style="width:36px;height:36px;border-radius:50%;object-fit:cover;flex-shrink:0;" />
-          <div>
-            <p style="font-size:13px;font-weight:600;color:#2A3547;margin:0 0 2px;">${emp.name}</p>
-            <p style="font-size:11px;color:#7C8FAC;margin:0 0 1px;">${emp.code}</p>
-            <p style="font-size:11px;color:#7C8FAC;margin:0;">${emp.branch} – ${emp.role}</p>
-          </div>
-        </div>
-      </td>
-      <td style="padding:0 10px;text-align:center;vertical-align:middle;height:72px;border-bottom:1px solid #f5f5f8;">
-        <div style="display:flex;flex-direction:column;align-items:center;gap:4px;">
-          <span class="progress-badge" style="background:${approvedH > stampedH ? '#fca5a5;color:#dc2626' : 'var(--primary)'};">${approvedH}/${stampedH}</span>
-        </div>
-      </td>
-      ${dayCells}
-    </tr>`;
-  }).join('');
-}
-
-function updateDetailStatus(status) {
-  const header = document.getElementById('det-header');
-  const label  = document.getElementById('det-status-label');
-  const name   = document.getElementById('det-name');
-  if (status === 'approved') {
-    header.style.background = '#f0fdf4';
-    label.innerHTML = 'Đã duyệt công cho <strong id="det-name" style="color:#15803d;">' + name.textContent + '</strong>';
-  } else if (status === 'rejected') {
-    header.style.background = '#fef2f2';
-    label.innerHTML = 'Đã hủy công cho <strong id="det-name" style="color:#dc2626;">' + name.textContent + '</strong>';
-  } else {
-    header.style.background = '';
-    label.innerHTML = 'Duyệt công cho <strong id="det-name" style="color:#2A3547;">' + name.textContent + '</strong>';
-  }
-}
-
-// ===== DETAIL PANEL =====
-const WEEK_DAYS_VN = ['Chủ nhật','Thứ 2','Thứ 3','Thứ 4','Thứ 5','Thứ 6','Thứ 7'];
-const MONTHS_VN = ['tháng 01','tháng 02','tháng 03','tháng 04','tháng 05','tháng 06','tháng 07','tháng 08','tháng 09','tháng 10','tháng 11','tháng 12'];
-
-let _detailCtx = null; // { empIdx, dayIdx }
-
-function openDetail(pill, td, tr) {
-  const empId = tr.dataset.empid;
-  const empIdx = employees.findIndex(e => e.id === empId || String(e.id) === empId);
-  if (empIdx < 0) return;
-  const emp = employees[empIdx];
-
-  // Lấy data từ pill (ca cụ thể được click), không phải từ td
-  const checkIn  = pill.dataset.checkin;
-  const checkOut = pill.dataset.checkout;
-
-  const cells = Array.from(tr.querySelectorAll('td'));
-  const dayIdx = cells.indexOf(td) - 2; // 0=Mon..6=Sun
-  const clickedShiftId = pill.dataset.shiftid || null;
-  const clickedRecId   = pill.dataset.recid   || null;
-  _detailCtx = { empIdx, dayIdx, shiftId: clickedShiftId, recId: clickedRecId };
-
-  const cellDate = new Date(_baseMonday);
-  cellDate.setDate(cellDate.getDate() + dayIdx);
-  const dayName = WEEK_DAYS_VN[cellDate.getDay()];
-  const dateStr = `${dayName}, ${cellDate.getDate()} ${MONTHS_VN[cellDate.getMonth()]}, ${cellDate.getFullYear()}`;
-
-  renderAllFaceImages();
-
-  document.getElementById('det-avatar').src = emp.avatar;
-  document.getElementById('det-name').textContent = emp.name;
-  document.getElementById('det-date').textContent = dateStr;
-  updateDetailStatus(emp.days[dayIdx].approvalStatus);
-  document.getElementById('det-unit').textContent = emp.branch;
-  document.getElementById('det-shift').textContent = 'Ca CHTT 101 (08:00 – 22:00) (Nghỉ 120 phút)';
-  document.getElementById('det-checkin').textContent = checkIn || '—';
-  document.getElementById('det-checkout').textContent = checkOut || '—';
-  document.getElementById('det-note').value = '';
-
-  // Tự động xác định đi muộn / về sớm dựa vào ca làm việc của pill được click
-  (function() {
-    var isLate = false, isEarly = false;
-    var shiftId = pill.dataset.shiftid;
-    if (shiftId) {
-      var shift = DB.shifts.getById(shiftId);
-      if (shift && shift.startTime && shift.endTime) {
-        var toMin = function(t) { var p = t.split(':').map(Number); return p[0]*60 + p[1]; };
-        if (checkIn  && toMin(checkIn)  > toMin(shift.startTime)) isLate  = true;
-        if (checkOut && toMin(checkOut) < toMin(shift.endTime))   isEarly = true;
-      }
-    }
-    document.getElementById('tog-late').checked  = isLate;
-    document.getElementById('tog-early').checked = isEarly;
-  })();
-
-  if (checkIn && checkOut) {
-    const [ih,im] = checkIn.split(':').map(Number);
-    const [oh,om] = checkOut.split(':').map(Number);
-    const totalMin = (oh*60+om) - (ih*60+im);
-    const h = Math.floor(totalMin/60), m = totalMin%60;
-    document.getElementById('det-total-hours').textContent = `${(totalMin/60).toFixed(1)}h (${h} giờ ${m} phút)`;
-    document.getElementById('det-hours-detail').innerHTML = `Theo ca: ${h} giờ 0 phút &nbsp;|&nbsp; Ngoài ca: 0 giờ ${m} phút<br>Checkin sớm: 0 giờ ${m} phút`;
-  } else {
-    document.getElementById('det-total-hours').textContent = '—';
-    document.getElementById('det-hours-detail').textContent = '';
-  }
-
-  document.getElementById('detailOverlay').classList.add('open');
-  document.getElementById('detailPanel').classList.add('open');
-}
-
-function addMinutes(time, mins) {
-  const [h, m] = time.split(':').map(Number);
-  const total = h * 60 + m + mins;
-  return String(Math.floor(total/60)%24).padStart(2,'0') + ':' + String(total%60).padStart(2,'0');
-}
-
-function recalcWorked(emp) {
-  let total = 0;
-  emp.days.forEach(d => {
-    if (!d.checkIn || !d.checkOut) return;
-    const [ih,im] = d.checkIn.split(':').map(Number);
-    const [oh,om] = d.checkOut.split(':').map(Number);
-    const mins = (oh*60+om) - (ih*60+im);
-    if (mins > 0) total += mins;
-  });
-  emp.worked = Math.round(total / 60);
-}
-
-function applyHalfShift(half) {
-  if (!_detailCtx) return;
-  const { empIdx, dayIdx } = _detailCtx;
-  const emp = employees[empIdx];
-  const day = emp.days[dayIdx];
-  if (!day.checkIn || !day.checkOut) return;
-
-  const [ih, im] = day.checkIn.split(':').map(Number);
-  const [oh, om] = day.checkOut.split(':').map(Number);
-  const totalMin = (oh*60+om) - (ih*60+im);
-  const halfMin = Math.floor(totalMin / 2);
-  const midTime = addMinutes(day.checkIn, halfMin);
-
-  const origIn = day.checkIn, origOut = day.checkOut;
-  if (half === 'first') {
-    day.checkOut = midTime;  // 08:00 → 11:30
-  } else {
-    day.checkIn  = midTime;  // 11:30 → 15:00
-  }
-  day.approvalStatus = 'approved';
-  day.type = undefined;
-  if (day.records) day.records.forEach(function(rec) { rec.approvalStatus = 'approved'; });
-  const attId = 'att_' + emp.id + '_' + day.date;
-  DB.attendance.approve(attId, currentUser.id, { checkIn: day.checkIn, checkOut: day.checkOut });
-
-  recalcWorked(emp);
-  reRender();
-  closeDetail();
-
-  const label = half === 'first'
-    ? `✓ Nửa ca đầu: ${origIn} – ${midTime}`
-    : `✓ Nửa ca sau: ${midTime} – ${origOut}`;
-  showToast(label);
-}
-
-function applyApproval(approvalStatus, label) {
-  if (!_detailCtx) return;
-  const { empIdx, dayIdx } = _detailCtx;
-  const emp = employees[empIdx];
-  const day = emp.days[dayIdx];
-  // Chỉ cập nhật ca được click (theo shiftId hoặc recId)
-  const { shiftId: ctxShiftId, recId: ctxRecId } = _detailCtx;
-  function _isTargetRec(rec) {
-    if (ctxRecId  && rec.id)      return String(rec.id)      === String(ctxRecId);
-    if (ctxShiftId && rec.shiftId) return String(rec.shiftId) === String(ctxShiftId);
-    return true; // fallback: cập nhật tất cả
-  }
-  if (day.records) {
-    day.records.forEach(function(rec) {
-      if (_isTargetRec(rec)) rec.approvalStatus = approvalStatus;
-    });
-  }
-  // Cập nhật approvalStatus của day từ records
-  const allApproved  = day.records && day.records.every(r => r.approvalStatus === 'approved');
-  const anyRejected  = day.records && day.records.some(r => r.approvalStatus === 'rejected');
-  day.approvalStatus = allApproved ? 'approved' : anyRejected ? 'rejected' : 'pending';
-  if (approvalStatus !== 'rejected') day.type = undefined;
-
-  const note = document.getElementById('det-note') ? document.getElementById('det-note').value.trim() : '';
-  const targetRecs = day.records && day.records.length
-    ? day.records.filter(_isTargetRec)
-    : [{ id: null }];
-  targetRecs.forEach(function(rec) {
-    var attId = rec.id || ('att_' + emp.id + '_' + day.date);
-    if (approvalStatus === 'approved') {
-      DB.attendance.approve(attId, currentUser.id, note ? { approverNote: note } : null);
-    } else {
-      DB.attendance.reject(attId, currentUser.id, note);
-    }
-  });
-  recalcWorked(emp);
-  reRender();
-  closeDetail();
-  showToast(label);
-  // Gửi thông báo cho nhân viên
-  (function() {
-    var _color = approvalStatus === 'approved' ? '#16a34a' : '#ef4444';
-    var _word  = approvalStatus === 'approved' ? 'DUYỆT ✓' : 'TỪ CHỐI ✗';
-    var _in  = day.checkIn  || '—';
-    var _out = day.checkOut || '—';
-    DB.messages.sendSystem(
-      emp.id,
-      'Ca làm ngày ' + day.date + ' đã ' + (approvalStatus === 'approved' ? 'được duyệt ✓' : 'bị từ chối ✗'),
-      '<p>Kính gửi <strong>' + emp.name + '</strong>,</p>'
-        + '<p>Ca làm việc của bạn vào ngày <strong>' + day.date + '</strong>'
-        + ' (chấm vào: <strong>' + _in + '</strong>, chấm ra: <strong>' + _out + '</strong>)'
-        + ' đã được <span style="color:' + _color + ';font-weight:700;">' + _word + '</span>.</p>'
-        + (note ? '<p>Ghi chú từ quản lý: <em>' + note + '</em></p>' : '')
-        + '<p style="font-size:12px;color:#7C8FAC;">Xử lý bởi: ' + currentUser.name + '</p>',
-      'attendance'
-    );
-  })();
-}
-
-function openChiTiet() {
-  if (!_detailCtx) return;
-  const { empIdx, dayIdx } = _detailCtx;
-  const day = employees[empIdx].days[dayIdx];
-  document.getElementById('ct-checkin').value = day.checkIn || '';
-  document.getElementById('ct-checkout').value = day.checkOut || '';
-  document.getElementById('ct-note').value = '';
-  document.getElementById('chitietOverlay').classList.add('open');
-}
-
-function closeChiTiet() {
-  document.getElementById('chitietOverlay').classList.remove('open');
-}
-
-function confirmChiTiet() {
-  if (!_detailCtx) return;
-  const { empIdx, dayIdx } = _detailCtx;
-  const emp = employees[empIdx];
-  const day = emp.days[dayIdx];
-  const newIn  = document.getElementById('ct-checkin').value;
-  const newOut = document.getElementById('ct-checkout').value;
-  const note   = document.getElementById('ct-note') ? document.getElementById('ct-note').value.trim() : '';
-  // Lưu approved_check_in/out — giữ nguyên check_in/out gốc
-  day.approvedCheckIn  = newIn  || day.checkIn;
-  day.approvedCheckOut = newOut || day.checkOut;
-  day.approvalStatus = 'approved';
-  day.type = undefined;
-  const { shiftId: ctxSId, recId: ctxRId } = _detailCtx;
-  function _isTarget(rec) {
-    if (ctxRId  && rec.id)      return String(rec.id)      === String(ctxRId);
-    if (ctxSId  && rec.shiftId) return String(rec.shiftId) === String(ctxSId);
-    return true;
-  }
-  if (day.records) day.records.forEach(function(rec) { if (_isTarget(rec)) rec.approvalStatus = 'approved'; });
-  const targetRecs = day.records && day.records.length ? day.records.filter(_isTarget) : [{ id: null }];
-  targetRecs.forEach(function(rec) {
-    var attId = rec.id || ('att_' + emp.id + '_' + day.date);
-    DB.attendance.approve(attId, currentUser.id, {
-      checkIn:      day.approvedCheckIn,
-      checkOut:     day.approvedCheckOut,
-      approverNote: note
-    });
-  });
-  recalcWorked(emp);
-  closeChiTiet();
-  reRender();
-  closeDetail();
-  showToast(`✓ Đã duyệt: ${day.approvedCheckIn} – ${day.approvedCheckOut}${note ? ' · ' + note : ''}`);
-  // Gửi thông báo điều chỉnh giờ cho nhân viên
-  DB.messages.sendSystem(
-    emp.id,
-    'Ca làm ngày ' + day.date + ' đã được duyệt (điều chỉnh giờ) ✓',
-    '<p>Kính gửi <strong>' + emp.name + '</strong>,</p>'
-      + '<p>Ca làm việc của bạn vào ngày <strong>' + day.date + '</strong> đã được <span style="color:#16a34a;font-weight:700;">DUYỆT</span> với giờ điều chỉnh:</p>'
-      + '<div style="background:#F2F6FA;border-radius:8px;padding:14px 18px;margin:10px 0;">'
-      + '<div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;"><span style="color:#7C8FAC;">Giờ gốc (chấm công)</span><span>' + (day.checkIn||'—') + ' – ' + (day.checkOut||'—') + '</span></div>'
-      + '<div style="display:flex;justify-content:space-between;font-size:13px;font-weight:700;"><span style="color:#7C8FAC;">Giờ duyệt</span><span style="color:#16a34a;">' + day.approvedCheckIn + ' – ' + day.approvedCheckOut + '</span></div>'
-      + '</div>'
-      + (note ? '<p><em>Ghi chú: ' + note + '</em></p>' : '')
-      + '<p style="font-size:12px;color:#7C8FAC;">Xử lý bởi: ' + currentUser.name + '</p>',
-    'attendance'
-  );
-}
-
-function reRender() {
-  renderTable(); initRowHover(); initPillClick();
-}
-
-function showToast(msg) {
-  let t = document.getElementById('approvalToast');
-  if (!t) {
-    t = document.createElement('div');
-    t.id = 'approvalToast';
-    t.style.cssText = 'position:fixed;bottom:28px;left:50%;transform:translateX(-50%);background:#2A3547;color:white;padding:10px 20px;border-radius:7px;font-size:13px;font-weight:600;z-index:999;opacity:0;transition:opacity 0.2s;pointer-events:none;white-space:nowrap;';
-    document.body.appendChild(t);
-  }
-  t.textContent = msg;
-  t.style.opacity = '1';
-  clearTimeout(t._timer);
-  t._timer = setTimeout(() => { t.style.opacity = '0'; }, 2000);
-}
-
-function closeDetail() {
-  document.getElementById('detailOverlay').classList.remove('open');
-  document.getElementById('detailPanel').classList.remove('open');
-}
-
-function renderAllFaceImages() {
-  if (!_detailCtx) return;
-  const emp = employees[_detailCtx.empIdx];
-  const day = emp ? emp.days[_detailCtx.dayIdx] : null;
-
-  // Tính ngày từ dayIdx nếu day.date không có
-  var dateStr = (day && day.date) || (function(){
-    var d = new Date(_baseMonday); d.setDate(d.getDate() + _detailCtx.dayIdx);
-    return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
-  })();
-
-  // Thiết lập — từ employees DB
-  var empData = DB.employees.getById(emp ? emp.id : null);
-  var srcSetup = (empData && empData.faceImage) || (emp ? emp.faceImage : null);
-  _setFaceBox('det-face-setup', 'det-face-setup-ph', srcSetup);
-
-  // Chấm vào / Chấm ra — từ attendance DB
-  var recs = emp ? DB.attendance.getAll({ employeeId: emp.id, date: dateStr }) : [];
-  var srcIn  = recs.map(function(r){ return r.faceImageIn;  }).find(Boolean) || null;
-  var srcOut = recs.map(function(r){ return r.faceImageOut; }).find(Boolean) || null;
-  _setFaceBox('det-face-in',  'det-face-in-ph',  srcIn);
-  _setFaceBox('det-face-out', 'det-face-out-ph', srcOut);
-}
-
-function _setFaceBox(imgId, phId, src) {
-  var img = document.getElementById(imgId);
-  var ph  = document.getElementById(phId);
-  if (!img || !ph) return;
-  if (src) {
-    img.src = src; img.style.display = 'block';
-    ph.style.display = 'none';
-  } else {
-    img.src = ''; img.style.display = 'none';
-    ph.style.display = 'block';
-  }
-}
-
-function initPillClick() {
-  document.querySelectorAll('.att-pill-click').forEach(pill => {
-    pill.addEventListener('click', function(e) {
-      e.stopPropagation();
-      const td = this.closest('td');
-      const tr = this.closest('tr');
-      openDetail(this, td, tr); // truyền pill để lấy đúng data của ca được click
-    });
-  });
-}
-
-// ===== FILTER PANEL =====
-function openFilter() {
-  document.getElementById('filterOverlay').classList.add('open');
-  document.getElementById('filterPanel').classList.add('open');
-}
-
-function closeFilter() {
-  document.getElementById('filterOverlay').classList.remove('open');
-  document.getElementById('filterPanel').classList.remove('open');
-}
-
-function applyFilter() {
-  closeFilter();
-}
-
-function removeChip(btn) {
-  btn.closest('.filter-chip').remove();
-}
-
-// ===== ROW HOVER =====
-function initRowHover() {
-  const rows = document.querySelectorAll('.att-row');
-  rows.forEach(row => {
-    row.addEventListener('mouseenter', () => {
-      row.querySelectorAll('td').forEach(td => td.style.background = '#fafafa');
-    });
-    row.addEventListener('mouseleave', () => {
-      row.querySelectorAll('td').forEach(td => td.style.background = '');
-    });
-  });
-}
-
-// ===== WEEK NAVIGATOR =====
-const WEEK_DAYS = ['CN','Thứ 2','Thứ 3','Thứ 4','Thứ 5','Thứ 6','Thứ 7'];
-
-// Base week: Mon 09/03/2026
-let currentWeekOffset = 0; // offset in weeks from base
-
-function getWeekDates(offset) {
-  const base = getBaseMonday();
-  base.setDate(base.getDate() + offset * 7);
-  const monday = new Date(base);
-  const sunday = new Date(base);
-  sunday.setDate(sunday.getDate() + 6);
-  return { monday, sunday };
-}
-
-function fmtDate(d) {
-  return String(d.getDate()).padStart(2,'0') + '/' + String(d.getMonth()+1).padStart(2,'0') + '/' + d.getFullYear();
-}
-
-function updateWeekLabel() {
-  const { monday, sunday } = getWeekDates(currentWeekOffset);
-  document.getElementById('weekLabel').textContent = fmtDate(monday) + ' – ' + fmtDate(sunday);
-
-  // Update table header dates
-  const headers = document.querySelectorAll('.week-date-label');
-  headers.forEach((el, i) => {
-    const d = new Date(monday);
-    d.setDate(d.getDate() + i);
-    el.textContent = fmtDate(d);
-  });
-}
-
-function changeWeek(dir) {
-  currentWeekOffset += dir;
-  _baseMonday = getBaseMonday();
-  _baseMonday.setDate(_baseMonday.getDate() + currentWeekOffset * 7);
-  employees = buildEmployees(_baseMonday);
-  updateWeekLabel();
-  renderTable();
-  initRowHover();
-  initPillClick();
-}
-
-// Init
-updateWeekLabel();
-renderTable();
-initRowHover();
-initPillClick();
-</script>
+<script src="../js/duyet-cong.js"></script>
 </body>
 </html>

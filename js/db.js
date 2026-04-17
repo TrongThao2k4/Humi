@@ -49,6 +49,12 @@ var SB = {
     var q = _sbClient.from(table).update(data);
     Object.keys(match).forEach(function(k) { q = q.eq(k, match[k]); });
     return q.then(function(r) { if (r.error) console.error('❌ [Supabase] UPDATE', table, r.error.message); });
+  },
+  delete: function(table, match) {
+    if (!_sbClient) return Promise.resolve();
+    var q = _sbClient.from(table).delete();
+    Object.keys(match).forEach(function(k) { q = q.eq(k, match[k]); });
+    return q.then(function(r) { if (r.error) console.error('❌ [Supabase] DELETE', table, r.error.message); });
   }
 };
 
@@ -149,11 +155,6 @@ function syncFromSupabase() {
 
   Promise.all(promises).then(function(results) {
     var hasUpdates = results.some(function(changed) { return changed; });
-    if (hasUpdates && !sessionStorage.getItem('humi_synced_once')) {
-      sessionStorage.setItem('humi_synced_once', '1');
-      window.location.reload(); // Reload lần đầu để hiển thị dữ liệu từ Supabase
-      return;
-    }
     // Dispatch event để các trang tự refresh UI mà không cần reload
     window.dispatchEvent(new CustomEvent('humi_synced', { detail: { updated: hasUpdates } }));
   });
@@ -175,8 +176,46 @@ function syncFromSupabase() {
     requests:         'humi_requests',
     salary:           'humi_salary',
     messages:         'humi_messages',
+    workShifts:       'humi_work_shifts',
     settings:         'humi_settings',
     announcements:    'humi_announcements',
+  };
+
+  var REMOTE_TABLES = {
+    humi_employees: 'employees',
+    humi_accounts: 'accounts',
+    humi_shifts: 'shifts',
+    humi_shift_assignments: 'shift_assignments',
+    humi_attendance: 'attendance',
+    humi_leave_requests: 'leave_requests',
+    humi_requests: 'requests',
+    humi_salary: 'salary',
+    humi_messages: 'messages',
+    humi_work_shifts: 'work_shifts',
+    humi_announcements: 'announcements'
+  };
+
+  var REMOTE_MAPS = {
+    humi_accounts: function(r) { return { employeeId: r.employee_id, password: r.password }; },
+    humi_employees: function(r) { return { id:r.id, code:r.code, name:r.name, avatar:r.avatar, unit:r.unit, position:r.position, roleId:r.role_id, status:r.status, gender:r.gender, phone:r.phone, email:r.email, dob:r.dob, startDate:r.start_date, contractStatus:r.contract_status, contractType:r.contract_type, workMode:r.work_mode, managerName:r.manager_name, leaveBalance:r.leave_balance||{annual:12,sick:30,maternity:180,unpaid:99}, idCard:r.id_card, faceImage:r.face_image||null, faceDescriptor:r.face_descriptor||null }; },
+    humi_shifts: function(r) { return { id:r.id, name:r.name, code:r.code, startTime:r.start_time, endTime:r.end_time, breakMinutes:r.break_minutes, workHours:r.work_hours, quota:r.quota, active:r.active, color:r.color, applyDays:r.apply_days }; },
+    humi_leave_requests: function(r) { return { id:r.id, employeeId:r.employee_id, leaveType:r.leave_type, leaveTypeName:r.leave_type_name, startDate:r.start_date, endDate:r.end_date, totalDays:r.total_days, status:r.status, reason:r.reason, approverId:r.approver_id, approvedAt:r.approved_at||null, rejectedAt:r.rejected_at||null, rejectReason:r.reject_reason||null, createdAt:r.created_at }; },
+    humi_requests: function(r) { return { id:r.id, employeeId:r.employee_id, type:r.type, typeLabel:r.type_label, content:r.content, status:r.status, approverId:r.approver_id, createdAt:r.created_at }; },
+    humi_salary: function(r) { return { id:r.id, employeeId:r.employee_id, period:r.period, baseSalary:r.base_salary, grossSalary:r.gross_salary, netSalary:r.net_salary, workDays:r.work_days, actualWorkDays:r.actual_work_days, allowances:r.allowances||{}, deductions:r.deductions||{}, bonus:r.bonus, overtimePay:r.overtime_pay }; },
+    humi_announcements: function(r){
+      function strip(h){ return (h||'').replace(/<[^>]*>/g,'').replace(/\s+/g,' ').trim().slice(0,150); }
+      return { id:r.id, department:r.department||'', title:r.title, preview:r.preview || strip(r.body) || '', creator:r.creator || r.created_by_id || '', approver:r.approver || r.approved_by_id || '', status:r.status||'active', startDate:r.start_date, endDate:r.end_date };
+    },
+    humi_messages: function(r){
+      function strip(h){ return (h||'').replace(/<[^>]*>/g,'').replace(/\s+/g,' ').trim().slice(0,120); }
+      var tagMap = { attendance:'Duyệt công', leave:'Nghỉ phép', salary:'Lương', shift:'Đổi ca', report:'Báo cáo', system:'Hệ thống', general:'Chung' };
+      var clsMap = { attendance:'tag-orange', leave:'tag-blue', salary:'tag-green', shift:'tag-purple', report:'tag-green', system:'tag-gray', general:'tag-purple' };
+      var rawTag = (r.tags && r.tags[0]) || '';
+      return { id:r.id, toId:r.to_id, fromId:r.from_id||'', sender:r.from_name||r.sender||'Hệ thống', avatar:r.avatar || 'https://i.pravatar.cc/36?img=12', subject:r.subject, preview:r.preview || strip(r.body), body:r.body || '', actions:r.actions || [], tag:r.tag || tagMap[rawTag] || rawTag || 'Hệ thống', tagClass:r.tag_class || clsMap[rawTag] || 'tag-purple', isRead:r.is_read || false, important:r.important || false, deleted:r.deleted || false, timestamp:r.timestamp || r.created_at || '' };
+    },
+    humi_work_shifts: function(r){ return { id:r.id, employeeId:r.employee_id, workDate:r.work_date, startTime:r.start_time, endTime:r.end_time, shiftId:r.shift_id || null, createdAt:r.created_at || null }; },
+    humi_attendance: function(r){ return { id:r.id, employeeId:r.employee_id, shiftId:r.shift_id||null, date:r.date, checkIn:r.check_in, checkOut:r.check_out, status:r.status, approvalStatus:r.approval_status, note:r.note, faceImageIn:r.face_image_in||null, faceImageOut:r.face_image_out||null, approverId:r.approver_id||null, approvedAt:r.approved_at||null, approvedCheckIn:r.approved_check_in||null, approvedCheckOut:r.approved_check_out||null, approverNote:r.approver_note||null }; },
+    humi_shift_assignments: function(r){ return { id:r.id, employeeId:r.employee_id, shiftId:r.shift_id, date:r.date }; }
   };
 
   // ==================== HELPERS ====================
@@ -189,11 +228,52 @@ function syncFromSupabase() {
     var d = new Date();
     return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
   }
+  function pad2(n) { return String(n).padStart(2, '0'); }
+  function timeToMinutes(value) {
+    if (!value) return null;
+    var parts = String(value).split(':');
+    if (parts.length < 2) return null;
+    var hours = parseInt(parts[0], 10);
+    var minutes = parseInt(parts[1], 10);
+    if (isNaN(hours) || isNaN(minutes)) return null;
+    return hours * 60 + minutes;
+  }
+  function minutesToTime(minutes) {
+    return pad2(Math.floor(minutes / 60)) + ':' + pad2(minutes % 60);
+  }
+  function dateInRange(dateValue, fromDate, toDate) {
+    if (fromDate && dateValue < fromDate) return false;
+    if (toDate && dateValue > toDate) return false;
+    return true;
+  }
+  function findShiftByTime(startTime, endTime) {
+    var shifts = load(K.shifts);
+    return shifts.find(function(shift) {
+      return String(shift.startTime || '') === String(startTime || '') && String(shift.endTime || '') === String(endTime || '');
+    }) || null;
+  }
+  function makeWorkShiftRecord(data) {
+    var shift = data.shift || findShiftByTime(data.startTime, data.endTime);
+    return {
+      id: data.id || ('ws_' + uid()),
+      employeeId: data.employeeId,
+      workDate: data.workDate,
+      startTime: data.startTime,
+      endTime: data.endTime,
+      shiftId: data.shiftId || (shift ? shift.id : null),
+      createdAt: data.createdAt || new Date().toISOString()
+    };
+  }
+  function workShiftOverlaps(aStart, aEnd, bStart, bEnd) {
+    if (aStart == null || aEnd == null || bStart == null || bEnd == null) return false;
+    return aStart < bEnd && aEnd > bStart;
+  }
 
   // ==================== SEED ====================
   function seed() {
-    // Luôn seed dữ liệu local làm fallback.
-    // Nếu Supabase hợp lệ, syncFromSupabase() sẽ ghi đè sau.
+    // Chỉ seed local khi không có Supabase.
+    // Khi Supabase sẵn sàng, frontend đọc trực tiếp từ remote.
+    if (SUPABASE_READY) return;
     if (localStorage.getItem(SEED_KEY)) return;
 
     var employees = [
@@ -423,11 +503,35 @@ function syncFromSupabase() {
     ];
     save(K.announcements,    announcements);
     save(K.shiftAssignments, []);
+    save(K.workShifts, []);
 
     localStorage.setItem(SEED_KEY, '1');
   }
 
   seed();
+
+  function ensureWorkShiftsSeed() {
+    if (SUPABASE_READY) return;
+    if (localStorage.getItem(K.workShifts)) return;
+    var assignments = load(K.shiftAssignments);
+    if (!assignments.length) return;
+    var shifts = load(K.shifts);
+    var records = assignments.map(function(a) {
+      var shift = shifts.find(function(s) { return String(s.id) === String(a.shiftId); });
+      if (!shift) return null;
+      return makeWorkShiftRecord({
+        id: 'ws_' + (a.id || uid()),
+        employeeId: a.employeeId,
+        workDate: a.date,
+        startTime: shift.startTime,
+        endTime: shift.endTime,
+        shiftId: shift.id,
+        createdAt: a.createdAt || new Date().toISOString()
+      });
+    }).filter(Boolean);
+    save(K.workShifts, records);
+  }
+  ensureWorkShiftsSeed();
 
   // ==================== PUBLIC DB API ====================
   window.DB = {
@@ -438,7 +542,7 @@ function syncFromSupabase() {
       },
       requireAuth: function() {
         var s = this.getSession();
-        if (!s) { window.location.href = 'login.html'; return null; }
+        if (!s) { var _inPages = window.location.pathname.indexOf('/pages/') !== -1; window.location.href = (_inPages ? '../' : '') + 'login.html'; return null; }
         return s;
       },
       login: function(empId, pwd) {
@@ -667,12 +771,206 @@ function syncFromSupabase() {
         list[idx] = Object.assign({}, list[idx], data);
         save(K.shifts, list);
       },
+      delete: function(id) {
+        var list = this.getAll();
+        var filtered = list.filter(function(s){ return s.id !== id; });
+        save(K.shifts, filtered);
+        SB.delete('shifts', { id: id });
+      },
       assign: function(data) {
         var list = load(K.shiftAssignments);
         var newItem = Object.assign({ id:uid() }, data);
         list.push(newItem);
         save(K.shiftAssignments, list);
         SB.upsert('shift_assignments', { id: newItem.id, employee_id: newItem.employeeId, shift_id: newItem.shiftId, date: newItem.date });
+      }
+    },
+
+    workShifts: {
+      getAll: function(filter) {
+        var list = load(K.workShifts);
+        if (!list.length) {
+          var assignments = load(K.shiftAssignments);
+          var shifts = load(K.shifts);
+          list = assignments.map(function(a) {
+            var sh = shifts.find(function(s) { return String(s.id) === String(a.shiftId); });
+            return sh ? {
+              id: 'ws_' + (a.id || uid()),
+              employeeId: a.employeeId,
+              workDate: a.date,
+              startTime: sh.startTime,
+              endTime: sh.endTime,
+              shiftId: sh.id,
+              createdAt: a.createdAt || null
+            } : null;
+          }).filter(Boolean);
+          if (list.length) save(K.workShifts, list);
+        }
+        if (filter) {
+          if (filter.employeeIds && filter.employeeIds.length) {
+            list = list.filter(function(r) { return filter.employeeIds.some(function(id) { return String(id) === String(r.employeeId); }); });
+          }
+          if (filter.employeeId) {
+            list = list.filter(function(r) { return String(r.employeeId) === String(filter.employeeId); });
+          }
+          if (filter.fromDate || filter.toDate) {
+            list = list.filter(function(r) { return dateInRange(r.workDate || '', filter.fromDate, filter.toDate); });
+          }
+        }
+        return list.sort(function(a, b) {
+          var aKey = (a.workDate || '') + ' ' + (a.startTime || '');
+          var bKey = (b.workDate || '') + ' ' + (b.startTime || '');
+          return bKey.localeCompare(aKey);
+        });
+      },
+      getById: function(id) {
+        return this.getAll().find(function(r) { return r.id === id; }) || null;
+      },
+      checkConflict: function(candidate, excludeId) {
+        var cStart = timeToMinutes(candidate.startTime);
+        var cEnd = timeToMinutes(candidate.endTime);
+        if (cStart == null || cEnd == null) return { ok:false, error:'Giờ làm việc không hợp lệ' };
+        if (cEnd <= cStart) return { ok:false, error:'Giờ kết thúc phải lớn hơn giờ bắt đầu' };
+        var conflict = this.getAll().find(function(existing) {
+          if (excludeId && existing.id === excludeId) return false;
+          if (String(existing.employeeId) !== String(candidate.employeeId)) return false;
+          if (String(existing.workDate) !== String(candidate.workDate)) return false;
+          return workShiftOverlaps(cStart, cEnd, timeToMinutes(existing.startTime), timeToMinutes(existing.endTime));
+        });
+        return conflict ? { ok:false, conflict: conflict, error:'Ca bị xung đột với lịch đã có của nhân viên này trong cùng ngày.' } : { ok:true };
+      },
+      create: function(data) {
+        var rec = makeWorkShiftRecord(data);
+        var conflict = this.checkConflict(rec);
+        if (!conflict.ok) return conflict;
+        var list = load(K.workShifts);
+        list.push(rec);
+        save(K.workShifts, list);
+        SB.upsert('work_shifts', {
+          id: rec.id,
+          employee_id: rec.employeeId,
+          work_date: rec.workDate,
+          start_time: rec.startTime,
+          end_time: rec.endTime,
+          created_at: rec.createdAt
+        });
+        return { ok:true, record: rec };
+      },
+      deleteMany: function(ids) {
+        var idSet = {};
+        (ids || []).forEach(function(id) { idSet[id] = true; });
+        if (!ids || !ids.length) return { ok:true, deleted:0 };
+        var list = load(K.workShifts);
+        var kept = list.filter(function(r) { return !idSet[r.id]; });
+        save(K.workShifts, kept);
+        ids.forEach(function(id) {
+          SB.delete('work_shifts', { id: id });
+        });
+        return { ok:true, deleted: ids.length };
+      },
+      bulkCreate: function(items, options) {
+        options = options || {};
+        var mode = options.mode === 'skip' ? 'skip' : 'stop';
+        var created = [];
+        var errors = [];
+        var existing = this.getAll();
+        var staged = [];
+        for (var i = 0; i < items.length; i++) {
+          var rec = makeWorkShiftRecord(items[i]);
+          var cStart = timeToMinutes(rec.startTime);
+          var cEnd = timeToMinutes(rec.endTime);
+          if (cStart == null || cEnd == null || cEnd <= cStart) {
+            var badErr = { item: rec, error: 'Giờ làm việc không hợp lệ' };
+            if (mode === 'stop') return { ok:false, created:0, failed:items.length, errors:[badErr] };
+            errors.push(badErr);
+            continue;
+          }
+          var conflict = (existing.concat(staged)).find(function(other) {
+            if (String(other.employeeId) !== String(rec.employeeId)) return false;
+            if (String(other.workDate) !== String(rec.workDate)) return false;
+            return workShiftOverlaps(cStart, cEnd, timeToMinutes(other.startTime), timeToMinutes(other.endTime));
+          });
+          if (conflict) {
+            var conflictErr = { item: rec, conflict: conflict, error: 'Ca bị xung đột với lịch đã có.' };
+            if (mode === 'stop') return { ok:false, created:0, failed:items.length, errors:[conflictErr] };
+            errors.push(conflictErr);
+            continue;
+          }
+          staged.push(rec);
+        }
+        if (!staged.length) return { ok: errors.length === 0, created:0, failed:errors.length, errors:errors };
+        var list = load(K.workShifts).concat(staged);
+        save(K.workShifts, list);
+        staged.forEach(function(rec) {
+          SB.upsert('work_shifts', {
+            id: rec.id,
+            employee_id: rec.employeeId,
+            work_date: rec.workDate,
+            start_time: rec.startTime,
+            end_time: rec.endTime,
+            created_at: rec.createdAt
+          });
+        });
+        created = staged;
+        return { ok: errors.length === 0, created: created.length, failed: errors.length, errors: errors, records: created };
+      },
+      replaceScope: function(scope, items) {
+        var fromDate = scope.fromDate || null;
+        var toDate = scope.toDate || null;
+        var employeeIds = scope.employeeIds || [];
+        var list = this.getAll();
+        var scopeExisting = list.filter(function(r) {
+          return employeeIds.some(function(id) { return String(id) === String(r.employeeId); }) && dateInRange(r.workDate || '', fromDate, toDate);
+        });
+        var desiredKeys = {};
+        items.forEach(function(item) {
+          desiredKeys[(item.employeeId || '') + '|' + (item.workDate || '') + '|' + (item.startTime || '') + '|' + (item.endTime || '')] = true;
+        });
+        var toDelete = scopeExisting.filter(function(r) {
+          var key = r.employeeId + '|' + r.workDate + '|' + r.startTime + '|' + r.endTime;
+          return !desiredKeys[key];
+        }).map(function(r) { return r.id; });
+
+        var remaining = list.filter(function(r) { return toDelete.indexOf(r.id) === -1; });
+        var staged = [];
+        for (var i = 0; i < items.length; i++) {
+          var rec = makeWorkShiftRecord(items[i]);
+          var cStart = timeToMinutes(rec.startTime);
+          var cEnd = timeToMinutes(rec.endTime);
+          if (cStart == null || cEnd == null || cEnd <= cStart) {
+            return { ok:false, error:'Giờ làm việc không hợp lệ' };
+          }
+          var conflict = remaining.concat(staged).find(function(other) {
+            if (String(other.employeeId) !== String(rec.employeeId)) return false;
+            if (String(other.workDate) !== String(rec.workDate)) return false;
+            return workShiftOverlaps(cStart, cEnd, timeToMinutes(other.startTime), timeToMinutes(other.endTime));
+          });
+          if (conflict) {
+            return { ok:false, error:'Ca bị xung đột với lịch đã có của nhân viên này trong cùng ngày.' };
+          }
+          staged.push(rec);
+        }
+
+        var kept = remaining.concat(staged);
+        save(K.workShifts, kept);
+        toDelete.forEach(function(id) {
+          SB.delete('work_shifts', { id: id });
+          SB.delete('shift_assignments', { id: id });
+        });
+        staged.forEach(function(rec) {
+          SB.upsert('work_shifts', {
+            id: rec.id,
+            employee_id: rec.employeeId,
+            work_date: rec.workDate,
+            start_time: rec.startTime,
+            end_time: rec.endTime,
+            created_at: rec.createdAt
+          });
+          if (rec.shiftId) {
+            SB.upsert('shift_assignments', { id: rec.id, employee_id: rec.employeeId, shift_id: rec.shiftId, date: rec.workDate });
+          }
+        });
+        return { ok:true, deleted: toDelete.length, created: staged.length, records: staged };
       }
     },
 
@@ -684,6 +982,7 @@ function syncFromSupabase() {
         if (idx === -1) return;
         list[idx].status = 'approved'; list[idx].approverId = approverId;
         save(K.requests, list);
+        SB.update('requests', { id: id }, { status: 'approved', approver_id: approverId });
       },
       reject: function(id, rejecterId) {
         var list = this.getAll();
@@ -691,6 +990,7 @@ function syncFromSupabase() {
         if (idx === -1) return;
         list[idx].status = 'rejected'; list[idx].approverId = rejecterId;
         save(K.requests, list);
+        SB.update('requests', { id: id }, { status: 'rejected', approver_id: rejecterId });
       }
     },
 
@@ -825,5 +1125,6 @@ setTimeout(syncFromSupabase, 500);
 function doLogout() {
   if (!confirm('Bạn có chắc muốn đăng xuất?')) return;
   DB.auth.logout();
-  window.location.href = 'login.html';
+  var _inPages = window.location.pathname.indexOf('/pages/') !== -1;
+  window.location.href = (_inPages ? '../' : '') + 'login.html';
 }

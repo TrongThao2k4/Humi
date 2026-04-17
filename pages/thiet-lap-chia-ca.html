@@ -5,134 +5,15 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Humi - Thiết lập chia ca</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="db.js"></script>
-  <script src="theme.js"></script>
+  <script src="../js/db.js"></script>
+  <script src="../js/theme.js"></script>
+  <script>(function(){var o=console.warn;console.warn=function(){var m=Array.prototype.join.call(arguments,' ');if(m.indexOf('cdn.tailwindcss.com should not be used in production')!==-1)return;return o.apply(console,arguments);};})();</script>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css">
   <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
   <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/vn.js"></script>
-  <style>
-    :root { --primary:#5D87FF; --primary-dark:#4570EA; --primary-rgb:93,135,255; }
-    * { font-family: 'Plus Jakarta Sans', sans-serif; box-sizing: border-box; }
-    body { background: #F2F6FA; margin: 0; }
-    ::-webkit-scrollbar { width: 4px; height: 4px; }
-    ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: #DFE5EF; border-radius: 4px; }
-
-    .layout {
-      display: grid;
-      grid-template-columns: 240px 1fr;
-      grid-template-rows: 64px 1fr;
-      min-height: 100vh;
-    }
-    .sidebar { grid-column:1; grid-row:1/3; background:white; border-right:1px solid #e5eaef; display:flex; flex-direction:column; }
-    .topbar  { grid-column:2; grid-row:1; background:white; border-bottom:1px solid #e5eaef; box-shadow:0 1px 3px rgba(0,0,0,0.04); display:flex; align-items:center; padding:0 24px; justify-content:space-between; z-index:10; }
-    .main-content { grid-column:2; grid-row:2; overflow:auto; display:flex; flex-direction:column; }
-
-    .sidebar-item { display:flex; align-items:center; gap:12px; padding:10px 12px; border-radius:7px; cursor:pointer; font-size:13px; font-weight:500; color:#5A6A85; text-decoration:none; transition:all 0.15s; margin-bottom:2px; }
-    .sidebar-item:hover { background:#F2F6FA; }
-    .sidebar-item.active { background:rgba(var(--primary-rgb),0.1); color:var(--primary); font-weight:600; }
-    .logo-mark { background:linear-gradient(135deg,var(--primary),var(--primary-dark)); }
-
-    @keyframes fadeInUp { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
-    .fade-in { animation:fadeInUp 0.35s ease forwards; }
-
-    /* Tabs */
-    .tab-bar { display:flex; gap:4px; padding:0 24px; background:white; border-bottom:1px solid #e5eaef; }
-    .tab-btn { padding:14px 18px; font-size:13px; font-weight:600; color:#5A6A85; border:none; background:none; cursor:pointer; border-bottom:2px solid transparent; transition:all 0.15s; font-family:inherit; }
-    .tab-btn.active { color:var(--primary); border-bottom-color:var(--primary); }
-    .tab-content { display:none; flex:1; }
-    .tab-content.active { display:flex; flex-direction:column; flex:1; }
-
-    /* Filter */
-    .filter-select { appearance:none; -webkit-appearance:none; background:white; border:1px solid #e5eaef; border-radius:7px; padding:8px 32px 8px 12px; font-size:13px; color:#2A3547; font-family:inherit; cursor:pointer; outline:none; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 10px center; }
-    .filter-select:focus { border-color:var(--primary); }
-
-    .btn-primary { display:flex; align-items:center; gap:6px; background:linear-gradient(135deg,var(--primary),var(--primary-dark)); border:none; border-radius:7px; padding:8px 16px; font-size:13px; font-weight:600; color:white; cursor:pointer; transition:all 0.2s; font-family:inherit; box-shadow:none; }
-    .btn-primary:hover { opacity:0.9; transform:translateY(-1px); }
-    .btn-outline { display:flex; align-items:center; gap:6px; background:white; border:1px solid #e5eaef; border-radius:7px; padding:8px 14px; font-size:13px; font-weight:500; color:#2A3547; cursor:pointer; transition:all 0.15s; font-family:inherit; }
-    .btn-outline:hover { background:#F2F6FA; }
-
-    /* Shift management table */
-    .setup-table { width:100%; border-collapse:collapse; }
-    .setup-table thead tr { background:#F2F6FA; }
-    .setup-table th { padding:10px 16px; font-size:11px; font-weight:600; color:#5A6A85; text-transform:uppercase; letter-spacing:0.05em; text-align:left; border-bottom:1px solid #e5eaef; white-space:nowrap; }
-    .setup-table td { padding:14px 16px; font-size:13px; color:#2A3547; border-bottom:1px solid #EAEFF4; vertical-align:middle; }
-    .setup-table tbody tr:hover td { background:#fafafa; }
-    .setup-table tbody tr:last-child td { border-bottom:none; }
-
-    .badge-active { display:inline-flex; align-items:center; gap:4px; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:600; background:#dcfce7; color:#16a34a; }
-    .badge-inactive { display:inline-flex; align-items:center; gap:4px; padding:3px 10px; border-radius:20px; font-size:11px; font-weight:600; background:#EAEFF4; color:#5A6A85; }
-    .btn-action { display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px; border-radius:8px; border:none; cursor:pointer; transition:all 0.15s; background:transparent; }
-    .btn-action:hover { background:#EAEFF4; }
-    .btn-action.edit:hover { background:#ECF2FF; }
-    .btn-action.delete:hover { background:#fee2e2; }
-
-    /* Day cards */
-    .day-cards { display:flex; gap:12px; overflow-x:auto; padding-bottom:8px; }
-    .day-card { background:white; border-radius:7px; box-shadow:0 2px 10px rgba(0,0,0,0.07); min-width:188px; flex-shrink:0; overflow:hidden; display:flex; flex-direction:column; }
-    .day-card-header { background:var(--primary); padding:10px 12px; display:flex; align-items:center; justify-content:space-between; }
-    .day-card-header .day-label { font-size:12px; font-weight:700; color:white; }
-    .day-card-header .day-date { font-size:10px; color:rgba(255,255,255,0.8); margin-top:1px; }
-    .day-card-header .btn-more { background:none; border:none; cursor:pointer; color:rgba(255,255,255,0.7); padding:2px; border-radius:4px; }
-    .day-card-header .btn-more:hover { color:white; }
-    .shift-list { padding:8px; flex:1; display:flex; flex-direction:column; gap:5px; }
-    .shift-row { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:8px 8px; border-radius:8px; background:#F2F6FA; }
-    .shift-row .shift-info { flex:1; min-width:0; }
-    .shift-row .shift-name { font-size:11px; font-weight:600; color:#2A3547; }
-    .shift-row .shift-time { font-size:10px; color:#7C8FAC; margin-top:1px; }
-    .shift-row .shift-quota { font-size:10px; color:#5A6A85; margin-top:2px; }
-    .shift-row .shift-quota span { font-weight:700; }
-
-    .btn-remove { width:22px; height:22px; border-radius:50%; background:#fee2e2; border:none; cursor:pointer; display:flex; align-items:center; justify-content:center; flex-shrink:0; transition:background 0.15s; }
-    .btn-remove:hover { background:#fecaca; }
-
-    .card-add-btn { margin:6px 8px 8px; border:1.5px dashed #e5eaef; border-radius:8px; padding:7px; text-align:center; font-size:18px; color:#DFE5EF; cursor:pointer; transition:all 0.15s; background:none; width:calc(100% - 16px); font-family:inherit; position:relative; }
-    .card-add-btn:hover { border-color:var(--primary); color:var(--primary); background:#faf5ff; }
-
-    /* Add shift modal */
-    .add-popup-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:200; display:flex; align-items:center; justify-content:center; padding:20px; }
-    .add-popup { background:white; border-radius:20px; box-shadow:0 20px 60px rgba(0,0,0,0.2); width:100%; max-width:480px; max-height:80vh; display:flex; flex-direction:column; overflow:hidden; }
-    .add-popup-header { padding:20px 24px 16px; display:flex; align-items:center; justify-content:space-between; border-bottom:1px solid #EAEFF4; flex-shrink:0; }
-    .add-popup-header h3 { font-size:15px; font-weight:700; color:#2A3547; margin:0; }
-    .add-popup-header button { background:none; border:none; cursor:pointer; color:#7C8FAC; padding:4px; border-radius:8px; }
-    .add-popup-header button:hover { color:#2A3547; background:#EAEFF4; }
-    .add-popup-body { overflow-y:auto; flex:1; }
-    .add-popup-item { display:flex; align-items:flex-start; gap:12px; padding:14px 24px; border-bottom:1px solid #EAEFF4; }
-    .add-popup-item:last-child { border-bottom:none; }
-    .add-popup-item input[type=checkbox] { accent-color:var(--primary); width:16px; height:16px; cursor:pointer; flex-shrink:0; margin-top:3px; }
-    .add-popup-item .pop-name { font-size:13px; font-weight:600; color:#2A3547; }
-    .add-popup-item .pop-time { font-size:12px; color:#7C8FAC; margin-top:2px; }
-    .pop-quota-row { display:flex; align-items:center; gap:8px; margin-top:10px; }
-    .pop-quota-label { font-size:12px; color:#5A6A85; font-weight:600; white-space:nowrap; }
-    .pop-quota-input { width:56px; border:1px solid #e5eaef; border-radius:8px; padding:5px 8px; font-size:12px; font-weight:600; color:#2A3547; font-family:inherit; outline:none; text-align:center; }
-    .pop-quota-input:focus { border-color:var(--primary); box-shadow:0 0 0 3px rgba(var(--primary-rgb),0.08); }
-    .add-popup-footer { padding:16px 24px; border-top:1px solid #EAEFF4; display:flex; gap:10px; flex-shrink:0; }
-    .pop-btn-add { flex:1; padding:10px; border-radius:7px; font-size:13px; font-weight:600; font-family:inherit; cursor:pointer; background:linear-gradient(135deg,var(--primary),var(--primary-dark)); border:none; color:white; box-shadow:none; }
-    .pop-btn-cancel { padding:10px 18px; border-radius:7px; font-size:13px; font-weight:600; font-family:inherit; cursor:pointer; background:#EAEFF4; border:none; color:#2A3547; }
-
-    /* Modal */
-    .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.35); display:flex; align-items:center; justify-content:center; z-index:100; opacity:0; pointer-events:none; transition:opacity 0.2s; }
-    .modal-overlay.open { opacity:1; pointer-events:all; }
-    .modal { background:white; border-radius:20px; padding:28px; width:480px; max-width:95vw; box-shadow:0 20px 60px rgba(0,0,0,0.15); transform:translateY(12px); transition:transform 0.2s; }
-    .modal-overlay.open .modal { transform:translateY(0); }
-    .form-group { margin-bottom:16px; }
-    .form-label { display:block; font-size:12px; font-weight:600; color:#2A3547; margin-bottom:6px; }
-    .form-input { width:100%; border:1px solid #e5eaef; border-radius:7px; padding:9px 12px; font-size:13px; color:#2A3547; font-family:inherit; outline:none; transition:border-color 0.15s; }
-    .form-input:focus { border-color:var(--primary); box-shadow:0 0 0 3px rgba(var(--primary-rgb),0.08); }
-    .btn-cancel { flex:1; padding:9px; border-radius:7px; font-size:13px; font-weight:600; font-family:inherit; cursor:pointer; background:#EAEFF4; border:none; color:#2A3547; }
-    .btn-cancel:hover { background:#e5eaef; }
-    .btn-save { flex:1; padding:9px; border-radius:7px; font-size:13px; font-weight:600; font-family:inherit; cursor:pointer; background:linear-gradient(135deg,var(--primary),var(--primary-dark)); border:none; color:white; box-shadow:none; }
-    .modal-sm { width:360px; }
-    .btn-del-confirm { flex:1; padding:9px; border-radius:7px; font-size:13px; font-weight:600; font-family:inherit; cursor:pointer; background:#ef4444; border:none; color:white; }
-    .btn-del-confirm:hover { background:#dc2626; }
-
-    /* Toast */
-    .toast { position:fixed; bottom:28px; right:28px; background:#2A3547; color:white; padding:12px 20px; border-radius:7px; font-size:13px; font-weight:600; display:flex; align-items:center; gap:8px; box-shadow:0 8px 24px rgba(0,0,0,0.2); transform:translateY(60px); opacity:0; transition:all 0.3s; z-index:200; }
-    .toast.show { transform:translateY(0); opacity:1; }
-    .toast.success { background:linear-gradient(135deg,#16a34a,#15803d); }
-  </style>
+  <link rel="stylesheet" href="../css/thiet-lap-chia-ca.css">
 </head>
 <body>
 <div class="layout">
@@ -145,19 +26,9 @@
       </div>
       <span style="font-size:22px;font-weight:800;letter-spacing:-0.5px;color:#2A3547;">Humi</span>
     </div>
-    <div style="padding:16px;border-bottom:1px solid #f5f5f8;">
-      <div style="display:flex;align-items:center;gap:12px;padding:8px;border-radius:7px;cursor:pointer;">
-        <div style="position:relative;">
-          <img src="https://i.pravatar.cc/40?img=47" alt="" style="width:40px;height:40px;border-radius:50%;border:2px solid #ECF2FF;" />
-          <div style="position:absolute;bottom:0;right:0;width:10px;height:10px;background:#34d399;border-radius:50%;border:2px solid white;"></div>
-        </div>
-        <div style="flex:1;"><p style="font-size:13px;font-weight:700;color:#2A3547;margin:0;">Tiểu Nhi</p><p style="font-size:11px;color:#7C8FAC;margin:0;">Quản lý</p></div>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7C8FAC" stroke-width="2"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
-      </div>
-    </div>
     <nav style="padding:12px;overflow-y:auto;">
       <p style="font-size:10px;font-weight:600;color:#7C8FAC;letter-spacing:0.1em;text-transform:uppercase;padding:0 12px 8px;margin:0;">Menu</p>
-      <a href="index.html" class="sidebar-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Trang chủ</a>
+      <a href="../index.html" class="sidebar-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Trang chủ</a>
       <a href="duyet-cong.html" class="sidebar-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>Duyệt công</a>
       <a href="danh-sach-phieu-nghi.html" class="sidebar-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><polyline points="9 15 11 17 15 13"/></svg>Duyệt phép</a>
       <a href="danh-sach-nhan-vien.html" class="sidebar-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>Nhân viên</a>
@@ -168,21 +39,16 @@
       <a href="xem-thu-nhap.html" class="sidebar-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>Xem thu nhập</a>
       <a href="hop-thu.html" class="sidebar-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>Hộp thư</a>
     </nav>
-    <div style="padding:12px;border-top:1px solid #f5f5f8;">
-      <a href="cai-dat.html" class="sidebar-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>Cài đặt</a>
-      <a onclick="doLogout();return false;" href="#" class="sidebar-item" style="color:#ef4444;margin-top:4px;">
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-        Đăng xuất
-      </a>
-    </div>
   </aside>
 
   <!-- TOPBAR -->
+  <!-- ===== TOPBAR ===== -->
   <header class="topbar">
     <div style="flex:1;max-width:460px;">
       <div style="display:flex;align-items:center;gap:10px;background:#F2F6FA;border:1px solid #e5eaef;border-radius:7px;padding:9px 16px;">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7C8FAC" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input placeholder="Tìm kiếm..." style="background:transparent;border:none;outline:none;font-size:13px;color:#2A3547;flex:1;font-family:inherit;" />
+        <input type="text" placeholder="Tìm kiếm..." style="background:transparent;border:none;outline:none;font-size:13px;color:#2A3547;flex:1;font-family:inherit;" />
+        <kbd style="font-size:10px;color:#7C8FAC;background:#EAEFF4;border-radius:5px;padding:2px 6px;font-family:monospace;">⌘K</kbd>
       </div>
     </div>
     <div style="display:flex;align-items:center;gap:12px;">
@@ -191,64 +57,59 @@
         <span style="position:absolute;top:8px;right:8px;width:8px;height:8px;background:#ef4444;border-radius:50%;border:2px solid white;"></span>
       </button>
       <div style="width:1px;height:32px;background:#e5eaef;"></div>
-      <div style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:6px 10px;border-radius:7px;">
-        <img src="https://i.pravatar.cc/32?img=47" alt="" style="width:32px;height:32px;border-radius:50%;border:2px solid #ECF2FF;" />
-        <div><p style="font-size:13px;font-weight:600;color:#2A3547;margin:0;line-height:1.2;">Tiểu Nhi</p><p style="font-size:11px;color:#7C8FAC;margin:0;">Quản lý</p></div>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7C8FAC" stroke-width="2" style="margin-left:4px;"><polyline points="6 9 12 15 18 9"/></svg>
+      <div style="position:relative;">
+        <div onclick="toggleUserDropdown()" style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:6px 10px;border-radius:7px;user-select:none;" id="topbarUserBtn">
+          <img id="topbarAvatar" src="https://i.pravatar.cc/32?img=47" alt="" style="width:32px;height:32px;border-radius:50%;border:2px solid #ECF2FF;" />
+          <div>
+            <p id="topbarName" style="font-size:13px;font-weight:600;color:#2A3547;margin:0;line-height:1.2;">—</p>
+            <p id="topbarRole" style="font-size:11px;color:#7C8FAC;margin:0;">—</p>
+          </div>
+          <svg id="topbarChevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7C8FAC" stroke-width="2" style="margin-left:4px;transition:transform 0.2s;"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div id="userDropdown" style="display:none;position:absolute;top:calc(100% + 8px);right:0;width:220px;background:white;border:1px solid #e5eaef;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.10);z-index:999;overflow:hidden;">
+          <div style="padding:14px 16px;border-bottom:1px solid #F2F6FA;display:flex;align-items:center;gap:10px;">
+            <img id="dropdownAvatar" src="https://i.pravatar.cc/36?img=47" alt="" style="width:36px;height:36px;border-radius:50%;border:2px solid #ECF2FF;flex-shrink:0;" />
+            <div>
+              <p id="dropdownName" style="font-size:13px;font-weight:700;color:#2A3547;margin:0;line-height:1.3;">—</p>
+              <p id="dropdownRole" style="font-size:11px;color:#7C8FAC;margin:0;">—</p>
+            </div>
+          </div>
+          <div style="padding:6px;">
+            <a href="cai-dat.html" style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:7px;font-size:13px;color:#2A3547;text-decoration:none;transition:background 0.12s;" onmouseover="this.style.background='#F2F6FA'" onmouseout="this.style.background='transparent'">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5A6A85" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+              Cài đặt
+            </a>
+            <div style="height:1px;background:#F2F6FA;margin:4px 0;"></div>
+            <button onclick="doLogout()" style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:7px;font-size:13px;color:#ef4444;width:100%;border:none;background:transparent;cursor:pointer;font-family:inherit;transition:background 0.12s;" onmouseover="this.style.background='#fef2f2'" onmouseout="this.style.background='transparent'">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+              Đăng xuất
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   </header>
 
   <!-- MAIN -->
   <main class="main-content fade-in">
-
-    <!-- Title bar -->
-    <div style="display:flex;align-items:center;padding:16px 24px;background:white;border-bottom:1px solid #e5eaef;flex-shrink:0;">
-      <a href="chia-ca.html" style="display:flex;align-items:center;gap:6px;font-size:13px;color:var(--primary);font-weight:600;text-decoration:none;margin-right:12px;">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><polyline points="15 18 9 12 15 6"/></svg>
-        Chia ca
-      </a>
-      <span style="color:#DFE5EF;margin-right:12px;">/</span>
-      <h1 style="font-size:18px;font-weight:700;color:#2A3547;margin:0;">Thiết lập chia ca</h1>
-    </div>
-
-    <!-- Tabs -->
-    <div class="tab-bar" style="flex-shrink:0;">
-      <button class="tab-btn active" onclick="switchTab('tab-shifts', this)">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:inline;margin-right:5px;vertical-align:-2px;"><rect x="3" y="3" width="18" height="18" rx="2"/><line x1="3" y1="9" x2="21" y2="9"/><line x1="3" y1="15" x2="21" y2="15"/><line x1="9" y1="9" x2="9" y2="21"/></svg>
-        Danh sách ca
-      </button>
-      <button class="tab-btn" onclick="switchTab('tab-assign', this)">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="display:inline;margin-right:5px;vertical-align:-2px;"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-        Gắn ca vào ngày
-      </button>
-    </div>
-
-    <!-- ===== TAB 1: DANH SÁCH CA ===== -->
-    <div id="tab-shifts" class="tab-content active">
-      <div style="display:flex;align-items:center;justify-content:space-between;gap:14px;padding:14px 24px;background:white;border-bottom:1px solid #e5eaef;flex-shrink:0;">
-        <div style="display:flex;align-items:center;gap:10px;">
-          <div>
-            <label style="font-size:11px;font-weight:600;color:#5A6A85;display:block;margin-bottom:4px;">Đơn vị</label>
-            <select class="filter-select" style="min-width:260px;">
-              <option selected>CH 613 Âu Cơ - Tân Phú - HCM</option>
-              <option>CH 614 Lê Văn Sỹ - Q3 - HCM</option>
-            </select>
-          </div>
-          <div>
-            <label style="font-size:11px;font-weight:600;color:#5A6A85;display:block;margin-bottom:4px;">Tìm ca</label>
-            <div style="display:flex;align-items:center;gap:8px;background:white;border:1px solid #e5eaef;border-radius:7px;padding:8px 12px;">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="#7C8FAC" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-              <input id="searchInput" placeholder="Tên ca, mã ca..." oninput="filterTable()" style="border:none;outline:none;font-size:13px;color:#2A3547;font-family:inherit;min-width:150px;" />
-            </div>
-          </div>
+    <!-- Page header -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid #e5eaef;background:white;flex-shrink:0;gap:12px;flex-wrap:wrap;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <h1 style="font-size:18px;font-weight:700;color:#2A3547;margin:0;white-space:nowrap;">Thiết lập ca làm việc</h1>
+        <div style="display:flex;gap:2px;background:#F2F6FA;border:1px solid #e5eaef;border-radius:8px;padding:3px;">
+          <button class="tab-btn active" onclick="switchTab('tab-shifts', this)" style="padding:6px 14px;border-radius:6px;font-size:13px;font-weight:600;border:none;cursor:pointer;font-family:inherit;">Danh sách ca</button>
+          <button class="tab-btn" onclick="switchTab('tab-assign', this)" style="padding:6px 14px;border-radius:6px;font-size:13px;font-weight:600;border:none;cursor:pointer;font-family:inherit;">Gắn ca vào ngày</button>
         </div>
-        <button class="btn-primary" onclick="openModal()">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          Thêm ca mới
-        </button>
       </div>
+      <button class="btn-primary" onclick="openModal()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+        Thêm ca mới
+      </button>
+    </div>
 
+
+    <!-- TAB 1: DANH SÁCH CA -->
+    <div id="tab-shifts" class="tab-content active">
       <div style="flex:1;padding:20px 24px;overflow:auto;">
         <div style="background:white;border-radius:7px;box-shadow:0 2px 12px rgba(0,0,0,0.06);overflow:hidden;">
           <!-- Summary -->
@@ -274,16 +135,15 @@
       </div>
     </div>
 
-    <!-- ===== TAB 2: GẮN CA VÀO NGÀY ===== -->
+    <!-- TAB 2: GẮN CA VÀO NGÀY -->
     <div id="tab-assign" class="tab-content">
       <!-- Filter bar -->
       <div style="display:flex;align-items:flex-end;justify-content:space-between;gap:14px;padding:14px 24px;background:white;border-bottom:1px solid #e5eaef;flex-shrink:0;">
         <div style="display:flex;align-items:flex-end;gap:12px;">
           <div>
             <label style="font-size:11px;font-weight:600;color:#5A6A85;display:block;margin-bottom:4px;">Đơn vị</label>
-            <select class="filter-select" style="min-width:260px;">
-              <option selected>CH 613 Âu Cơ - Tân Phú - HCM</option>
-              <option>CH 614 Lê Văn Sỹ - Q3 - HCM</option>
+            <select id="branchSelect2" class="filter-select" style="min-width:260px;">
+              <option>Chọn đơn vị...</option>
             </select>
           </div>
           <div>
@@ -303,7 +163,6 @@
           Xác nhận gắn ca
         </button>
       </div>
-
       <!-- Grid area -->
       <div style="flex:1;padding:20px 24px;overflow:auto;">
         <div id="assignGrid">
@@ -357,344 +216,6 @@
   <span id="toastMsg">Đã lưu thành công!</span>
 </div>
 
-<script>
-// Auth guard
-const _s = DB.auth.requireAuth(); if(!_s) throw 0;
-const currentUser = _s.user;
-
-const DAY_LABELS = ['Chủ nhật','Thứ 2','Thứ 3','Thứ 4','Thứ 5','Thứ 6','Thứ 7'];
-const LS_KEY = 'humiShiftConfig';
-
-// ===== DATA =====
-function _normalizeShifts(raw) {
-  return raw.map(s => ({
-    ...s,
-    active: s.active !== undefined ? s.active : s.status === 'active',
-    start: s.start || s.startTime || '08:00',
-    end:   s.end   || s.endTime   || '22:00',
-  }));
-}
-let shifts = _normalizeShifts(DB.shifts.getAll());
-let editingId = null;
-let deletingId = null;
-
-// Update sidebar user info
-document.addEventListener('DOMContentLoaded', () => {
-  document.querySelectorAll('.sidebar-user-name').forEach(el => el.textContent = currentUser.name);
-  document.querySelectorAll('.sidebar-user-role').forEach(el => el.textContent = currentUser.position || currentUser.roleId);
-});
-
-// ===== HELPERS =====
-function calcHours(start, end) {
-  const [sh,sm] = start.split(':').map(Number);
-  const [eh,em] = end.split(':').map(Number);
-  let diff = (eh*60+em)-(sh*60+sm);
-  if (diff < 0) diff += 24*60;
-  return Math.round(diff/60*10)/10;
-}
-
-function saveConfig(dayAssignments) {
-  let cfg = {};
-  try { cfg = JSON.parse(localStorage.getItem(LS_KEY) || '{}'); } catch(e) {}
-  if (dayAssignments) { cfg.dayAssignments = { ...(cfg.dayAssignments || {}), ...dayAssignments }; localStorage.setItem(LS_KEY, JSON.stringify(cfg)); }
-  shifts = _normalizeShifts(DB.shifts.getAll()); 
-}
-
-function showToast(msg, type) { DB.utils.showToast(msg, type||'success'); }
-
-// ===== TABS =====
-function switchTab(tabId, btn) {
-  document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-  document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-  document.getElementById(tabId).classList.add('active');
-  btn.classList.add('active');
-}
-
-// ===== TAB 1: SHIFT LIST =====
-function renderTable(data) {
-  const tbody = document.getElementById('tableBody');
-  if (!data) data = shifts;
-  tbody.innerHTML = data.map((s, i) => `
-    <tr>
-      <td style="text-align:center;color:#7C8FAC;font-size:12px;font-weight:600;">${String(i+1).padStart(2,'0')}</td>
-      <td><span style="font-size:11px;font-weight:700;color:var(--primary);background:#ECF2FF;padding:2px 8px;border-radius:6px;">${s.code}</span></td>
-      <td><span style="font-weight:600;color:#2A3547;">${s.name}</span></td>
-      <td style="text-align:center;"><span style="background:#f0fdf4;color:#16a34a;font-weight:700;font-size:12px;padding:3px 10px;border-radius:6px;">${s.start}</span></td>
-      <td style="text-align:center;"><span style="background:#fef3c7;color:#d97706;font-weight:700;font-size:12px;padding:3px 10px;border-radius:6px;">${s.end}</span></td>
-      <td style="text-align:center;font-weight:700;color:#2A3547;">${calcHours(s.start,s.end)}h</td>
-      <td style="text-align:center;"><span class="${s.active?'badge-active':'badge-inactive'}"><span style="width:5px;height:5px;border-radius:50%;background:${s.active?'#16a34a':'#7C8FAC'};display:inline-block;"></span>${s.active?'Hoạt động':'Tạm ngưng'}</span></td>
-      <td style="text-align:center;">
-        <div style="display:flex;align-items:center;justify-content:center;gap:4px;">
-          <button class="btn-action edit" title="Chỉnh sửa" onclick="openEditModal('${s.id}')">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="var(--primary)" stroke-width="2"><path d="M11 4H4a2 2 0 00-2 2v14a2 2 0 002 2h14a2 2 0 002-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 013 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-          </button>
-          <button class="btn-action" title="${s.active?'Tạm ngưng':'Kích hoạt'}" onclick="toggleStatus('${s.id}')">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="${s.active?'#f59e0b':'#16a34a'}" stroke-width="2">${s.active?'<path d="M10 9v6m4-6v6"/><circle cx="12" cy="12" r="10"/>':'<circle cx="12" cy="12" r="10"/><polyline points="10 8 16 12 10 16 10 8"/>'}</svg>
-          </button>
-          <button class="btn-action delete" title="Xóa" onclick="openDeleteModal('${s.id}')">
-            <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><path d="M10 11v6m4-6v6M9 6V4h6v2"/></svg>
-          </button>
-        </div>
-      </td>
-    </tr>`).join('');
-  updateSummary();
-}
-
-function updateSummary() {
-  document.getElementById('totalCount').textContent = shifts.length;
-  document.getElementById('activeCount').textContent = shifts.filter(s=>s.active).length;
-  document.getElementById('inactiveCount').textContent = shifts.filter(s=>!s.active).length;
-  document.getElementById('totalQuota').textContent = shifts.filter(s=>s.active).reduce((sum,s)=>sum+s.quota,0);
-}
-
-function filterTable() {
-  const q = document.getElementById('searchInput').value.toLowerCase();
-  renderTable(shifts.filter(s => s.name.toLowerCase().includes(q)||s.code.toLowerCase().includes(q)));
-}
-
-// Modal thêm/sửa
-function openModal() {
-  editingId = null;
-  document.getElementById('modalTitle').textContent = 'Thêm ca mới';
-  ['fName','fCode'].forEach(id => document.getElementById(id).value='');
-  document.getElementById('fStart').value='08:00';
-  document.getElementById('fEnd').value='22:00';
-  document.getElementById('fQuota').value='';
-  document.getElementById('fStatus').value='active';
-  document.getElementById('modalOverlay').classList.add('open');
-}
-function openEditModal(id) {
-  const s = shifts.find(x=>x.id===id); editingId=id;
-  document.getElementById('modalTitle').textContent='Chỉnh sửa ca';
-  document.getElementById('fName').value=s.name;
-  document.getElementById('fCode').value=s.code;
-  document.getElementById('fStart').value=s.start;
-  document.getElementById('fEnd').value=s.end;
-  document.getElementById('fQuota').value=s.quota;
-  document.getElementById('fStatus').value=s.active?'active':'inactive';
-  document.getElementById('modalOverlay').classList.add('open');
-}
-function closeModal() { document.getElementById('modalOverlay').classList.remove('open'); }
-function closeOnBackdrop(e) { if(e.target===document.getElementById('modalOverlay')) closeModal(); }
-
-function saveShift() {
-  const name=document.getElementById('fName').value.trim();
-  const code=document.getElementById('fCode').value.trim();
-  const start=document.getElementById('fStart').value;
-  const end=document.getElementById('fEnd').value;
-  const quota=parseInt(document.getElementById('fQuota').value);
-  const active=document.getElementById('fStatus').value==='active';
-  if(!name||!code||!start||!end||isNaN(quota)||quota<1){DB.utils.showToast('Vui lòng điền đầy đủ thông tin.','error');return;}
-  if(editingId!==null) {
-    DB.shifts.update(editingId,{name,code,startTime:start,endTime:end,quota,active:active});
-    showToast('Đã cập nhật ca thành công!');
-  } else {
-    DB.shifts.create({name,code,startTime:start,endTime:end,quota,active:active,breakMinutes:60,workHours:calcHours(start,end),color:'var(--primary)',applyDays:[1,2,3,4,5,6]});
-    showToast('Đã thêm ca mới thành công!');
-  }
-  shifts=_normalizeShifts(DB.shifts.getAll()); closeModal(); renderTable();
-}
-
-function toggleStatus(id) {
-  const sh=DB.shifts.getById(id);
-  if(sh) DB.shifts.update(id,{active:!sh.active});
-  shifts=_normalizeShifts(DB.shifts.getAll()); renderTable();
-}
-
-function openDeleteModal(id) {
-  deletingId=id;
-  document.getElementById('deleteShiftName').textContent=shifts.find(x=>x.id===id).name;
-  document.getElementById('deleteOverlay').classList.add('open');
-}
-function closeDeleteModal() { document.getElementById('deleteOverlay').classList.remove('open'); }
-function closeDeleteOnBackdrop(e) { if(e.target===document.getElementById('deleteOverlay')) closeDeleteModal(); }
-function confirmDelete() {
-  shifts=shifts.filter(x=>x.id!==deletingId);
-  saveConfig(); closeDeleteModal(); renderTable();
-  showToast('Đã xóa ca thành công!');
-}
-
-// ===== TAB 2: GẮN CA VÀO NGÀY =====
-let assignDays = [];
-let assignState = {}; // key: 'date-shiftId' => boolean
-
-function generateDays(start, end) {
-  const days=[]; const cur=new Date(start); cur.setHours(0,0,0,0);
-  const endD=new Date(end); endD.setHours(0,0,0,0);
-  while(cur<=endD) {
-    const d=String(cur.getDate()).padStart(2,'0');
-    const m=String(cur.getMonth()+1).padStart(2,'0');
-    const y=cur.getFullYear();
-    days.push({label:DAY_LABELS[cur.getDay()], date:`${d}/${m}/${y}`});
-    cur.setDate(cur.getDate()+1);
-  }
-  return days;
-}
-
-function generateAssignGrid() {
-  const fp = document.getElementById('assignDateRange')._flatpickr;
-  if (!fp || fp.selectedDates.length < 2) { alert('Vui lòng chọn khoảng thời gian.'); return; }
-  assignDays = generateDays(fp.selectedDates[0], fp.selectedDates[1]);
-  const activeShifts = shifts.filter(s => s.active);
-  if (!activeShifts.length) { alert('Chưa có ca nào đang hoạt động.'); return; }
-
-  // Load existing config
-  let existingAssign = {};
-  try { existingAssign = JSON.parse(localStorage.getItem(LS_KEY) || '{}').dayAssignments || {}; } catch(e){}
-
-  // Init state
-  assignDays.forEach(day => {
-    activeShifts.forEach(s => {
-      const key = `${day.date}-${s.id}`;
-      if (existingAssign[day.date]) assignState[key] = existingAssign[day.date].includes(s.id);
-      else assignState[key] = true;
-    });
-  });
-
-  renderCards();
-  document.getElementById('btnConfirmAssign').style.display = 'flex';
-}
-
-function renderCards() {
-  const activeShifts = shifts.filter(s => s.active);
-  let html = `<div class="day-cards">`;
-  assignDays.forEach(day => {
-    const assigned = activeShifts.filter(s => assignState[`${day.date}-${s.id}`]);
-    html += `
-    <div class="day-card" id="card-${day.date.replace(/\//g,'-')}">
-      <div class="day-card-header">
-        <div><div class="day-label">${day.label}</div><div class="day-date">${day.date}</div></div>
-        <button class="btn-more"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg></button>
-      </div>
-      <div class="shift-list" id="slist-${day.date.replace(/\//g,'-')}">`;
-    assigned.forEach(s => {
-      html += `
-        <div class="shift-row">
-          <div class="shift-info">
-            <div class="shift-name">${s.name}</div>
-            <div class="shift-time">${s.start} – ${s.end}</div>
-            <div class="shift-quota">Tối thiểu: <span style="color:#f59e0b;">${s.minQuota||1}</span> &nbsp;|&nbsp; Tối đa: <span style="color:var(--primary);">${s.quota}</span></div>
-          </div>
-          <button class="btn-remove" title="Xóa ca này" onclick="removeShiftFromDay('${day.date}',${s.id})">
-            <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="3"><line x1="5" y1="12" x2="19" y2="12"/></svg>
-          </button>
-        </div>`;
-    });
-    if (!assigned.length) {
-      html += `<div style="text-align:center;padding:16px 8px;color:#DFE5EF;font-size:11px;">Chưa có ca nào</div>`;
-    }
-    html += `</div>
-      <div style="position:relative;">
-        <button class="card-add-btn" onclick="openAddPopup('${day.date}', this)">+</button>
-      </div>
-    </div>`;
-  });
-  html += `</div>`;
-  document.getElementById('assignGrid').innerHTML = html;
-}
-
-function removeShiftFromDay(date, shiftId) {
-  assignState[`${date}-${shiftId}`] = false;
-  renderCards();
-}
-
-let activePopupDate = null;
-function openAddPopup(date, btn) {
-  // Close existing popup
-  document.querySelectorAll('.add-popup').forEach(p => p.remove());
-  if (activePopupDate === date) { activePopupDate = null; return; }
-  activePopupDate = date;
-
-  const activeShifts = shifts.filter(s => s.active);
-  const unassigned = activeShifts.filter(s => !assignState[`${date}-${s.id}`]);
-  if (!unassigned.length) { showToast('Tất cả ca đã được gắn cho ngày này.'); activePopupDate = null; return; }
-
-  const overlay = document.createElement('div');
-  overlay.className = 'add-popup-overlay';
-  overlay.id = 'addPopupOverlay';
-  overlay.onclick = e => { if (e.target === overlay) closeAddPopup(); };
-
-  const popup = document.createElement('div');
-  popup.className = 'add-popup';
-  popup.innerHTML = `
-    <div class="add-popup-header">
-      <h3>Chọn ca và thiết lập nhân sự</h3>
-      <button onclick="closeAddPopup()">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-      </button>
-    </div>
-    <div class="add-popup-body">
-    ${unassigned.map(s => `
-      <div class="add-popup-item">
-        <input type="checkbox" id="pop-chk-${date}-${s.id}" checked onclick="togglePopupInputs('${date}',${s.id})">
-        <div style="flex:1;min-width:0;">
-          <div class="pop-name">${s.name}</div>
-          <div class="pop-time">${s.start} – ${s.end}</div>
-          <div class="pop-quota-row" id="pop-quota-${date}-${s.id}">
-            <span class="pop-quota-label">Tối thiểu:</span>
-            <input class="pop-quota-input" type="number" min="0" id="pop-min-${date}-${s.id}" placeholder="–">
-            <span class="pop-quota-label" style="margin-left:4px;">Tối đa:</span>
-            <input class="pop-quota-input" type="number" min="1" id="pop-max-${date}-${s.id}" placeholder="–">
-          </div>
-        </div>
-      </div>`).join('')}
-    </div>
-    <div class="add-popup-footer">
-      <button class="pop-btn-cancel" onclick="closeAddPopup()">Hủy</button>
-      <button class="pop-btn-add" onclick="confirmAddPopup('${date}',[${unassigned.map(s=>s.id).join(',')}])">Thêm ca</button>
-    </div>`;
-
-  overlay.appendChild(popup);
-  document.body.appendChild(overlay);
-}
-
-function closeAddPopup() {
-  const overlay = document.getElementById('addPopupOverlay');
-  if (overlay) overlay.remove();
-  activePopupDate = null;
-}
-
-function togglePopupInputs(date, id) {
-  const chk = document.getElementById(`pop-chk-${date}-${id}`);
-  const row = document.getElementById(`pop-quota-${date}-${id}`);
-  if (row) row.style.opacity = chk.checked ? '1' : '0.35';
-}
-
-function confirmAddPopup(date, ids) {
-  ids.forEach(id => {
-    const chk = document.getElementById(`pop-chk-${date}-${id}`);
-    if (!chk?.checked) return;
-    assignState[`${date}-${id}`] = true;
-    // Lưu min/max nếu người dùng nhập
-    const minVal = parseInt(document.getElementById(`pop-min-${date}-${id}`)?.value);
-    const maxVal = parseInt(document.getElementById(`pop-max-${date}-${id}`)?.value);
-    const s = shifts.find(x => x.id === id);
-    if (s) {
-      if (!isNaN(minVal) && minVal >= 0) s.minQuota = minVal;
-      if (!isNaN(maxVal) && maxVal >= 1) s.quota = maxVal;
-    }
-  });
-  closeAddPopup();
-  renderCards();
-}
-
-function confirmAssign() {
-  const activeShifts = shifts.filter(s => s.active);
-  const dayAssignments = {};
-  assignDays.forEach(day => {
-    dayAssignments[day.date] = activeShifts.filter(s => assignState[`${day.date}-${s.id}`]).map(s => s.id);
-  });
-  saveConfig(dayAssignments);
-  showToast('Đã xác nhận gắn ca thành công! Vào trang Chia ca để xem kết quả.');
-}
-
-// ===== INIT =====
-flatpickr('#assignDateRange', {
-  mode:'range', dateFormat:'d/m/Y', locale:'vn',
-  allowInput:false, disableMobile:true,
-});
-
-renderTable();
-</script>
+<script src="../js/thiet-lap-chia-ca.js"></script>
 </body>
 </html>

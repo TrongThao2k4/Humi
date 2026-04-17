@@ -103,3 +103,166 @@ insert into messages (id,to_id,sender,avatar,subject,preview,body,actions,tag,ta
 ('msg_0004','NV000011','Lê Minh Quân',  'https://i.pravatar.cc/36?img=20','Báo cáo chấm công tháng 03/2026',       'Gửi quản lý, kính gửi báo cáo chấm công tháng 3...',    '<p>Kính gửi quản lý,</p><p>Báo cáo chấm công tháng 03/2026.</p>','[{"label":"Trả lời","href":"","primary":false}]','Báo cáo',  'tag-green', true, '2026-03-28T17:00:00'),
 ('msg_0005','NV000011','Hệ thống Humi', 'https://i.pravatar.cc/36?img=12','Thông báo: Cập nhật bảng lương tháng 03','Bảng lương tháng 03/2026 đã được phê duyệt và sẵn sàng...','<p>Bảng lương tháng 03/2026 đã sẵn sàng.</p>','[{"label":"Xem bảng lương","href":"xem-thu-nhap.html","primary":true}]','Lương',    'tag-green', true, '2026-03-25T08:00:00')
 on conflict (id) do nothing;
+
+-- =========================================
+-- Compatibility patch (match columns used in js/db.js)
+-- =========================================
+create extension if not exists pgcrypto;
+
+alter table attendance add column if not exists shift_id text;
+do $$
+begin
+	alter table attendance
+		add constraint attendance_shift_fk
+		foreign key (shift_id) references shifts(id) on delete set null;
+exception
+	when duplicate_object then null;
+end $$;
+
+alter table attendance add column if not exists face_image_in text;
+alter table attendance add column if not exists face_image_out text;
+alter table attendance add column if not exists approver_id text;
+alter table attendance add column if not exists approved_at timestamptz;
+alter table attendance add column if not exists approved_check_in text;
+alter table attendance add column if not exists approved_check_out text;
+alter table attendance add column if not exists approver_note text;
+
+alter table leave_requests add column if not exists approved_at timestamptz;
+alter table leave_requests add column if not exists rejected_at timestamptz;
+alter table leave_requests add column if not exists reject_reason text;
+
+alter table messages add column if not exists from_id text;
+alter table messages add column if not exists from_name text;
+alter table messages add column if not exists tags text[] default '{}';
+alter table messages add column if not exists important boolean default false;
+alter table messages add column if not exists deleted boolean default false;
+alter table messages add column if not exists created_at timestamptz default now();
+
+create table if not exists work_shifts (
+	id         text primary key,
+	employee_id text references employees(id) on delete cascade,
+	work_date  date not null,
+	start_time text,
+	end_time   text,
+	shift_id   text references shifts(id) on delete set null,
+	created_at timestamptz default now()
+);
+
+-- =========================================
+-- SHIFT ASSIGNMENTS (auto-generate 29 days)
+-- =========================================
+with emp as (
+	select id as employee_id,
+				 coalesce(nullif(regexp_replace(id,'[^0-9]','','g'),''),'0')::int as emp_no
+	from employees
+	where status = 'active' and role_id in ('employee','manager')
+), d as (
+	select gs::date as work_date
+	from generate_series(current_date - interval '14 day', current_date + interval '14 day', interval '1 day') as gs
+	where extract(dow from gs) <> 0 -- skip sunday
+), expanded as (
+	select
+		'sa_' || e.employee_id || '_' || to_char(d.work_date,'YYYYMMDD') as id,
+		e.employee_id,
+		case ((e.emp_no + extract(day from d.work_date)::int) % 5)
+			when 0 then 'SH001'
+			when 1 then 'SH002'
+			when 2 then 'SH003'
+			when 3 then 'SH004'
+			else 'SH005'
+		end as shift_id,
+		d.work_date as date
+	from emp e
+	cross join d
+)
+insert into shift_assignments (id, employee_id, shift_id, date)
+select id, employee_id, shift_id, date
+from expanded
+on conflict (id) do update
+set employee_id = excluded.employee_id,
+		shift_id = excluded.shift_id,
+		date = excluded.date;
+
+-- =========================================
+-- ATTENDANCE (auto-generate 45 days history)
+-- =========================================
+with emp as (
+	select id as employee_id,
+				 coalesce(nullif(regexp_replace(id,'[^0-9]','','g'),''),'0')::int as emp_no
+	from employees
+	where status = 'active' and role_id in ('employee','manager')
+), d as (
+	select gs::date as work_date
+	from generate_series(current_date - interval '45 day', current_date - interval '1 day', interval '1 day') as gs
+	where extract(dow from gs) <> 0 -- skip sunday
+), expanded as (
+	select
+		e.employee_id,
+		d.work_date,
+		case ((e.emp_no + extract(day from d.work_date)::int) % 5)
+			when 0 then 'SH001'
+			when 1 then 'SH002'
+			when 2 then 'SH003'
+			when 3 then 'SH004'
+			else 'SH005'
+		end as shift_id,
+		((e.emp_no + extract(day from d.work_date)::int) % 12) as seed
+	from emp e
+	cross join d
+), present_rows as (
+	select *
+	from expanded
+	where seed <> 0 -- leave some days without attendance
+)
+insert into attendance (id, employee_id, shift_id, date, check_in, check_out, status, approval_status, note)
+select
+	'att_' || p.employee_id || '_' || to_char(p.work_date,'YYYYMMDD') || '_' || p.shift_id as id,
+	p.employee_id,
+	p.shift_id,
+	p.work_date as date,
+	to_char(time '08:00' + ((p.seed % 4) * interval '5 minute'), 'HH24:MI') as check_in,
+	to_char(time '17:00' + ((p.seed % 3) * interval '10 minute'), 'HH24:MI') as check_out,
+	'present' as status,
+	case
+		when p.work_date <= current_date - interval '2 day' then
+			case when p.seed % 9 = 0 then 'rejected' else 'approved' end
+		else 'pending'
+	end as approval_status,
+	'' as note
+from present_rows p
+on conflict (employee_id, date) do update
+set id = excluded.id,
+		shift_id = excluded.shift_id,
+		check_in = excluded.check_in,
+		check_out = excluded.check_out,
+		status = excluded.status,
+		approval_status = excluded.approval_status,
+		note = excluded.note;
+
+-- =========================================
+-- WORK SHIFTS (for lich-lam-viec and setup pages)
+-- =========================================
+insert into work_shifts (id, employee_id, work_date, start_time, end_time, shift_id, created_at)
+select
+	sa.id,
+	sa.employee_id,
+	sa.date as work_date,
+	s.start_time,
+	s.end_time,
+	sa.shift_id,
+	now()
+from shift_assignments sa
+join shifts s on s.id = sa.shift_id
+where sa.date between current_date - interval '14 day' and current_date + interval '14 day'
+on conflict (id) do update
+set employee_id = excluded.employee_id,
+		work_date = excluded.work_date,
+		start_time = excluded.start_time,
+		end_time = excluded.end_time,
+		shift_id = excluded.shift_id;
+
+-- ---- MANAGER MESSAGES (cover all manager accounts) ----
+insert into messages (id,to_id,sender,avatar,subject,preview,body,actions,tag,tag_class,is_read,timestamp) values
+('msg_1001','NV000012','Hệ thống Humi','https://i.pravatar.cc/36?img=12','Yêu cầu duyệt công tuần này','Có nhân viên đang chờ duyệt công...','<p>Hệ thống ghi nhận có nhân viên đang chờ duyệt công.</p>','[{"label":"Đi đến Duyệt công","href":"duyet-cong.html","primary":true}]','Duyệt công','tag-orange',false,now()),
+('msg_1002','NV000013','Hệ thống Humi','https://i.pravatar.cc/36?img=12','Yêu cầu duyệt phép tuần này','Có đơn nghỉ phép đang chờ xử lý...','<p>Vui lòng kiểm tra và duyệt các đơn nghỉ phép mới.</p>','[{"label":"Đi đến Danh sách phiếu nghỉ","href":"danh-sach-phieu-nghi.html","primary":true}]','Nghỉ phép','tag-blue',false,now())
+on conflict (id) do nothing;

@@ -1,0 +1,24 @@
+*{font-family:'Plus Jakarta Sans', sans-serif;box-sizing:border-box;margin:0;padding:0;}
+    body{min-height:100vh;background:linear-gradient(135deg,#ECF2FF 0%,#f0f2f8 50%,#dbeafe 100%);display:flex;align-items:center;justify-content:center;}
+    .card{background:white;border-radius:24px;box-shadow:0 20px 60px rgba(93,135,255,0.12);padding:40px;width:420px;max-width:calc(100vw - 32px);}
+    .logo{display:flex;align-items:center;gap:10px;margin-bottom:32px;justify-content:center;}
+    .logo-mark{width:40px;height:40px;border-radius:7px;background:linear-gradient(135deg,#5D87FF,#4570EA);display:flex;align-items:center;justify-content:center;}
+    .logo-text{font-size:26px;font-weight:800;letter-spacing:-0.5px;color:#2A3547;}
+    h2{font-size:20px;font-weight:800;color:#2A3547;margin-bottom:6px;}
+    .sub{font-size:13px;color:#7C8FAC;margin-bottom:28px;}
+    .form-group{margin-bottom:16px;}
+    label{font-size:12px;font-weight:600;color:#2A3547;display:block;margin-bottom:6px;}
+    input{width:100%;border:1.5px solid #e5eaef;border-radius:7px;padding:11px 14px;font-size:14px;color:#2A3547;font-family:inherit;outline:none;transition:border-color .15s,box-shadow .15s;}
+    input:focus{border-color:#5D87FF;box-shadow:0 0 0 3px rgba(93,135,255,.08);}
+    .input-wrap{position:relative;}
+    .eye-btn{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;color:#7C8FAC;padding:4px;}
+    .error-msg{font-size:12px;color:#dc2626;margin-top:8px;display:none;}
+    .error-msg.show{display:block;}
+    .btn{width:100%;background:linear-gradient(135deg,#5D87FF,#4570EA);color:white;border:none;border-radius:7px;padding:13px;font-size:14px;font-weight:700;cursor:pointer;margin-top:8px;font-family:inherit;transition:opacity .15s;letter-spacing:.02em;}
+    .btn:hover{opacity:.9;}
+    .btn:disabled{opacity:.6;cursor:not-allowed;}
+    .hint{background:#f5f3ff;border-radius:7px;padding:12px 14px;margin-top:20px;}
+    .hint p{font-size:12px;color:#5A6A85;line-height:1.6;margin:0;}
+    .hint strong{color:#5D87FF;}
+    .spinner{display:inline-block;width:16px;height:16px;border:2px solid rgba(255,255,255,.4);border-top-color:white;border-radius:50%;animation:spin .7s linear infinite;vertical-align:middle;margin-right:6px;}
+    @keyframes spin{to{transform:rotate(360deg)}}

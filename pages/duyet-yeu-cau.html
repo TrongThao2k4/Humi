@@ -5,85 +5,12 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Humi - Duyệt yêu cầu công</title>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-  <script src="db.js"></script>
-  <script src="theme.js"></script>
+  <script src="../js/db.js"></script>
+  <script src="../js/theme.js"></script>
+  <script>(function(){var o=console.warn;console.warn=function(){var m=Array.prototype.join.call(arguments,' ');if(m.indexOf('cdn.tailwindcss.com should not be used in production')!==-1)return;return o.apply(console,arguments);};})();</script>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-  <style>
-    :root { --primary:#5D87FF; --primary-dark:#4570EA; --primary-rgb:93,135,255; }
-    * { font-family: 'Plus Jakarta Sans', sans-serif; box-sizing: border-box; }
-    body { background: #F2F6FA; margin: 0; }
-    ::-webkit-scrollbar { width: 4px; height: 4px; }
-    ::-webkit-scrollbar-track { background: transparent; }
-    ::-webkit-scrollbar-thumb { background: #DFE5EF; border-radius: 4px; }
-
-    .layout { display:grid; grid-template-columns:240px 1fr; grid-template-rows:64px 1fr; min-height:100vh; }
-    .sidebar { grid-column:1; grid-row:1/3; background:white; border-right:1px solid #e5eaef; display:flex; flex-direction:column; }
-    .topbar  { grid-column:2; grid-row:1; background:white; border-bottom:1px solid #e5eaef; box-shadow:0 1px 3px rgba(0,0,0,0.04); display:flex; align-items:center; padding:0 24px; justify-content:space-between; z-index:10; }
-    .main-content { grid-column:2; grid-row:2; overflow:hidden; display:flex; flex-direction:column; }
-
-    .sidebar-item { display:flex; align-items:center; gap:12px; padding:10px 12px; border-radius:7px; cursor:pointer; font-size:13px; font-weight:500; color:#5A6A85; text-decoration:none; transition:all 0.15s; margin-bottom:2px; }
-    .sidebar-item:hover { background:#F2F6FA; }
-    .sidebar-item.active { background:rgba(var(--primary-rgb),0.1); color:var(--primary); font-weight:600; }
-    .sidebar-item.active svg { stroke:var(--primary); }
-    .logo-mark { background:linear-gradient(135deg,var(--primary),var(--primary-dark)); }
-
-    @keyframes fadeInUp { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
-    .fade-in { animation:fadeInUp 0.35s ease forwards; }
-
-    /* Filter */
-    .filter-select { width:100%; appearance:none; -webkit-appearance:none; border:1px solid #e5eaef; border-radius:7px; padding:8px 32px 8px 12px; font-size:13px; color:#2A3547; font-family:inherit; outline:none; background:white; cursor:pointer; transition:border-color 0.15s; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 10px center; }
-    .filter-select:focus { border-color:var(--primary); }
-    .filter-input { width:100%; border:1px solid #e5eaef; border-radius:7px; padding:8px 12px; font-size:13px; color:#2A3547; font-family:inherit; outline:none; background:white; transition:border-color 0.15s; }
-    .filter-input:focus { border-color:var(--primary); box-shadow:0 0 0 3px rgba(var(--primary-rgb),0.08); }
-    .filter-input::placeholder { color:#7C8FAC; }
-
-    /* Table */
-    .data-table { width:100%; border-collapse:collapse; }
-    .data-table thead tr { background:#F2F6FA; border-bottom:1px solid #e5eaef; }
-    .data-table th { padding:11px 16px; font-size:11px; font-weight:700; color:#5A6A85; text-align:left; white-space:nowrap; text-transform:uppercase; letter-spacing:0.04em; }
-    .data-table td { padding:0 16px; font-size:13px; color:#2A3547; border-bottom:1px solid #EAEFF4; height:76px; vertical-align:middle; }
-    .data-table tbody tr:hover td { background:#fafafa; }
-    .data-table tbody tr:last-child td { border-bottom:none; }
-
-    /* Badges */
-    .badge { display:inline-flex; align-items:center; gap:5px; padding:4px 10px; border-radius:20px; font-size:11px; font-weight:700; white-space:nowrap; }
-    .badge-dot { width:5px; height:5px; border-radius:50%; flex-shrink:0; }
-    .badge-pending { background:#fef3c7; color:#d97706; }
-    .badge-approved { background:#dcfce7; color:#16a34a; }
-    .badge-rejected { background:#fee2e2; color:#ef4444; }
-
-    /* Action buttons */
-    .btn-action-info { display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px; border-radius:8px; border:none; cursor:pointer; background:#eff6ff; color:#2563eb; transition:all 0.15s; }
-    .btn-action-info:hover { background:#dbeafe; }
-    .btn-action-reject { display:inline-flex; align-items:center; justify-content:center; width:30px; height:30px; border-radius:8px; border:none; cursor:pointer; background:#fee2e2; color:#ef4444; transition:all 0.15s; }
-    .btn-action-reject:hover { background:#fecaca; }
-
-    /* Buttons */
-    .btn-blue { display:flex; align-items:center; gap:6px; background:#2563eb; border:none; border-radius:7px; padding:8px 16px; font-size:13px; font-weight:600; color:white; cursor:pointer; transition:all 0.2s; font-family:inherit; box-shadow:0 3px 10px rgba(37,99,235,0.25); white-space:nowrap; }
-    .btn-blue:hover { opacity:0.9; transform:translateY(-1px); }
-    .btn-outline { display:flex; align-items:center; gap:6px; background:white; border:1px solid #e5eaef; border-radius:7px; padding:8px 14px; font-size:13px; font-weight:500; color:#2A3547; cursor:pointer; transition:all 0.15s; font-family:inherit; white-space:nowrap; }
-    .btn-outline:hover { background:#F2F6FA; }
-
-    /* Pagination */
-    .page-btn { display:inline-flex; align-items:center; justify-content:center; width:32px; height:32px; border-radius:8px; border:1px solid #e5eaef; background:white; font-size:13px; font-weight:600; color:#2A3547; cursor:pointer; transition:all 0.15s; }
-    .page-btn:hover { border-color:var(--primary); color:var(--primary); }
-    .page-btn.active { background:var(--primary); border-color:var(--primary); color:white; }
-
-    /* Modal */
-    .modal-overlay { position:fixed; inset:0; background:rgba(0,0,0,0.4); z-index:100; display:none; align-items:center; justify-content:center; }
-    .modal-overlay.open { display:flex; }
-    .modal-box { background:white; border-radius:20px; width:100%; max-width:540px; max-height:88vh; overflow:hidden; display:flex; flex-direction:column; box-shadow:0 20px 60px rgba(0,0,0,0.15); }
-    .modal-header { padding:20px 24px 16px; border-bottom:1px solid #EAEFF4; display:flex; align-items:center; justify-content:space-between; flex-shrink:0; }
-    .modal-body { padding:20px 24px; overflow-y:auto; flex:1; }
-    .modal-footer { padding:16px 24px; border-top:1px solid #EAEFF4; display:flex; gap:10px; justify-content:flex-end; flex-shrink:0; }
-    .info-row { display:flex; gap:8px; padding:10px 0; border-bottom:1px solid #F2F6FA; }
-    .info-row:last-child { border-bottom:none; }
-    .info-label { font-size:12px; color:#7C8FAC; font-weight:500; min-width:160px; flex-shrink:0; }
-    .info-value { font-size:13px; color:#2A3547; font-weight:500; }
-
-    .page-size-select { appearance:none; -webkit-appearance:none; border:1px solid #e5eaef; border-radius:8px; padding:5px 24px 5px 10px; font-size:13px; color:#2A3547; font-family:inherit; outline:none; background:white; cursor:pointer; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='10' height='10' viewBox='0 0 24 24' fill='none' stroke='%236b7280' stroke-width='2.5'%3E%3Cpolyline points='6 9 12 15 18 9'/%3E%3C/svg%3E"); background-repeat:no-repeat; background-position:right 8px center; }
-  </style>
+  <link rel="stylesheet" href="../css/duyet-yeu-cau.css">
 </head>
 <body>
 <div class="layout">
@@ -96,21 +23,11 @@
       </div>
       <span style="font-size:22px;font-weight:800;letter-spacing:-0.5px;color:#2A3547;">Humi</span>
     </div>
-    <div style="padding:16px;border-bottom:1px solid #f5f5f8;">
-      <div style="display:flex;align-items:center;gap:12px;padding:8px;border-radius:7px;cursor:pointer;">
-        <div style="position:relative;">
-          <img src="https://i.pravatar.cc/40?img=47" alt="" style="width:40px;height:40px;border-radius:50%;border:2px solid #ECF2FF;" />
-          <div style="position:absolute;bottom:0;right:0;width:10px;height:10px;background:#34d399;border-radius:50%;border:2px solid white;"></div>
-        </div>
-        <div style="flex:1;"><p style="font-size:13px;font-weight:700;color:#2A3547;margin:0;">Tiểu Nhi</p><p style="font-size:11px;color:#7C8FAC;margin:0;">Quản lý</p></div>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7C8FAC" stroke-width="2"><circle cx="12" cy="5" r="1"/><circle cx="12" cy="12" r="1"/><circle cx="12" cy="19" r="1"/></svg>
-      </div>
-    </div>
     <nav style="padding:12px;overflow-y:auto;">
       <p style="font-size:10px;font-weight:600;color:#7C8FAC;letter-spacing:0.1em;text-transform:uppercase;padding:0 12px 8px;margin:0;">Menu</p>
-      <a href="index.html" class="sidebar-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Trang chủ</a>
-      <a href="duyet-cong.html" class="sidebar-item active"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>Duyệt công</a>
-      <a href="danh-sach-phieu-nghi.html" class="sidebar-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><polyline points="9 15 11 17 15 13"/></svg>Duyệt phép</a>
+      <a href="../index.html" class="sidebar-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>Trang chủ</a>
+      <a href="duyet-cong.html" class="sidebar-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>Duyệt công</a>
+      <a href="danh-sach-phieu-nghi.html" class="sidebar-item active"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><polyline points="9 15 11 17 15 13"/></svg>Duyệt phép</a>
       <a href="danh-sach-nhan-vien.html" class="sidebar-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>Nhân viên</a>
       <a href="lich-lam-viec.html" class="sidebar-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>Lịch làm việc</a>
       <a href="chia-ca.html" class="sidebar-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>Đăng ký ca</a>
@@ -119,21 +36,16 @@
       <a href="xem-thu-nhap.html" class="sidebar-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="12" y1="1" x2="12" y2="23"/><path d="M17 5H9.5a3.5 3.5 0 000 7h5a3.5 3.5 0 010 7H6"/></svg>Xem thu nhập</a>
       <a href="hop-thu.html" class="sidebar-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>Hộp thư</a>
     </nav>
-    <div style="padding:12px;border-top:1px solid #f5f5f8;">
-      <a href="cai-dat.html" class="sidebar-item"><svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>Cài đặt</a>
-      <a onclick="doLogout();return false;" href="#" class="sidebar-item" style="color:#ef4444;margin-top:4px;">
-        <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
-        Đăng xuất
-      </a>
-    </div>
   </aside>
 
   <!-- TOPBAR -->
+  <!-- ===== TOPBAR ===== -->
   <header class="topbar">
     <div style="flex:1;max-width:460px;">
       <div style="display:flex;align-items:center;gap:10px;background:#F2F6FA;border:1px solid #e5eaef;border-radius:7px;padding:9px 16px;">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7C8FAC" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input placeholder="Tìm kiếm..." style="background:transparent;border:none;outline:none;font-size:13px;color:#2A3547;flex:1;font-family:inherit;" />
+        <input type="text" placeholder="Tìm kiếm..." style="background:transparent;border:none;outline:none;font-size:13px;color:#2A3547;flex:1;font-family:inherit;" />
+        <kbd style="font-size:10px;color:#7C8FAC;background:#EAEFF4;border-radius:5px;padding:2px 6px;font-family:monospace;">⌘K</kbd>
       </div>
     </div>
     <div style="display:flex;align-items:center;gap:12px;">
@@ -142,74 +54,66 @@
         <span style="position:absolute;top:8px;right:8px;width:8px;height:8px;background:#ef4444;border-radius:50%;border:2px solid white;"></span>
       </button>
       <div style="width:1px;height:32px;background:#e5eaef;"></div>
-      <div style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:6px 10px;border-radius:7px;">
-        <img src="https://i.pravatar.cc/32?img=47" alt="" style="width:32px;height:32px;border-radius:50%;border:2px solid #ECF2FF;" />
-        <div><p style="font-size:13px;font-weight:600;color:#2A3547;margin:0;line-height:1.2;">Tiểu Nhi</p><p style="font-size:11px;color:#7C8FAC;margin:0;">Quản lý</p></div>
-        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7C8FAC" stroke-width="2" style="margin-left:4px;"><polyline points="6 9 12 15 18 9"/></svg>
+      <div style="position:relative;">
+        <div onclick="toggleUserDropdown()" style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:6px 10px;border-radius:7px;user-select:none;" id="topbarUserBtn">
+          <img id="topbarAvatar" src="https://i.pravatar.cc/32?img=47" alt="" style="width:32px;height:32px;border-radius:50%;border:2px solid #ECF2FF;" />
+          <div>
+            <p id="topbarName" style="font-size:13px;font-weight:600;color:#2A3547;margin:0;line-height:1.2;">—</p>
+            <p id="topbarRole" style="font-size:11px;color:#7C8FAC;margin:0;">—</p>
+          </div>
+          <svg id="topbarChevron" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7C8FAC" stroke-width="2" style="margin-left:4px;transition:transform 0.2s;"><polyline points="6 9 12 15 18 9"/></svg>
+        </div>
+        <div id="userDropdown" style="display:none;position:absolute;top:calc(100% + 8px);right:0;width:220px;background:white;border:1px solid #e5eaef;border-radius:10px;box-shadow:0 8px 24px rgba(0,0,0,0.10);z-index:999;overflow:hidden;">
+          <div style="padding:14px 16px;border-bottom:1px solid #F2F6FA;display:flex;align-items:center;gap:10px;">
+            <img id="dropdownAvatar" src="https://i.pravatar.cc/36?img=47" alt="" style="width:36px;height:36px;border-radius:50%;border:2px solid #ECF2FF;flex-shrink:0;" />
+            <div>
+              <p id="dropdownName" style="font-size:13px;font-weight:700;color:#2A3547;margin:0;line-height:1.3;">—</p>
+              <p id="dropdownRole" style="font-size:11px;color:#7C8FAC;margin:0;">—</p>
+            </div>
+          </div>
+          <div style="padding:6px;">
+            <a href="cai-dat.html" style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:7px;font-size:13px;color:#2A3547;text-decoration:none;transition:background 0.12s;" onmouseover="this.style.background='#F2F6FA'" onmouseout="this.style.background='transparent'">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5A6A85" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>
+              Cài đặt
+            </a>
+            <div style="height:1px;background:#F2F6FA;margin:4px 0;"></div>
+            <button onclick="doLogout()" style="display:flex;align-items:center;gap:10px;padding:9px 12px;border-radius:7px;font-size:13px;color:#ef4444;width:100%;border:none;background:transparent;cursor:pointer;font-family:inherit;transition:background 0.12s;" onmouseover="this.style.background='#fef2f2'" onmouseout="this.style.background='transparent'">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="2"><path d="M9 21H5a2 2 0 01-2-2V5a2 2 0 012-2h4"/><polyline points="16 17 21 12 16 7"/><line x1="21" y1="12" x2="9" y2="12"/></svg>
+              Đăng xuất
+            </button>
+          </div>
+        </div>
       </div>
     </div>
   </header>
 
   <!-- MAIN -->
   <main class="main-content fade-in">
-
-    <!-- Title bar -->
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 24px;background:white;border-bottom:1px solid #e5eaef;flex-shrink:0;gap:16px;">
-      <h1 style="font-size:18px;font-weight:800;color:#2A3547;margin:0;white-space:nowrap;">Danh sách duyệt yêu cầu công, ca, phép</h1>
-      <div style="display:flex;align-items:center;gap:10px;flex-shrink:0;">
-        <div style="display:flex;align-items:center;gap:8px;background:#F2F6FA;border:1px solid #e5eaef;border-radius:7px;padding:7px 14px;">
-          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7C8FAC" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-          <input id="searchInput" placeholder="Tìm kiếm theo tên, mã nhân viên" style="background:transparent;border:none;outline:none;font-size:13px;color:#2A3547;width:220px;font-family:inherit;" oninput="applyFilters()" />
-        </div>
-        <button class="btn-outline" onclick="exportData()">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-          Xuất dữ liệu
-        </button>
-        <button class="btn-blue" onclick="showConditionModal()">
-          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="22 12 18 12 15 21 9 3 6 12 2 12"/></svg>
-          Duyệt theo điều kiện
-        </button>
+    <!-- Page header -->
+    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid #e5eaef;background:white;flex-shrink:0;">
+      <h1 style="font-size:18px;font-weight:700;color:#2A3547;margin:0;">Duyệt yêu cầu công</h1>
+      <button onclick="openBulkApprove()" class="btn-primary">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
+        Duyệt theo điều kiện
+      </button>
+    </div>
+    <!-- Filter toolbar -->
+    <div style="display:flex;align-items:center;gap:10px;padding:12px 24px;background:white;border-bottom:1px solid #e5eaef;flex-shrink:0;flex-wrap:wrap;">
+      <select id="filterType" class="filter-select" onchange="applyFilters()" style="min-width:160px;">
+        <option value="">Tất cả loại</option>
+        <option value="Yêu cầu điều chỉnh công">Điều chỉnh công</option>
+        <option value="Yêu cầu đổi ca">Đổi ca</option>
+        <option value="Yêu cầu nghỉ phép">Nghỉ phép</option>
+      </select>
+      <select id="filterUnit" class="filter-select" onchange="applyFilters()" style="min-width:160px;">
+        <option value="">Tất cả đơn vị</option>
+      </select>
+      <div style="display:flex;align-items:center;gap:8px;border:1px solid #e5eaef;border-radius:7px;padding:7px 12px;background:white;flex:1;max-width:320px;">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#7C8FAC" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input id="searchInput" type="text" placeholder="Tìm nhân viên, đơn vị..." oninput="applyFilters()" style="border:none;outline:none;font-size:13px;color:#2A3547;font-family:inherit;flex:1;background:transparent;min-width:0;" />
       </div>
     </div>
 
-    <!-- Filters -->
-    <div style="padding:12px 24px;background:white;border-bottom:1px solid #e5eaef;flex-shrink:0;">
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr 1fr;gap:12px;">
-        <div>
-          <label style="font-size:11px;font-weight:600;color:#5A6A85;display:block;margin-bottom:5px;">Loại yêu cầu</label>
-          <select class="filter-select" id="filterType" onchange="applyFilters()">
-            <option value="">Chọn loại yêu cầu</option>
-            <option value="Yêu cầu tạo công">Yêu cầu tạo công</option>
-            <option value="Yêu cầu đổi ca">Yêu cầu đổi ca</option>
-            <option value="Yêu cầu nghỉ phép">Yêu cầu nghỉ phép</option>
-          </select>
-        </div>
-        <div>
-          <label style="font-size:11px;font-weight:600;color:#5A6A85;display:block;margin-bottom:5px;">Đơn vị</label>
-          <select class="filter-select" id="filterUnit" onchange="applyFilters()">
-            <option value="">Chọn đơn vị</option>
-            <option value="CH 613 Âu Cơ - Tân Phú - HCM">CH 613 Âu Cơ - Tân Phú - HCM</option>
-            <option value="CH 614 Lê Văn Việt - TP.Thủ Đức - HCM">CH 614 Lê Văn Việt - TP.Thủ Đức - HCM</option>
-          </select>
-        </div>
-        <div>
-          <label style="font-size:11px;font-weight:600;color:#5A6A85;display:block;margin-bottom:5px;">Vị trí công việc</label>
-          <select class="filter-select" id="filterPosition" onchange="applyFilters()">
-            <option value="">Chọn vị trí</option>
-            <option value="Nhân viên">Nhân viên</option>
-            <option value="Quản lý">Quản lý</option>
-            <option value="Trưởng nhóm">Trưởng nhóm</option>
-          </select>
-        </div>
-        <div>
-          <label style="font-size:11px;font-weight:600;color:#5A6A85;display:block;margin-bottom:5px;">Nhân viên</label>
-          <div style="position:relative;">
-            <input class="filter-input" id="filterEmployee" placeholder="Tìm kiếm..." oninput="applyFilters()" style="padding-right:32px;" />
-            <svg style="position:absolute;right:10px;top:50%;transform:translateY(-50%);pointer-events:none;" width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#7C8FAC" stroke-width="2.5"><polyline points="6 9 12 15 18 9"/></svg>
-          </div>
-        </div>
-      </div>
-    </div>
 
     <!-- Table area -->
     <div style="flex:1;overflow:auto;padding:0;">
@@ -272,240 +176,6 @@
   </div>
 </div>
 
-<script>
-// Auth guard
-const _s = DB.auth.requireAuth(); if(!_s) throw 0;
-const currentUser = _s.user;
-
-function reqToUi(r) {
-  const emp = DB.employees.getById(r.employeeId) || {};
-  const fmtDate = iso => { if(!iso) return '—'; const d=new Date(iso); return String(d.getDate()).padStart(2,'0')+'/'+String(d.getMonth()+1).padStart(2,'0')+'/'+d.getFullYear(); };
-  return {
-    id: r.id,
-    name: emp.name || r.employeeId,
-    code: emp.code || r.employeeId,
-    avatar: emp.avatar || ('https://i.pravatar.cc/40?img=' + (Math.abs((r.employeeId||'x').charCodeAt(2)%50)+1)),
-    branch: emp.unit || '—',
-    role: emp.roleId === 'manager' ? 'Quản lý' : 'Nhân viên',
-    type: r.typeName || r.type,
-    dateRange: (r.currentValue || '—') + ' → ' + (r.requestedValue || '—'),
-    note: r.reason || '—',
-    created: fmtDate(r.createdAt),
-    status: r.status
-  };
-}
-function loadRequests() { return DB.requests.getAll().map(reqToUi); }
-let REQUESTS = loadRequests();
-
-let filtered = [...REQUESTS];
-let PAGE = 1;
-let PAGE_SIZE = 100;
-
-function statusBadge(s) {
-  if (s === 'approved') return `<span class="badge badge-approved"><span class="badge-dot" style="background:#16a34a;"></span>Đã duyệt</span>`;
-  if (s === 'rejected') return `<span class="badge badge-rejected"><span class="badge-dot" style="background:#ef4444;"></span>Từ chối</span>`;
-  return `<span class="badge badge-pending"><span class="badge-dot" style="background:#d97706;"></span>Chờ duyệt</span>`;
-}
-
-function renderTable() {
-  const tbody = document.getElementById('tableBody');
-  const empty = document.getElementById('emptyState');
-  const start = (PAGE - 1) * PAGE_SIZE;
-  const rows = filtered.slice(start, start + PAGE_SIZE);
-  document.getElementById('totalLabel').textContent = `Tổng cộng ${filtered.length} kết quả`;
-  if (rows.length === 0) {
-    tbody.innerHTML = '';
-    empty.style.display = 'block';
-  } else {
-    empty.style.display = 'none';
-    tbody.innerHTML = rows.map(r => `
-      <tr>
-        <td><input type="checkbox" class="cb-row" data-id="${r.id}" style="width:16px;height:16px;accent-color:var(--primary);cursor:pointer;" /></td>
-        <td>
-          <div style="display:flex;align-items:center;gap:10px;">
-            <img src="${r.avatar}" alt="" style="width:38px;height:38px;border-radius:50%;object-fit:cover;flex-shrink:0;border:2px solid #EAEFF4;" />
-            <div>
-              <p style="font-size:13px;font-weight:700;color:#2A3547;margin:0;line-height:1.3;">${r.name}</p>
-              <p style="font-size:11px;color:#7C8FAC;margin:0;">${r.code}</p>
-              <p style="font-size:11px;color:#7C8FAC;margin:0;">${r.branch} – ${r.role}</p>
-            </div>
-          </div>
-        </td>
-        <td><span style="font-size:13px;color:#2A3547;">${r.type}</span></td>
-        <td><span style="font-size:13px;color:#2A3547;white-space:nowrap;">${r.dateRange}</span></td>
-        <td><span style="font-size:13px;color:#2A3547;">${r.note}</span></td>
-        <td><span style="font-size:13px;color:#2A3547;white-space:nowrap;">${r.created}</span></td>
-        <td>
-          <div style="display:flex;gap:6px;align-items:center;">
-            <button class="btn-action-info" title="Chi tiết" onclick="viewDetail('${r.id}')">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/></svg>
-            </button>
-            <button class="btn-action-reject" title="Từ chối" onclick="rejectRequest('${r.id}')">
-              <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
-            </button>
-          </div>
-        </td>
-      </tr>
-    `).join('');
-  }
-  renderPagination();
-}
-
-function renderPagination() {
-  const total = Math.ceil(filtered.length / PAGE_SIZE);
-  const pg = document.getElementById('pagination');
-  if (total <= 1) { pg.innerHTML = ''; return; }
-  let html = '';
-  if (PAGE > 1) html += `<button class="page-btn" onclick="goPage(${PAGE-1})">&#8249;</button>`;
-  for (let i = 1; i <= total; i++) {
-    if (total > 7 && i > 3 && i < total - 1 && Math.abs(i - PAGE) > 1) {
-      if (i === 4) html += `<span style="padding:0 4px;line-height:32px;font-size:13px;color:#7C8FAC;">…</span>`;
-      continue;
-    }
-    html += `<button class="page-btn${i===PAGE?' active':''}" onclick="goPage(${i})">${i}</button>`;
-  }
-  if (PAGE < total) html += `<button class="page-btn" onclick="goPage(${PAGE+1})">&#8250;</button>`;
-  pg.innerHTML = html;
-}
-
-function goPage(p) { PAGE = p; renderTable(); }
-function changePageSize(val) { PAGE_SIZE = parseInt(val); PAGE = 1; renderTable(); }
-
-function applyFilters() {
-  const type   = document.getElementById('filterType').value;
-  const unit   = document.getElementById('filterUnit').value;
-  const pos    = document.getElementById('filterPosition').value;
-  const emp    = document.getElementById('filterEmployee').value.toLowerCase().trim();
-  const search = document.getElementById('searchInput').value.toLowerCase().trim();
-  filtered = REQUESTS.filter(r => {
-    if (type   && r.type   !== type)  return false;
-    if (unit   && r.branch !== unit)  return false;
-    if (pos    && r.role   !== pos)   return false;
-    if (emp    && !r.name.toLowerCase().includes(emp)    && !r.code.toLowerCase().includes(emp))    return false;
-    if (search && !r.name.toLowerCase().includes(search) && !r.code.toLowerCase().includes(search)) return false;
-    return true;
-  });
-  PAGE = 1;
-  renderTable();
-}
-
-function toggleAll(cb) {
-  document.querySelectorAll('.cb-row').forEach(c => c.checked = cb.checked);
-}
-
-function viewDetail(id) {
-  const r = REQUESTS.find(x => x.id === id);
-  if (!r) return;
-  document.getElementById('modalTitle').textContent = 'Chi tiết yêu cầu';
-  document.getElementById('modalSub').textContent = 'Thông tin yêu cầu duyệt công';
-  document.getElementById('modalBody').innerHTML = `
-    <div style="display:flex;align-items:center;gap:12px;padding:12px;background:#F2F6FA;border-radius:7px;margin-bottom:16px;">
-      <img src="${r.avatar}" style="width:48px;height:48px;border-radius:50%;border:2px solid #ECF2FF;" />
-      <div>
-        <p style="font-size:14px;font-weight:700;color:#2A3547;margin:0;">${r.name}</p>
-        <p style="font-size:12px;color:#7C8FAC;margin:2px 0 0;">${r.code} · ${r.branch}</p>
-        <p style="font-size:12px;color:#7C8FAC;margin:0;">${r.role}</p>
-      </div>
-      <div style="margin-left:auto;">${statusBadge(r.status)}</div>
-    </div>
-    <div class="info-row"><span class="info-label">Loại yêu cầu</span><span class="info-value">${r.type}</span></div>
-    <div class="info-row"><span class="info-label">Yêu cầu duyệt cho ngày</span><span class="info-value">${r.dateRange}</span></div>
-    <div class="info-row"><span class="info-label">Ghi chú yêu cầu</span><span class="info-value">${r.note}</span></div>
-    <div class="info-row"><span class="info-label">Ngày tạo yêu cầu</span><span class="info-value">${r.created}</span></div>
-    <div class="info-row"><span class="info-label">Trạng thái</span><span class="info-value">${statusBadge(r.status)}</span></div>
-  `;
-  document.getElementById('modalFooter').innerHTML = r.status === 'pending' ? `
-    <button onclick="rejectRequest('${r.id}',true)" style="padding:9px 20px;border-radius:7px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;background:#fee2e2;border:none;color:#ef4444;">Từ chối</button>
-    <button onclick="approveRequest('${r.id}',true)" style="padding:9px 20px;border-radius:7px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;background:linear-gradient(135deg,#16a34a,#15803d);border:none;color:white;box-shadow:0 3px 10px rgba(22,163,74,0.3);">Duyệt yêu cầu</button>
-  ` : `<button onclick="closeModal()" style="padding:9px 20px;border-radius:7px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;background:#EAEFF4;border:none;color:#2A3547;">Đóng</button>`;
-  document.getElementById('detailModal').classList.add('open');
-}
-
-function approveRequest(id, fromModal) {
-  DB.requests.approve(id, currentUser.id);
-  REQUESTS = loadRequests();
-  if (fromModal) closeModal();
-  applyFilters();
-  DB.utils.showToast('Đã duyệt yêu cầu');
-}
-
-function rejectRequest(id, fromModal) {
-  DB.requests.reject(id, currentUser.id);
-  REQUESTS = loadRequests();
-  if (fromModal) closeModal();
-  applyFilters();
-  DB.utils.showToast('Đã từ chối yêu cầu', 'error');
-}
-
-function closeModal() { document.getElementById('detailModal').classList.remove('open'); }
-
-function exportData() {
-  const toast = document.createElement('div');
-  toast.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#2A3547;color:white;padding:12px 20px;border-radius:7px;font-size:13px;font-weight:600;z-index:999;box-shadow:0 4px 16px rgba(0,0,0,0.2);';
-  toast.textContent = 'Đang xuất dữ liệu...';
-  document.body.appendChild(toast);
-  setTimeout(() => toast.remove(), 2500);
-}
-
-function showConditionModal() {
-  document.getElementById('modalTitle').textContent = 'Duyệt theo điều kiện';
-  document.getElementById('modalSub').textContent = 'Chọn điều kiện để duyệt hàng loạt';
-  document.getElementById('modalBody').innerHTML = `
-    <p style="font-size:13px;color:#5A6A85;margin:0 0 16px;">Chọn điều kiện để duyệt hàng loạt các yêu cầu đang chờ duyệt phù hợp.</p>
-    <div style="display:grid;gap:14px;">
-      <div>
-        <label style="font-size:12px;font-weight:600;color:#2A3547;display:block;margin-bottom:6px;">Loại yêu cầu</label>
-        <select class="filter-select" id="condType" style="width:100%;">
-          <option value="">Tất cả loại yêu cầu</option>
-          <option>Yêu cầu tạo công</option>
-          <option>Yêu cầu đổi ca</option>
-          <option>Yêu cầu nghỉ phép</option>
-        </select>
-      </div>
-      <div>
-        <label style="font-size:12px;font-weight:600;color:#2A3547;display:block;margin-bottom:6px;">Đơn vị</label>
-        <select class="filter-select" id="condUnit" style="width:100%;">
-          <option value="">Tất cả đơn vị</option>
-          <option>CH 613 Âu Cơ - Tân Phú - HCM</option>
-          <option>CH 614 Lê Văn Việt - TP.Thủ Đức - HCM</option>
-        </select>
-      </div>
-    </div>
-  `;
-  document.getElementById('modalFooter').innerHTML = `
-    <button onclick="closeModal()" style="padding:9px 20px;border-radius:7px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;background:#EAEFF4;border:none;color:#2A3547;">Hủy</button>
-    <button onclick="bulkApprove()" style="padding:9px 20px;border-radius:7px;font-size:13px;font-weight:600;font-family:inherit;cursor:pointer;background:#2563eb;border:none;color:white;box-shadow:0 3px 10px rgba(37,99,235,0.3);">Duyệt theo điều kiện</button>
-  `;
-  document.getElementById('detailModal').classList.add('open');
-}
-
-function bulkApprove() {
-  const type = document.getElementById('condType').value;
-  const unit = document.getElementById('condUnit').value;
-  let count = 0;
-  REQUESTS.forEach(r => {
-    if (r.status !== 'pending') return;
-    if (type && r.type !== type) return;
-    if (unit && r.branch !== unit) return;
-    r.status = 'approved';
-    count++;
-  });
-  closeModal();
-  applyFilters();
-  if (count > 0) {
-    const toast = document.createElement('div');
-    toast.style.cssText = 'position:fixed;bottom:24px;right:24px;background:#2A3547;color:white;padding:12px 20px;border-radius:7px;font-size:13px;font-weight:600;z-index:999;box-shadow:0 4px 16px rgba(0,0,0,0.2);';
-    toast.textContent = `Đã duyệt ${count} yêu cầu thành công`;
-    document.body.appendChild(toast);
-    setTimeout(() => toast.remove(), 3000);
-  }
-}
-
-document.getElementById('detailModal').addEventListener('click', function(e) {
-  if (e.target === this) closeModal();
-});
-
-applyFilters();
-</script>
+<script src="../js/duyet-yeu-cau.js"></script>
 </body>
 </html>
