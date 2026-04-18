@@ -1241,3 +1241,9 @@ document.addEventListener('click', function(e) {
     if (chevron) chevron.style.transform = '';
   }
 });
+
+// ==================== TOPBAR SEARCH ====================
+function topbarSearchHandle(q) {
+  var el = document.getElementById('empSearch');
+  if (el) { el.value = q; applyFilter(); }
+}

@@ -199,7 +199,10 @@
   }
 
   // ===== DRAWER =====
+  let currentDrawerEmpId = null;
+
   function openDrawer(id) {
+    currentDrawerEmpId = id;
     const emp = employees.find(e => e.id === id);
     if (!emp) return;
 
@@ -268,35 +271,42 @@
       return;
     }
 
-    // Build contract history based on employee data
     var history = [];
-    var startDate = emp.startDate || '';
-    var contractType = emp.contractType || 'Hợp đồng lao động';
-    var contractStatus = emp.contractStatus || 'Đang hiệu lực';
+    var startDate     = emp.startDate       || '';
+    var contractType  = emp.contractType    || 'Hợp đồng lao động';
+    var contractEndDate = emp.contractEndDate || null;
 
-    // If employee has been working > 2 years and current contract is permanent,
-    // show a probation → fixed-term → permanent progression
-    var startYear = startDate ? parseInt(startDate.slice(0, 4)) : 0;
-    var nowYear = new Date().getFullYear();
-    var yearsWorked = startYear > 0 ? nowYear - startYear : 0;
+    // Trạng thái hợp đồng hiện tại
+    var isActive = !contractEndDate || new Date(contractEndDate) >= new Date();
+    var currentStatus = isActive ? 'Đang hiệu lực' : 'Hết hiệu lực';
 
-    if (contractStatus === 'Đã có hợp đồng' && contractType === 'Hợp đồng dài hạn' && yearsWorked >= 2) {
-      // Show full progression
+    // Nếu nhân viên có lịch sử lương — mỗi kỳ lương là 1 mốc tồn tại
+    var salaryRecords = (DB.salary.getAll() || [])
+      .filter(function(r){ return r.employeeId === empId; })
+      .sort(function(a,b){ return a.period > b.period ? 1 : -1; });
+
+    var earliestSalaryPeriod = salaryRecords.length ? salaryRecords[0].period : null;
+
+    // Hợp đồng thử việc: 2 tháng đầu kể từ startDate (nếu có)
+    if (startDate) {
       var probeEnd = addMonths(startDate, 2);
-      var fixed1End = addMonths(startDate, 14);
-      history.push({ type: 'Hợp đồng thử việc (2 tháng)', status: 'Hết hiệu lực', startDate: startDate, endDate: probeEnd });
-      history.push({ type: 'Hợp đồng xác định thời hạn (1 năm)', status: 'Hết hiệu lực', startDate: probeEnd, endDate: fixed1End });
-      history.push({ type: 'Hợp đồng dài hạn (không thời hạn)', status: 'Đang hiệu lực', startDate: fixed1End, endDate: '—' });
-    } else if (contractStatus === 'Đã có hợp đồng' && contractType === 'Hợp đồng thử việc') {
-      history.push({ type: 'Hợp đồng thử việc (2 tháng)', status: 'Đang hiệu lực', startDate: startDate, endDate: addMonths(startDate, 2) });
-    } else {
-      // Default: show current contract only
-      history.push({
-        type: contractType,
-        status: contractStatus === 'Đã có hợp đồng' ? 'Đang hiệu lực' : contractStatus,
-        startDate: startDate || '—',
-        endDate: emp.contractEndDate || '—'
-      });
+      var probeDone = new Date(probeEnd) < new Date();
+      if (probeDone) {
+        history.push({ type: 'Hợp đồng thử việc (2 tháng)', status: 'Hết hiệu lực', startDate: startDate, endDate: probeEnd });
+      }
+    }
+
+    // Hợp đồng chính — đọc từ dữ liệu thực của nhân viên
+    history.push({
+      type: contractType,
+      status: currentStatus,
+      startDate: startDate ? addMonths(startDate, 2) : (startDate || '—'),
+      endDate: contractEndDate || (isActive ? null : '—')
+    });
+
+    // Nếu không có lịch sử thử việc, chỉ hiện hợp đồng hiện tại từ ngày vào
+    if (history.length === 1 && startDate) {
+      history[0].startDate = startDate;
     }
 
     historyList.innerHTML = history.map(function(h, i) {
@@ -322,6 +332,62 @@
     var d = new Date(isoDate);
     d.setMonth(d.getMonth() + n);
     return d.toISOString().slice(0, 10);
+  }
+
+  // ===== EDIT DRAWER =====
+  function openEditDrawer() {
+    if (!currentDrawerEmpId) return;
+    var emp = DB.employees.getById(currentDrawerEmpId);
+    if (!emp) return;
+    document.getElementById('editName').value     = emp.name     || '';
+    document.getElementById('editPhone').value    = emp.phone    || '';
+    document.getElementById('editEmail').value    = emp.email    || '';
+    document.getElementById('editPosition').value = emp.position || '';
+    document.getElementById('editUnit').value     = emp.unit     || '';
+    document.getElementById('editEmpModal').style.display = 'flex';
+  }
+
+  function closeEditModal() {
+    document.getElementById('editEmpModal').style.display = 'none';
+  }
+
+  function saveEditDrawer() {
+    if (!currentDrawerEmpId) return;
+    var name  = document.getElementById('editName').value.trim();
+    var phone = document.getElementById('editPhone').value.trim();
+    var email = document.getElementById('editEmail').value.trim();
+    var pos   = document.getElementById('editPosition').value.trim();
+    var unit  = document.getElementById('editUnit').value.trim();
+    if (!name) { DB.utils.showToast('Họ tên không được để trống', 'error'); return; }
+
+    DB.employees.update(currentDrawerEmpId, { name, phone, email, position: pos, unit });
+
+    // Cập nhật ngay trên drawer
+    document.getElementById('drawerName').textContent = name;
+    document.getElementById('dName').textContent      = name;
+    document.getElementById('dPhone').textContent     = phone || '—';
+    document.getElementById('dEmail').textContent     = email || '—';
+    document.getElementById('dPosition').textContent  = pos   || '—';
+    document.getElementById('dUnit').textContent      = unit  || '—';
+
+    // Cập nhật lại mảng employees (để table refresh đúng)
+    var idx = employees.findIndex(function(e){ return e.id === currentDrawerEmpId; });
+    if (idx !== -1) {
+      employees[idx].name        = name;
+      employees[idx].phone       = phone || '—';
+      employees[idx].email       = email || '—';
+      employees[idx].positionFull = pos || '—';
+      employees[idx].position     = pos.length > 18 ? pos.slice(0,18)+'...' : (pos || '—');
+      employees[idx].unitFull     = unit || '';
+      employees[idx].unit         = unit.length > 16 ? unit.slice(0,16)+'...' : (unit || '—');
+    }
+    applyFilters();
+    closeEditModal();
+    DB.utils.showToast('Đã cập nhật thông tin nhân viên');
+  }
+
+  function viewFullProfile() {
+    window.location.href = 'danh-sach-nhan-vien.html';
   }
 
   // ===== DROPDOWNS =====
@@ -358,3 +424,8 @@ document.addEventListener('click', function(e) {
     if (chevron) chevron.style.transform = '';
   }
 });
+
+// ==================== TOPBAR SEARCH ====================
+function topbarSearchHandle(q) {
+  if (typeof filterTable === 'function') filterTable(q);
+}

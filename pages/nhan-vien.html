@@ -45,7 +45,7 @@
     <div style="flex:1;max-width:460px;">
       <div style="display:flex;align-items:center;gap:10px;background:#F2F6FA;border:1px solid #e5eaef;border-radius:7px;padding:9px 16px;">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7C8FAC" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input type="text" placeholder="Tìm kiếm..." style="background:transparent;border:none;outline:none;font-size:13px;color:#2A3547;flex:1;font-family:inherit;" />
+        <input id="topbarSearch" type="text" placeholder="Tìm kiếm..." oninput="topbarSearchHandle(this.value)" style="background:transparent;border:none;outline:none;font-size:13px;color:#2A3547;flex:1;font-family:inherit;" />
         <kbd style="font-size:10px;color:#7C8FAC;background:#EAEFF4;border-radius:5px;padding:2px 6px;font-family:monospace;">⌘K</kbd>
       </div>
     </div>
@@ -212,8 +212,36 @@
   </div>
   <!-- Footer -->
   <div style="padding:14px 20px;border-top:1px solid #e5eaef;display:flex;gap:10px;flex-shrink:0;">
-    <button style="flex:1;padding:10px;border-radius:7px;border:1px solid #e5eaef;background:white;font-size:13px;font-weight:600;color:#2A3547;cursor:pointer;font-family:inherit;" onmouseover="this.style.background='#F2F6FA'" onmouseout="this.style.background='white'">Chỉnh sửa</button>
-    <button style="flex:2;padding:10px;border-radius:7px;border:none;background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:white;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 4px 12px rgba(99,60,236,0.3);" onmouseover="this.style.opacity='0.9'" onmouseout="this.style.opacity='1'">Xem hồ sơ đầy đủ</button>
+    <button onclick="openEditDrawer()" style="flex:1;padding:10px;border-radius:7px;border:1px solid #e5eaef;background:white;font-size:13px;font-weight:600;color:#2A3547;cursor:pointer;font-family:inherit;" onmouseover="this.style.background='#F2F6FA'" onmouseout="this.style.background='white'">Chỉnh sửa</button>
+    <button onclick="viewFullProfile()" style="flex:2;padding:10px;border-radius:7px;border:none;background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:white;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 4px 12px rgba(99,60,236,0.3);" onmouseover="this.style.opacity='0.9'" onmouseout="this.style.opacity='1'">Xem hồ sơ đầy đủ</button>
+  </div>
+</div>
+
+<!-- MODAL: Chỉnh sửa nhân viên -->
+<div id="editEmpModal" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,0.45);z-index:1200;align-items:center;justify-content:center;">
+  <div style="background:white;border-radius:14px;width:460px;max-width:95vw;box-shadow:0 20px 60px rgba(0,0,0,0.2);overflow:hidden;">
+    <div style="padding:18px 22px;border-bottom:1px solid #e5eaef;display:flex;align-items:center;justify-content:space-between;">
+      <p style="font-size:15px;font-weight:700;color:#2A3547;margin:0;">Chỉnh sửa thông tin nhân viên</p>
+      <button onclick="closeEditModal()" style="background:none;border:none;cursor:pointer;font-size:20px;color:#7C8FAC;line-height:1;">×</button>
+    </div>
+    <div style="padding:18px 22px;display:flex;flex-direction:column;gap:12px;">
+      <div><label style="font-size:11.5px;font-weight:700;color:#5A6A85;display:block;margin-bottom:4px;">HỌ VÀ TÊN <span style="color:#ef4444;">*</span></label>
+        <input id="editName" type="text" style="width:100%;border:1px solid #e5eaef;border-radius:7px;padding:8px 12px;font-size:13px;font-family:inherit;outline:none;box-sizing:border-box;" /></div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;">
+        <div><label style="font-size:11.5px;font-weight:700;color:#5A6A85;display:block;margin-bottom:4px;">SỐ ĐIỆN THOẠI</label>
+          <input id="editPhone" type="text" style="width:100%;border:1px solid #e5eaef;border-radius:7px;padding:8px 12px;font-size:13px;font-family:inherit;outline:none;box-sizing:border-box;" /></div>
+        <div><label style="font-size:11.5px;font-weight:700;color:#5A6A85;display:block;margin-bottom:4px;">EMAIL</label>
+          <input id="editEmail" type="email" style="width:100%;border:1px solid #e5eaef;border-radius:7px;padding:8px 12px;font-size:13px;font-family:inherit;outline:none;box-sizing:border-box;" /></div>
+      </div>
+      <div><label style="font-size:11.5px;font-weight:700;color:#5A6A85;display:block;margin-bottom:4px;">VỊ TRÍ CÔNG VIỆC</label>
+        <input id="editPosition" type="text" style="width:100%;border:1px solid #e5eaef;border-radius:7px;padding:8px 12px;font-size:13px;font-family:inherit;outline:none;box-sizing:border-box;" /></div>
+      <div><label style="font-size:11.5px;font-weight:700;color:#5A6A85;display:block;margin-bottom:4px;">ĐƠN VỊ</label>
+        <input id="editUnit" type="text" style="width:100%;border:1px solid #e5eaef;border-radius:7px;padding:8px 12px;font-size:13px;font-family:inherit;outline:none;box-sizing:border-box;" /></div>
+    </div>
+    <div style="padding:14px 22px;border-top:1px solid #e5eaef;display:flex;gap:10px;justify-content:flex-end;">
+      <button onclick="closeEditModal()" style="padding:9px 18px;border-radius:7px;border:1px solid #e5eaef;background:white;font-size:13px;font-weight:600;color:#2A3547;cursor:pointer;font-family:inherit;">Hủy</button>
+      <button onclick="saveEditDrawer()" style="padding:9px 18px;border-radius:7px;border:none;background:linear-gradient(135deg,var(--primary),var(--primary-dark));color:white;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;">Lưu thay đổi</button>
+    </div>
   </div>
 </div>
 

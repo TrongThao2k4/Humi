@@ -264,13 +264,33 @@
   }
 
   function sendOTP() {
-    // Generate random 6-digit OTP
     var otp = String(Math.floor(Math.random() * 999999)).padStart(6, '0');
-    // Store in session (for this demo)
     sessionStorage.setItem('humi_otp_sent', otp);
-    // In production, this would send via SMS or email
-    console.log('OTP sent:', otp);
-    DB.utils.showToast('Mã OTP đã được gửi (demo: ' + otp + ')');
+    sessionStorage.setItem('humi_otp_ts', Date.now().toString());
+
+    // Hiển thị OTP nổi bật trong modal (chế độ demo)
+    var box  = document.getElementById('otpDemoBox');
+    var code = document.getElementById('otpDemoCode');
+    var cd   = document.getElementById('otpCountdown');
+    if (box)  box.style.display  = 'block';
+    if (code) code.textContent   = otp;
+
+    // Đếm ngược 120 giây
+    var remaining = 120;
+    if (cd) cd.textContent = remaining;
+    clearInterval(window._otpTimer);
+    window._otpTimer = setInterval(function() {
+      remaining--;
+      if (cd) cd.textContent = remaining;
+      if (remaining <= 0) {
+        clearInterval(window._otpTimer);
+        sessionStorage.removeItem('humi_otp_sent');
+        if (code) code.textContent = '------';
+        if (box)  box.style.display = 'none';
+      }
+    }, 1000);
+
+    DB.utils.showToast('Mã OTP đã được tạo — xem trong ô màu cam bên trên');
   }
 
   function confirm2FA() {
@@ -453,22 +473,25 @@
     const pwd = document.getElementById('deletePwd').value;
     const btn = document.getElementById('btnConfirmDelete');
     btn.disabled = true; btn.textContent = 'Đang xử lý...';
-    setTimeout(() => {
-      // Verify password before deleting
+    setTimeout(function() {
       const session = DB.auth.getSession();
-      const accounts = DB.accounts ? DB.accounts.getAll() : [];
-      const account = accounts.find(function(a) { return a.employeeId === (session && session.user && session.user.id); });
-      if (account && account.password && account.password !== pwd) {
+      const userId  = session && session.user ? session.user.id : '';
+
+      // Xác minh mật khẩu qua DB.auth.login (tái sử dụng logic đăng nhập)
+      const verifyResult = DB.auth.login(userId, pwd);
+      if (!verifyResult.ok) {
         DB.utils.showToast('Mật khẩu không đúng, không thể xóa tài khoản', 'error');
         btn.disabled = false; btn.textContent = 'Xóa tài khoản';
         return;
       }
-      // Clear user-specific settings
-      const userId = session && session.user ? session.user.id : '';
+
+      // Xóa toàn bộ dữ liệu local của người dùng
       if (userId) {
-        localStorage.removeItem('humi_user_settings_' + userId);
+        ['humi_user_settings_', 'humi_notif_read_'].forEach(function(prefix) {
+          localStorage.removeItem(prefix + userId);
+        });
       }
-      // Logout and redirect
+
       DB.auth.logout();
       closeModal('modalDelete');
       DB.utils.showToast('Tài khoản đã được xóa. Đang chuyển hướng...');

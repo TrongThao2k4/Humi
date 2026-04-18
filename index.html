@@ -102,26 +102,26 @@
 
   <!-- ==================== TOPBAR ==================== -->
   <header class="topbar" style="grid-column: 2 / 4;">
-    <!-- Search -->
-    <div style="flex:1;max-width:460px;">
-      <div style="display:flex;align-items:center;gap:10px;background:#F2F6FA;border:1px solid #e5eaef;border-radius:7px;padding:9px 16px;">
-        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7C8FAC" stroke-width="2">
-          <circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/>
-        </svg>
-        <input type="text" placeholder="Tìm kiếm..." style="background:transparent;border:none;outline:none;font-size:13px;color:#2A3547;flex:1;font-family:inherit;" />
-        <kbd style="font-size:10px;color:#7C8FAC;background:#EAEFF4;border-radius:5px;padding:2px 6px;font-family:monospace;">⌘K</kbd>
-      </div>
-    </div>
 
     <!-- Right actions -->
-    <div style="display:flex;align-items:center;gap:12px;margin-left:16px;">
-      <button style="position:relative;padding:10px;border-radius:7px;background:transparent;border:none;cursor:pointer;">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2A3547" stroke-width="2">
-          <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/>
-          <path d="M13.73 21a2 2 0 01-3.46 0"/>
-        </svg>
-        <span style="position:absolute;top:8px;right:8px;width:8px;height:8px;background:#ef4444;border-radius:50%;border:2px solid white;"></span>
-      </button>
+    <div style="display:flex;align-items:center;gap:12px;margin-left:auto;">
+      <div style="position:relative;">
+        <button id="notifBell" onclick="toggleNotifPanel()" style="position:relative;padding:10px;border-radius:7px;background:transparent;border:none;cursor:pointer;">
+          <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="#2A3547" stroke-width="2">
+            <path d="M18 8A6 6 0 006 8c0 7-3 9-3 9h18s-3-2-3-9"/>
+            <path d="M13.73 21a2 2 0 01-3.46 0"/>
+          </svg>
+          <span id="notifBadge" style="position:absolute;top:8px;right:8px;width:8px;height:8px;background:#ef4444;border-radius:50%;border:2px solid white;display:none;"></span>
+        </button>
+        <!-- Notification panel -->
+        <div id="notifPanel" style="display:none;position:absolute;top:calc(100% + 8px);right:0;width:320px;background:white;border:1px solid #e5eaef;border-radius:12px;box-shadow:0 8px 24px rgba(0,0,0,0.12);z-index:999;overflow:hidden;">
+          <div style="padding:14px 16px;border-bottom:1px solid #f0f0f5;display:flex;align-items:center;justify-content:space-between;">
+            <span style="font-size:14px;font-weight:700;color:#2A3547;">Thông báo</span>
+            <button onclick="markAllNotifRead()" style="font-size:11px;color:#5D87FF;background:none;border:none;cursor:pointer;font-family:inherit;font-weight:600;">Đánh dấu đã đọc</button>
+          </div>
+          <div id="notifList" style="max-height:360px;overflow-y:auto;"></div>
+        </div>
+      </div>
       <div style="width:1px;height:32px;background:#e5eaef;"></div>
       <div style="position:relative;">
         <div onclick="toggleUserDropdown()" style="display:flex;align-items:center;gap:8px;cursor:pointer;padding:6px 10px;border-radius:7px;user-select:none;" id="topbarUserBtn">

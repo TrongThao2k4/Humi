@@ -401,3 +401,10 @@ document.addEventListener('click', function(e) {
     if (chevron) chevron.style.transform = '';
   }
 });
+
+// ==================== TOPBAR SEARCH ====================
+function topbarSearchHandle(q) {
+  var el = document.getElementById('shiftSearch');
+  if (el) { el.value = q; if(typeof filterShiftList === 'function') filterShiftList(); }
+  else if (q) DB.utils.showToast('Nhập tên ca để lọc danh sách');
+}

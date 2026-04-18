@@ -439,3 +439,9 @@ document.addEventListener('click', function(e) {
     if (chevron) chevron.style.transform = '';
   }
 });
+
+// ==================== TOPBAR SEARCH ====================
+function topbarSearchHandle(q) {
+  var el = document.getElementById('searchInput');
+  if (el) { el.value = q; el.dispatchEvent(new Event('input')); }
+}

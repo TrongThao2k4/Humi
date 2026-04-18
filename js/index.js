@@ -62,6 +62,95 @@
     if (el('cardUnitName'))    el('cardUnitName').textContent    = (emp && emp.unit) || currentUser.unit || '—';
   })();
 
+  // ==================== NOTIFICATION BELL ====================
+  (function initNotifPanel() {
+    var LS_NOTIF = 'humi_notif_read_' + currentUser.id;
+    var readIds = new Set();
+    try { readIds = new Set(JSON.parse(localStorage.getItem(LS_NOTIF)) || []); } catch(e) {}
+
+    function saveRead() { localStorage.setItem(LS_NOTIF, JSON.stringify([...readIds])); }
+
+    function renderNotifPanel() {
+      var announcements = (DB.announcements ? DB.announcements.getAll() : []) || [];
+      var leaves        = (DB.leaves ? DB.leaves.getHistory(currentUser.id) : []) || [];
+      var attendance    = (DB.attendance ? DB.attendance.getAll({ employeeId: currentUser.id }) : []) || [];
+
+      var items = [];
+      // Thông báo công ty
+      announcements.slice(0,5).forEach(function(a) {
+        items.push({ id: 'ann_'+a.id, icon: '📢', title: a.title || 'Thông báo', sub: a.department || '', time: a.createdAt || '' });
+      });
+      // Đơn nghỉ phép được duyệt/từ chối
+      leaves.filter(function(l){ return l.status !== 'pending'; }).slice(0,3).forEach(function(l) {
+        var icon = l.status === 'approved' ? '✅' : '❌';
+        var txt  = l.status === 'approved' ? 'Đơn nghỉ phép đã được duyệt' : 'Đơn nghỉ phép bị từ chối';
+        items.push({ id: 'leave_'+l.id, icon: icon, title: txt, sub: (l.startDate||'') + ' → ' + (l.endDate||''), time: l.updatedAt || l.createdAt || '' });
+      });
+      // Chấm công được duyệt/từ chối
+      attendance.filter(function(a){ return a.approvalStatus && a.approvalStatus !== 'pending'; }).slice(0,3).forEach(function(a) {
+        var icon = a.approvalStatus === 'approved' ? '✅' : '❌';
+        var txt  = a.approvalStatus === 'approved' ? 'Chấm công ngày '+a.date+' đã duyệt' : 'Chấm công ngày '+a.date+' bị từ chối';
+        items.push({ id: 'att_'+a.id, icon: icon, title: txt, sub: (a.checkIn||'')+(a.checkOut?' – '+a.checkOut:''), time: a.date || '' });
+      });
+
+      var unread = items.filter(function(i){ return !readIds.has(i.id); }).length;
+      var badge = document.getElementById('notifBadge');
+      if (badge) badge.style.display = unread > 0 ? 'block' : 'none';
+
+      var list = document.getElementById('notifList');
+      if (!list) return;
+      if (!items.length) {
+        list.innerHTML = '<div style="padding:32px;text-align:center;color:#7C8FAC;font-size:13px;">Không có thông báo</div>';
+        return;
+      }
+      list.innerHTML = items.map(function(item) {
+        var isRead = readIds.has(item.id);
+        return '<div onclick="markNotifRead(\''+item.id+'\')" style="padding:12px 16px;cursor:pointer;border-bottom:1px solid #f5f5f8;background:'+(isRead?'white':'#f8f6ff')+';display:flex;gap:12px;align-items:flex-start;" onmouseover="this.style.background=\'#F2F6FA\'" onmouseout="this.style.background=\''+(isRead?'white':'#f8f6ff')+'\'">'
+          +'<span style="font-size:18px;flex-shrink:0;margin-top:1px;">'+item.icon+'</span>'
+          +'<div style="min-width:0;flex:1;">'
+          +'<p style="font-size:13px;font-weight:'+(isRead?'500':'700')+';color:#2A3547;margin:0 0 2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">'+item.title+'</p>'
+          +(item.sub ? '<p style="font-size:11px;color:#7C8FAC;margin:0;">'+item.sub+'</p>' : '')
+          +'</div>'
+          +(isRead ? '' : '<span style="width:7px;height:7px;border-radius:50%;background:#5D87FF;flex-shrink:0;margin-top:6px;"></span>')
+          +'</div>';
+      }).join('');
+    }
+
+    window.toggleNotifPanel = function() {
+      var panel = document.getElementById('notifPanel');
+      if (!panel) return;
+      var isOpen = panel.style.display !== 'none';
+      panel.style.display = isOpen ? 'none' : 'block';
+      if (!isOpen) renderNotifPanel();
+    };
+    window.markNotifRead = function(id) {
+      readIds.add(id);
+      saveRead();
+      renderNotifPanel();
+    };
+    window.markAllNotifRead = function() {
+      document.querySelectorAll('#notifList [onclick]').forEach(function(el) {
+        var m = el.getAttribute('onclick').match(/'([^']+)'/);
+        if (m) readIds.add(m[1]);
+      });
+      saveRead();
+      renderNotifPanel();
+    };
+
+    // Init badge on load
+    renderNotifPanel();
+
+    // Close panel when clicking outside
+    document.addEventListener('click', function(e) {
+      if (!e.target.closest('#notifBell') && !e.target.closest('#notifPanel')) {
+        var panel = document.getElementById('notifPanel');
+        if (panel) panel.style.display = 'none';
+      }
+    });
+
+    window.addEventListener('humi_synced', renderNotifPanel);
+  })();
+
   // ==================== USER DROPDOWN ====================
   function toggleUserDropdown() {
     var dd = document.getElementById('userDropdown');

@@ -23,12 +23,12 @@
 })();
 
 
-  // ===== CONSTANTS — read from employee's allocated leave balance =====
-  const _empRecord     = (DB.employees.getAll() || []).find(function(e){ return e.id === currentUser.id; }) || {};
-  const _lb            = _empRecord.leaveBalance || {};
-  const ANNUAL_TOTAL   = _lb.annual    != null ? _lb.annual    : 12;
-  const SICK_TOTAL     = _lb.sick      != null ? _lb.sick      : 30;
-  const MATERNITY_TOTAL = _lb.maternity != null ? _lb.maternity : 180;
+  // ===== TOTALS — read dynamically so Supabase sync is reflected =====
+  function getLeaveTotal(type, fallback) {
+    var emp = (DB.employees.getAll() || []).find(function(e){ return e.id === currentUser.id; }) || {};
+    var lb  = emp.leaveBalance || {};
+    return lb[type] != null ? lb[type] : fallback;
+  }
 
   const LEAVE_TYPE_NAMES = { annual: 'Nghỉ phép năm', sick: 'Nghỉ ốm', unpaid: 'Nghỉ không lương' };
   const STATUS_PILL = {
@@ -59,6 +59,10 @@
     const empId  = currentUser.id;
     const bal    = DB.leaves.getBalance(empId);
     const history = DB.leaves.getHistory(empId).sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
+
+    const ANNUAL_TOTAL    = getLeaveTotal('annual',    12);
+    const SICK_TOTAL      = getLeaveTotal('sick',      30);
+    const MATERNITY_TOTAL = getLeaveTotal('maternity', 180);
 
     const usedAnnual    = ANNUAL_TOTAL   - (bal.annual    || 0);
     const usedSick      = SICK_TOTAL     - (bal.sick      || 0);
@@ -130,6 +134,9 @@
     const bal     = DB.leaves.getBalance(currentUser.id);
     const history = DB.leaves.getHistory(currentUser.id).sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
     const STATUS_MAP = { approved: 'Đã duyệt', pending: 'Chờ duyệt', rejected: 'Từ chối' };
+    const ANNUAL_TOTAL    = getLeaveTotal('annual',    12);
+    const SICK_TOTAL      = getLeaveTotal('sick',      30);
+    const MATERNITY_TOTAL = getLeaveTotal('maternity', 180);
 
     if (!emp) { DB.utils.showToast('Không có dữ liệu để xuất'); return; }
 
@@ -298,6 +305,11 @@
   // ===== INIT =====
   loadLeaveData();
 
+  // Reload sau khi Supabase sync xong
+  window.addEventListener('humi_synced', function() {
+    loadLeaveData();
+  });
+
 // ==================== USER DROPDOWN ====================
 function toggleUserDropdown() {
   var dd = document.getElementById('userDropdown');
@@ -314,3 +326,10 @@ document.addEventListener('click', function(e) {
     if (chevron) chevron.style.transform = '';
   }
 });
+
+// ==================== TOPBAR SEARCH ====================
+function topbarSearchHandle(q) {
+  var el = document.getElementById('searchInput');
+  if (el) { el.value = q; }
+  else if (q) { DB.utils.showToast('Dùng bộ lọc bên dưới để tìm kiếm'); }
+}

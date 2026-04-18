@@ -44,7 +44,7 @@
     <div style="flex:1;max-width:460px;">
       <div style="display:flex;align-items:center;gap:10px;background:#F2F6FA;border:1px solid #e5eaef;border-radius:7px;padding:9px 16px;">
         <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#7C8FAC" stroke-width="2"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
-        <input type="text" placeholder="Tìm kiếm..." style="background:transparent;border:none;outline:none;font-size:13px;color:#2A3547;flex:1;font-family:inherit;" />
+        <input id="topbarSearch" type="text" placeholder="Tìm kiếm..." oninput="topbarSearchHandle(this.value)" style="background:transparent;border:none;outline:none;font-size:13px;color:#2A3547;flex:1;font-family:inherit;" />
         <kbd style="font-size:10px;color:#7C8FAC;background:#EAEFF4;border-radius:5px;padding:2px 6px;font-family:monospace;">⌘K</kbd>
       </div>
     </div>
@@ -92,7 +92,7 @@
     <!-- Page header -->
     <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid #e5eaef;background:white;flex-shrink:0;">
       <h1 style="font-size:18px;font-weight:700;color:#2A3547;margin:0;">Duyệt yêu cầu công</h1>
-      <button onclick="openBulkApprove()" class="btn-primary">
+      <button onclick="showConditionModal()" class="btn-primary">
         <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5"><polyline points="20 6 9 17 4 12"/></svg>
         Duyệt theo điều kiện
       </button>

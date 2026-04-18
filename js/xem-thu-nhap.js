@@ -36,7 +36,8 @@
 
   // ===== PERIOD DROPDOWN =====
   function togglePeriod() {
-    document.getElementById('periodDropdown').classList.toggle('open');
+    var dd = document.getElementById('periodDropdown');
+    dd.style.display = dd.style.display === 'block' ? 'none' : 'block';
   }
 
   function populatePeriodDropdown() {
@@ -64,7 +65,7 @@
   function selectPeriod(period) {
     currentPeriod = period;
     document.getElementById('selectedPeriod').textContent = periodLabel(period);
-    document.getElementById('periodDropdown').classList.remove('open');
+    document.getElementById('periodDropdown').style.display = 'none';
     document.querySelectorAll('.period-option').forEach(o => {
       o.classList.toggle('selected', o.dataset.period === period);
     });
@@ -89,7 +90,7 @@
 
   document.addEventListener('click', e => {
     if (!e.target.closest('#periodTrigger') && !e.target.closest('#periodDropdown'))
-      document.getElementById('periodDropdown').classList.remove('open');
+      document.getElementById('periodDropdown').style.display = 'none';
   });
 
   // ===== EXPORT CSV =====
@@ -370,3 +371,8 @@ document.addEventListener('click', function(e) {
     if (chevron) chevron.style.transform = '';
   }
 });
+
+// ==================== TOPBAR SEARCH ====================
+function topbarSearchHandle(q) {
+  if (q) DB.utils.showToast('Trang này không có chức năng tìm kiếm');
+}

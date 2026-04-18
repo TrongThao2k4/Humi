@@ -62,6 +62,17 @@ const _s = DB.auth.requireAuth(); if(!_s) throw 0;
             || (m.body||'').toLowerCase().includes(q);
       });
     }
+    // Date range filter from advanced search
+    var fromEl = document.getElementById('filterFrom');
+    var toEl   = document.getElementById('filterTo');
+    if (fromEl && fromEl.value) {
+      var fromTs = new Date(fromEl.value).getTime();
+      list = list.filter(function(m){ return new Date(m.timestamp).getTime() >= fromTs; });
+    }
+    if (toEl && toEl.value) {
+      var toTs = new Date(toEl.value).getTime() + 86399999; // include full day
+      list = list.filter(function(m){ return new Date(m.timestamp).getTime() <= toTs; });
+    }
     // newest first
     list = list.slice().sort(function(a,b){ return new Date(b.timestamp) - new Date(a.timestamp); });
     return list;
@@ -395,6 +406,35 @@ const _s = DB.auth.requireAuth(); if(!_s) throw 0;
     showToast('Đã xử lý: ' + label);
   }
 
+// ==================== ADVANCED SEARCH ====================
+function toggleAdvSearch() {
+  var panel = document.getElementById('advSearchPanel');
+  var btn   = document.getElementById('advSearchToggle');
+  if (!panel) return;
+  var open = panel.style.display !== 'none';
+  panel.style.display = open ? 'none' : 'block';
+  if (btn) btn.style.background = open ? 'transparent' : '#e8e3fd';
+}
+
+function clearAdvSearch() {
+  var fromEl = document.getElementById('filterFrom');
+  var toEl   = document.getElementById('filterTo');
+  var typeEl = document.getElementById('filterMsgType');
+  if (fromEl) fromEl.value = '';
+  if (toEl)   toEl.value   = '';
+  if (typeEl) typeEl.value = '';
+  renderList();
+}
+
+function applyMsgTypeFilter() {
+  var typeEl = document.getElementById('filterMsgType');
+  if (!typeEl) return;
+  var val = typeEl.value;
+  if (val === 'sent')  { switchTab('sent'); }
+  else if (val === 'inbox') { switchTab('all'); }
+  else renderList();
+}
+
 // ==================== USER DROPDOWN ====================
 function toggleUserDropdown() {
   var dd = document.getElementById('userDropdown');
@@ -411,3 +451,10 @@ document.addEventListener('click', function(e) {
     if (chevron) chevron.style.transform = '';
   }
 });
+
+function doLogout() { DB.auth.logout(); window.location.href = '../login.html'; }
+
+function topbarSearchHandle(q) {
+  searchQuery = q;
+  renderList();
+}

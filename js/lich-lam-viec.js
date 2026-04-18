@@ -191,3 +191,8 @@ document.addEventListener('click', function(e) {
     if (chevron) chevron.style.transform = '';
   }
 });
+
+// ==================== TOPBAR SEARCH ====================
+function topbarSearchHandle(q) {
+  if (q) DB.utils.showToast('Dùng nút ‹ › để điều hướng lịch');
+}

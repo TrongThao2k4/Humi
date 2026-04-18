@@ -553,3 +553,42 @@ document.addEventListener('click', function(e) {
     if (chevron) chevron.style.transform = '';
   }
 });
+
+// ==================== EXPORT CSV ====================
+function exportCSV() {
+  if (currentDays.length === 0 || currentEmployees.length === 0) {
+    showSaveToast('Không có dữ liệu để xuất', false); return;
+  }
+  var BOM = '\uFEFF';
+  var headers = ['Mã NV', 'Tên nhân viên', 'Đơn vị', 'Vai trò'];
+  currentDays.forEach(function(day) {
+    SLOTS.forEach(function(slot) {
+      headers.push(day.date + ' – ' + slot.name);
+    });
+  });
+  headers.push('Tổng giờ');
+  var rows = [headers];
+  currentEmployees.forEach(function(emp) {
+    var row = [emp.code || '', emp.name || '', emp.branch || '', emp.role || ''];
+    currentDays.forEach(function(_, di) {
+      SLOTS.forEach(function(_, si) {
+        row.push(checked[emp.id + '-' + di + '-' + si] ? '✓' : '');
+      });
+    });
+    row.push(calcEmpHours(emp.id));
+    rows.push(row);
+  });
+  var csv = BOM + rows.map(function(r) {
+    return r.map(function(c) { return '"' + String(c).replace(/"/g, '""') + '"'; }).join(',');
+  }).join('\r\n');
+  var a = document.createElement('a');
+  a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = 'lich-ca-' + (currentDays[0] ? currentDays[0].date.replace(/\//g,'-') : 'export') + '.csv';
+  a.click();
+}
+
+// ==================== TOPBAR SEARCH ====================
+function topbarSearchHandle(q) {
+  var el = document.getElementById('searchInput');
+  if (el) { el.value = q; if(typeof filterShifts === 'function') filterShifts(); }
+}
