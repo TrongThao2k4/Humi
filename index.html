@@ -7,6 +7,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="js/db.js"></script>
   <script src="js/theme.js"></script>
+  <script src="js/common.js"></script>
   <script>(function(){var o=console.warn;console.warn=function(){var m=Array.prototype.join.call(arguments,' ');if(m.indexOf('cdn.tailwindcss.com should not be used in production')!==-1)return;return o.apply(console,arguments);};})();</script>
   <script src="https://cdn.tailwindcss.com"></script>
   <script defer src="https://cdn.jsdelivr.net/npm/face-api.js@0.22.2/dist/face-api.min.js"></script>
@@ -220,6 +221,65 @@
         <div class="w-5 h-1.5 rounded-full bg-white/70"></div>
         <div class="w-1.5 h-1.5 rounded-full bg-white/30"></div>
         <div class="w-1.5 h-1.5 rounded-full bg-white/30"></div>
+      </div>
+    </div>
+
+    <!-- Manager Stats Section (visible to manager/admin only) -->
+    <div id="mgrStatsSection" style="display:none;">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:12px;">
+        <div style="width:6px;height:20px;background:var(--primary);border-radius:3px;"></div>
+        <h2 style="font-size:15px;font-weight:700;color:#2A3547;margin:0;">Tổng quan công ty</h2>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:12px;">
+        <!-- Card: Nhân viên -->
+        <div style="background:white;border-radius:14px;padding:18px;border:1px solid #e5eaef;box-shadow:0 1px 4px rgba(0,0,0,.04);">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+            <div style="width:36px;height:36px;border-radius:9px;background:#EEF2FF;display:flex;align-items:center;justify-content:center;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#5D87FF" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+            </div>
+            <span style="font-size:12px;font-weight:600;color:#7C8FAC;">Nhân viên đang hoạt động</span>
+          </div>
+          <div id="mgrStatEmps" style="font-size:22px;font-weight:800;color:#2A3547;">—</div>
+        </div>
+        <!-- Card: Có mặt hôm nay -->
+        <div style="background:white;border-radius:14px;padding:18px;border:1px solid #e5eaef;box-shadow:0 1px 4px rgba(0,0,0,.04);">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+            <div style="width:36px;height:36px;border-radius:9px;background:#F0FDF4;display:flex;align-items:center;justify-content:center;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#22c55e" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+            </div>
+            <span style="font-size:12px;font-weight:600;color:#7C8FAC;">Có mặt hôm nay</span>
+          </div>
+          <div id="mgrStatPresent" style="font-size:22px;font-weight:800;color:#2A3547;">—</div>
+          <div style="margin-top:8px;background:#f0f4f8;border-radius:99px;height:4px;overflow:hidden;">
+            <div id="mgrPresentBar" style="height:4px;background:#22c55e;border-radius:99px;width:0%;transition:width .4s;"></div>
+          </div>
+        </div>
+        <!-- Card: Đơn nghỉ chờ duyệt -->
+        <div style="background:white;border-radius:14px;padding:18px;border:1px solid #e5eaef;box-shadow:0 1px 4px rgba(0,0,0,.04);">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+            <div style="width:36px;height:36px;border-radius:9px;background:#FFF7ED;display:flex;align-items:center;justify-content:center;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f97316" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+            </div>
+            <span style="font-size:12px;font-weight:600;color:#7C8FAC;">Đơn nghỉ chờ duyệt</span>
+          </div>
+          <div style="display:flex;align-items:baseline;gap:8px;">
+            <div id="mgrStatLeaves" style="font-size:22px;font-weight:800;color:#2A3547;">—</div>
+            <a href="pages/danh-sach-phieu-nghi.html" style="font-size:11px;color:#5D87FF;text-decoration:none;font-weight:600;">Xem →</a>
+          </div>
+        </div>
+        <!-- Card: Yêu cầu tăng ca chờ duyệt -->
+        <div style="background:white;border-radius:14px;padding:18px;border:1px solid #e5eaef;box-shadow:0 1px 4px rgba(0,0,0,.04);">
+          <div style="display:flex;align-items:center;gap:10px;margin-bottom:14px;">
+            <div style="width:36px;height:36px;border-radius:9px;background:#FDF4FF;display:flex;align-items:center;justify-content:center;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#a855f7" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+            </div>
+            <span style="font-size:12px;font-weight:600;color:#7C8FAC;">Tăng ca chờ duyệt</span>
+          </div>
+          <div style="display:flex;align-items:baseline;gap:8px;">
+            <div id="mgrStatOT" style="font-size:22px;font-weight:800;color:#2A3547;">—</div>
+            <a href="pages/duyet-yeu-cau.html" style="font-size:11px;color:#5D87FF;text-decoration:none;font-weight:600;">Xem →</a>
+          </div>
+        </div>
       </div>
     </div>
 

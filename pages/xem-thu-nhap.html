@@ -7,6 +7,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="../js/db.js"></script>
   <script src="../js/theme.js"></script>
+  <script src="../js/common.js"></script>
   <script>(function(){var o=console.warn;console.warn=function(){var m=Array.prototype.join.call(arguments,' ');if(m.indexOf('cdn.tailwindcss.com should not be used in production')!==-1)return;return o.apply(console,arguments);};})();</script>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -95,15 +96,23 @@
           <div id="periodDropdown" style="display:none;position:absolute;top:calc(100% + 4px);left:0;background:white;border:1px solid #e5eaef;border-radius:8px;box-shadow:0 8px 24px rgba(0,0,0,0.10);z-index:50;min-width:180px;padding:4px;max-height:260px;overflow-y:auto;"></div>
         </div>
       </div>
-      <button class="btn-outline" onclick="exportCSV()">
-        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-        Xuất dữ liệu
-      </button>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <div id="mgrSalaryToggleWrap" style="display:none;">
+          <button id="mgrSalaryToggleBtn" onclick="toggleMgrSalaryView()" style="display:flex;align-items:center;gap:6px;padding:6px 12px;background:#EEF2FF;border:1px solid #c7d2fe;border-radius:7px;font-size:13px;font-weight:600;color:#5D87FF;cursor:pointer;font-family:inherit;">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M17 21v-2a4 4 0 00-4-4H5a4 4 0 00-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 00-3-3.87"/><path d="M16 3.13a4 4 0 010 7.75"/></svg>
+            Xem toàn bộ nhân viên
+          </button>
+        </div>
+        <button class="btn-outline" onclick="exportCSV()">
+          <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+          Xuất dữ liệu
+        </button>
+      </div>
     </div>
 
 
     <!-- Scroll area -->
-    <div style="flex:1;overflow:auto;background:#F2F6FA;">
+    <div id="salaryScrollArea" style="flex:1;overflow:auto;background:#F2F6FA;">
 
       <!-- Table card -->
       <div style="margin:14px 16px 0;background:white;border-radius:7px;box-shadow:0 2px 8px rgba(0,0,0,0.05);overflow:hidden;">

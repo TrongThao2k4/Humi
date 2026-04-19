@@ -1,6 +1,7 @@
 // Auth guard
 const _s = DB.auth.requireAuth(); if(!_s) throw 0;
 const currentUser = _s.user;
+if (currentUser.roleId === 'employee') { window.location.href = '../index.html'; throw 0; }
 
 // ===== LOAD USER INFO (sidebar + topbar) =====
 (function loadUserInfo() {
@@ -409,7 +410,8 @@ function exportCSV() {
 
 function closeModal() { document.getElementById('detailModal').style.display='none'; }
 
-// Init
+// Init — show skeleton while waiting for Supabase sync
+if (typeof showTableSkeleton === 'function') showTableSkeleton('tableBody', 6, 7);
 applyFilters();
 
 // Khi Supabase sync xong → reload nhân viên và render lại

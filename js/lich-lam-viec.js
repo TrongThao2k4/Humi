@@ -29,17 +29,44 @@
     const empId = currentUser.id;
     const allShifts = DB.shifts.getAll();
 
-    // ── 1. Lịch ca đã lưu (đọc trực tiếp từ Supabase qua DB.workShifts) ──
-    DB.workShifts.getAll({ employeeId: empId }).forEach(function(a) {
-      const sh = a.shiftId ? allShifts.find(s => String(s.id) === String(a.shiftId)) : null;
-      if (!sh) return;
-      if (!data[a.workDate]) data[a.workDate] = [];
-      data[a.workDate].push({
-        html: (sh.startTime||'') + ' – ' + (sh.endTime||''),
-        cls: 'sp-planned',
-        note: 'Ca làm việc – lịch đã đăng ký'
+    // ── 1. Lịch ca đã lưu — đọc từ humi_shift_assignments (synced từ Supabase shift_assignments)
+    var _rawAssign = [];
+    try { _rawAssign = JSON.parse(localStorage.getItem('humi_shift_assignments') || '[]'); } catch(e) {}
+    // Fallback: cũng đọc từ humi_work_shifts nếu có
+    var _rawWS = [];
+    try { _rawWS = JSON.parse(localStorage.getItem('humi_work_shifts') || '[]'); } catch(e) {}
+
+    _rawAssign
+      .filter(function(a) { return String(a.employeeId) === String(empId); })
+      .forEach(function(a) {
+        const sh = a.shiftId ? allShifts.find(s => String(s.id) === String(a.shiftId)) : null;
+        if (!sh || !a.date) return;
+        if (!data[a.date]) data[a.date] = [];
+        data[a.date].push({
+          html: (sh.startTime||'') + ' – ' + (sh.endTime||''),
+          cls: 'sp-planned',
+          note: 'Ca làm việc – lịch đã đăng ký'
+        });
       });
-    });
+    // Fallback: humi_work_shifts (dùng workDate)
+    _rawWS
+      .filter(function(a) { return String(a.employeeId) === String(empId); })
+      .forEach(function(a) {
+        if (!a.workDate) return;
+        // Tránh duplicate nếu đã có từ shift_assignments
+        var alreadyIn = _rawAssign.some(function(ra) {
+          return String(ra.employeeId) === String(empId) && ra.date === a.workDate && String(ra.shiftId) === String(a.shiftId);
+        });
+        if (alreadyIn) return;
+        const sh = a.shiftId ? allShifts.find(s => String(s.id) === String(a.shiftId)) : null;
+        if (!sh) return;
+        if (!data[a.workDate]) data[a.workDate] = [];
+        data[a.workDate].push({
+          html: (a.startTime || sh.startTime||'') + ' – ' + (a.endTime || sh.endTime||''),
+          cls: 'sp-planned',
+          note: 'Ca làm việc – lịch đã đăng ký'
+        });
+      });
 
     // ── 2. Chấm công thực tế + trạng thái duyệt ──
     DB.attendance.getAll({ employeeId: empId }).forEach(a => {
@@ -79,6 +106,40 @@
   const VI_MONTHS = ['Tháng 1','Tháng 2','Tháng 3','Tháng 4','Tháng 5','Tháng 6',
                      'Tháng 7','Tháng 8','Tháng 9','Tháng 10','Tháng 11','Tháng 12'];
   const DOW_LABELS = ['Thứ 2','Thứ 3','Thứ 4','Thứ 5','Thứ 6','Thứ 7','Chủ nhật'];
+
+  // Vietnamese public holidays (MM-DD format; for Tết we use Gregorian approx for 2025/2026)
+  var VN_HOLIDAYS = {
+    '01-01': 'Tết Dương lịch',
+    '04-30': 'Ngày Giải phóng miền Nam',
+    '05-01': 'Ngày Quốc tế Lao động',
+    '09-02': 'Quốc khánh',
+    '09-03': 'Quốc khánh (bù)',
+    // Tết Nguyên Đán 2025: Jan 28 – Feb 2
+    '2025-01-28': 'Tết Nguyên Đán',
+    '2025-01-29': 'Tết Nguyên Đán',
+    '2025-01-30': 'Tết Nguyên Đán',
+    '2025-01-31': 'Tết Nguyên Đán',
+    '2025-02-01': 'Tết Nguyên Đán',
+    '2025-02-02': 'Tết Nguyên Đán',
+    // Giỗ Tổ Hùng Vương 2025: April 7
+    '2025-04-07': 'Giỗ Tổ Hùng Vương',
+    // Tết 2026: Feb 16 – Feb 21
+    '2026-02-16': 'Tết Nguyên Đán',
+    '2026-02-17': 'Tết Nguyên Đán',
+    '2026-02-18': 'Tết Nguyên Đán',
+    '2026-02-19': 'Tết Nguyên Đán',
+    '2026-02-20': 'Tết Nguyên Đán',
+    '2026-02-21': 'Tết Nguyên Đán',
+    // Giỗ Tổ 2026: April 25
+    '2026-04-25': 'Giỗ Tổ Hùng Vương',
+  };
+
+  function getHoliday(y, m, d) {
+    var full = y + '-' + pad(m+1) + '-' + pad(d);
+    if (VN_HOLIDAYS[full]) return VN_HOLIDAYS[full];
+    var md = pad(m+1) + '-' + pad(d);
+    return VN_HOLIDAYS[md] || null;
+  }
 
   const now = new Date();
   let curYear = now.getFullYear(), curMonth = now.getMonth();
@@ -128,12 +189,19 @@
       const today = isToday(cell.y, cell.m, cell.d);
       const shifts = (!cell.other && shiftData[dateKey(cell.y, cell.m, cell.d)]) || [];
 
-      const cls = ['cal-day', cell.other?'other-month':'', isSun?'sunday':'', today?'today':'']
+      const holiday = !cell.other ? getHoliday(cell.y, cell.m, cell.d) : null;
+      const isHoliday = !!holiday;
+
+      const cls = ['cal-day', cell.other?'other-month':'', isSun?'sunday':'', today?'today':'', isHoliday?'holiday':'']
         .filter(Boolean).join(' ');
 
       const pillsHtml = shifts.map(s =>
         `<div class="shift-pill ${s.cls}" title="${s.note||''}">${s.html||s.label||''}</div>`
       ).join('');
+
+      const holidayHtml = isHoliday
+        ? `<div class="shift-pill sp-holiday" title="${holiday}" style="background:#fef2f2;color:#dc2626;font-size:10px;border-radius:4px;padding:2px 5px;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">🎌 ${holiday}</div>`
+        : '';
 
       html += `<div class="${cls}">
         <div class="day-header">
@@ -144,7 +212,7 @@
             </svg>
           </button>
         </div>
-        ${pillsHtml}
+        ${holidayHtml}${pillsHtml}
       </div>`;
     });
 

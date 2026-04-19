@@ -361,13 +361,30 @@
   function getTodayShifts(empId, callback) {
     const allShifts = DB.shifts.getAll();
     const today = _todayStr();
-    const assignments = DB.workShifts.getAll({ employeeId: empId, fromDate: today, toDate: today }) || [];
-    if (assignments.length > 0) {
-      const shifts = assignments.map(function(a) {
-        return allShifts.find(function(s) { return String(s.id) === String(a.shiftId); });
-      }).filter(Boolean);
-      if (shifts.length > 0) { callback({ shifts: shifts, source: 'assigned' }); return; }
-    }
+
+    // Đọc từ humi_shift_assignments (được ghi bởi trang Chia ca)
+    var _rawAssign = [];
+    try { _rawAssign = JSON.parse(localStorage.getItem('humi_shift_assignments') || '[]'); } catch(e) {}
+    var assignShifts = _rawAssign
+      .filter(function(a) { return String(a.employeeId) === String(empId) && a.date === today; })
+      .map(function(a) { return allShifts.find(function(s) { return String(s.id) === String(a.shiftId); }); })
+      .filter(Boolean);
+
+    // Đọc thêm từ humi_work_shifts (fallback)
+    var wsAssign = DB.workShifts.getAll({ employeeId: empId, fromDate: today, toDate: today }) || [];
+    var wsShifts = wsAssign.map(function(a) {
+      return allShifts.find(function(s) { return String(s.id) === String(a.shiftId); });
+    }).filter(Boolean);
+
+    // Gộp + dedup theo shiftId
+    var seen = {};
+    var combined = [];
+    assignShifts.concat(wsShifts).forEach(function(s) {
+      var k = String(s.id);
+      if (!seen[k]) { seen[k] = true; combined.push(s); }
+    });
+
+    if (combined.length > 0) { callback({ shifts: combined, source: 'assigned' }); return; }
     callback(getFallbackShifts(allShifts));
   }
 

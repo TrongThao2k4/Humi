@@ -353,7 +353,85 @@
       });
       renderHistory();
     }
+    // Show manager salary toggle for managers/admins
+    var roleId = currentUser.roleId;
+    if (roleId === 'manager' || roleId === 'admin') {
+      var wrap = document.getElementById('mgrSalaryToggleWrap');
+      if (wrap) wrap.style.display = 'block';
+    }
   })();
+
+  // ===== MANAGER: ALL EMPLOYEES SALARY VIEW =====
+  var _mgrSalaryMode = false;
+
+  function toggleMgrSalaryView() {
+    _mgrSalaryMode = !_mgrSalaryMode;
+    var btn = document.getElementById('mgrSalaryToggleBtn');
+    if (btn) btn.textContent = _mgrSalaryMode ? 'Xem lương của tôi' : 'Xem toàn bộ nhân viên';
+
+    // Toggle individual salary section visibility
+    var scrollArea = document.getElementById('salaryScrollArea');
+    var mgrTable = document.getElementById('mgrAllSalaryWrap');
+
+    if (_mgrSalaryMode) {
+      if (!mgrTable) {
+        mgrTable = document.createElement('div');
+        mgrTable.id = 'mgrAllSalaryWrap';
+        mgrTable.style.cssText = 'flex:1;overflow:auto;background:#F2F6FA;';
+        mgrTable.innerHTML = buildMgrSalaryTable();
+        if (scrollArea && scrollArea.parentNode) scrollArea.parentNode.insertBefore(mgrTable, scrollArea);
+      } else {
+        mgrTable.innerHTML = buildMgrSalaryTable();
+        mgrTable.style.display = '';
+      }
+      if (scrollArea) scrollArea.style.display = 'none';
+    } else {
+      if (mgrTable) mgrTable.style.display = 'none';
+      if (scrollArea) scrollArea.style.display = '';
+    }
+  }
+
+  function buildMgrSalaryTable() {
+    var employees = DB.employees.getAll().filter(function(e) { return e.status === 'active'; });
+    var allSalary = DB.salary.getAll();
+    var periods = [...new Set(allSalary.map(function(r) { return r.period; }))].sort().reverse();
+    var period = periods[0] || currentPeriod || '';
+
+    var rows = employees.map(function(emp) {
+      var rec = allSalary.find(function(r) { return r.employeeId === emp.id && r.period === period; });
+      var net = rec ? (rec.netSalary || rec.grossSalary || 0) : 0;
+      var gross = rec ? (rec.grossSalary || 0) : 0;
+      var tax = rec ? (rec.tax || 0) : 0;
+      return '<tr>'
+        + '<td style="padding:12px 16px;font-weight:600;color:#2A3547;">' + (emp.name || '—') + '</td>'
+        + '<td style="padding:12px 16px;color:#7C8FAC;font-size:12px;">' + (emp.code || emp.id) + '</td>'
+        + '<td style="padding:12px 16px;color:#5A6A85;">' + (emp.unit || '—') + '</td>'
+        + '<td style="padding:12px 16px;color:#5A6A85;">' + (emp.position || '—') + '</td>'
+        + '<td style="padding:12px 16px;text-align:right;">' + fmt(gross) + '</td>'
+        + '<td style="padding:12px 16px;text-align:right;color:#ef4444;">-' + fmt(tax) + '</td>'
+        + '<td style="padding:12px 16px;text-align:right;font-weight:700;color:#16a34a;">' + fmt(net) + '</td>'
+        + '</tr>';
+    }).join('');
+
+    return '<div style="margin:14px 16px;background:white;border-radius:10px;box-shadow:0 2px 8px rgba(0,0,0,.05);overflow:hidden;">'
+      + '<div style="padding:14px 16px;border-bottom:1px solid #e5eaef;display:flex;align-items:center;justify-content:space-between;">'
+      + '<span style="font-size:14px;font-weight:700;color:#2A3547;">Bảng lương toàn công ty — ' + (period ? periodLabel(period) : '—') + '</span>'
+      + '<span style="font-size:12px;color:#7C8FAC;">' + employees.length + ' nhân viên</span>'
+      + '</div>'
+      + '<div style="overflow-x:auto;">'
+      + '<table style="width:100%;border-collapse:collapse;font-size:13px;">'
+      + '<thead><tr style="background:#F2F6FA;">'
+      + '<th style="padding:10px 16px;text-align:left;font-size:11px;font-weight:700;color:#7C8FAC;letter-spacing:.06em;text-transform:uppercase;">Họ tên</th>'
+      + '<th style="padding:10px 16px;text-align:left;font-size:11px;font-weight:700;color:#7C8FAC;letter-spacing:.06em;text-transform:uppercase;">Mã NV</th>'
+      + '<th style="padding:10px 16px;text-align:left;font-size:11px;font-weight:700;color:#7C8FAC;letter-spacing:.06em;text-transform:uppercase;">Đơn vị</th>'
+      + '<th style="padding:10px 16px;text-align:left;font-size:11px;font-weight:700;color:#7C8FAC;letter-spacing:.06em;text-transform:uppercase;">Chức vụ</th>'
+      + '<th style="padding:10px 16px;text-align:right;font-size:11px;font-weight:700;color:#7C8FAC;letter-spacing:.06em;text-transform:uppercase;">Lương gộp</th>'
+      + '<th style="padding:10px 16px;text-align:right;font-size:11px;font-weight:700;color:#7C8FAC;letter-spacing:.06em;text-transform:uppercase;">Thuế TNCN</th>'
+      + '<th style="padding:10px 16px;text-align:right;font-size:11px;font-weight:700;color:#7C8FAC;letter-spacing:.06em;text-transform:uppercase;">Thực lãnh</th>'
+      + '</tr></thead>'
+      + '<tbody>' + (rows || '<tr><td colspan="7" style="text-align:center;padding:40px;color:#7C8FAC;">Không có dữ liệu</td></tr>') + '</tbody>'
+      + '</table></div></div>';
+  }
 
 // ==================== USER DROPDOWN ====================
 function toggleUserDropdown() {

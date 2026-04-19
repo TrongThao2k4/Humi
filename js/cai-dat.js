@@ -141,15 +141,28 @@
     }
 
     const btn = document.getElementById('btnSaveProfile');
-    btn.classList.add('loading'); btn.disabled = true;
+    if (btn) { btn.classList.add('loading'); btn.disabled = true; }
     setTimeout(() => {
       var payload = { name, email, phone, dob: birth };
       if (avatar) payload.avatar = avatar;
       DB.employees.update(currentUser.id, payload);
       _origProfile = { name, email, phone, birth };
+
+      // Cập nhật tên hiển thị ở trang settings
       const dn = document.getElementById('profDisplayName');
-      if (dn) dn.textContent = name.split(' ').slice(-1)[0] || name;
-      btn.classList.remove('loading'); btn.disabled = false;
+      if (dn) dn.textContent = name;
+
+      // Cập nhật tên/topbar/sidebar ngay lập tức
+      ['sidebarName','topbarName','dropdownName'].forEach(function(id) {
+        var el = document.getElementById(id); if (el) el.textContent = name;
+      });
+      var emp = DB.employees.getById(currentUser.id);
+      var role = (emp && emp.position) || currentUser.position || '—';
+      ['sidebarRole','topbarRole','dropdownRole'].forEach(function(id) {
+        var el = document.getElementById(id); if (el) el.textContent = role;
+      });
+
+      if (btn) { btn.classList.remove('loading'); btn.disabled = false; }
       DB.utils.showToast('Đã lưu thay đổi thành công!');
     }, 600);
   }

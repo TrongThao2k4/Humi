@@ -203,6 +203,10 @@
 
   function openDrawer(id) {
     currentDrawerEmpId = id;
+    // Reset KPI edit state when switching employees
+    window._kpiEditScores = null;
+    window._kpiEditEmpId = null;
+    window._kpiEditPeriod = null;
     const emp = employees.find(e => e.id === id);
     if (!emp) return;
 
@@ -248,16 +252,16 @@
   function switchTab(btn, tabId) {
     document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
     btn.classList.add('active');
-    ['infoTab','contractTab','payTab'].forEach(id => {
+    ['infoTab','contractTab','payTab','kpiTab'].forEach(id => {
       document.getElementById(id).style.display = id === tabId ? 'block' : 'none';
     });
   }
 
   function switchTabById(tabId) {
     document.querySelectorAll('.tab-btn').forEach((b, i) => {
-      b.classList.toggle('active', ['infoTab','contractTab','payTab'][i] === tabId);
+      b.classList.toggle('active', ['infoTab','contractTab','payTab','kpiTab'][i] === tabId);
     });
-    ['infoTab','contractTab','payTab'].forEach(id => {
+    ['infoTab','contractTab','payTab','kpiTab'].forEach(id => {
       document.getElementById(id).style.display = id === tabId ? 'block' : 'none';
     });
   }
@@ -407,6 +411,151 @@
   // ===== INIT =====
   populateUnitDropdown();
   applyFilters();
+
+  // Ngăn drawer đóng khi user drag text ra ngoài input
+  var _drawerMousedownInside = false;
+  document.getElementById('empDrawer').addEventListener('mousedown', function() {
+    _drawerMousedownInside = true;
+  });
+  document.addEventListener('mouseup', function() {
+    setTimeout(function() { _drawerMousedownInside = false; }, 0);
+  });
+  document.getElementById('drawerOverlay').addEventListener('click', function() {
+    if (!_drawerMousedownInside) closeDrawer();
+  });
+
+// ==================== KPI MODULE ====================
+var KPI_CATEGORIES = [
+  { key: 'chuyen_mon',    label: 'Chuyên môn',           weight: 30 },
+  { key: 'ky_nang',       label: 'Kỹ năng làm việc',     weight: 25 },
+  { key: 'thai_do',       label: 'Thái độ & kỷ luật',    weight: 20 },
+  { key: 'ket_qua',       label: 'Kết quả công việc',     weight: 25 },
+];
+
+function kpiPeriodKey(year, quarter) { return year + 'Q' + quarter; }
+function kpiStorageKey(empId, period) { return 'humi_kpi_' + empId + '_' + period; }
+
+function getKpiPeriods() {
+  var now = new Date();
+  var periods = [];
+  var y = now.getFullYear(), q = Math.ceil((now.getMonth() + 1) / 3);
+  for (var i = 0; i < 4; i++) {
+    periods.push({ label: 'Q' + q + '/' + y, value: kpiPeriodKey(y, q) });
+    q--;
+    if (q < 1) { q = 4; y--; }
+  }
+  return periods;
+}
+
+function loadKpiTab() {
+  var empId = currentDrawerEmpId;
+  if (!empId) return;
+  var isManager = currentUser.roleId === 'manager' || currentUser.roleId === 'admin';
+
+  // Populate period select
+  var sel = document.getElementById('kpiPeriodSel');
+  if (sel && !sel.options.length) {
+    getKpiPeriods().forEach(function(p) {
+      var opt = document.createElement('option');
+      opt.value = p.value; opt.textContent = p.label;
+      sel.appendChild(opt);
+    });
+  }
+  var period = sel ? sel.value : kpiPeriodKey(new Date().getFullYear(), Math.ceil((new Date().getMonth()+1)/3));
+
+  // Load stored data; use in-memory edit state if available
+  var stored = {};
+  try { stored = JSON.parse(localStorage.getItem(kpiStorageKey(empId, period))) || {}; } catch(e) {}
+  if (window._kpiEditScores && window._kpiEditEmpId === empId && window._kpiEditPeriod === period) {
+    Object.assign(stored, window._kpiEditScores);
+  } else {
+    window._kpiEditScores = Object.assign({}, stored);
+    window._kpiEditEmpId = empId;
+    window._kpiEditPeriod = period;
+  }
+
+  var totalWeighted = 0, totalWeight = 0;
+  KPI_CATEGORIES.forEach(function(cat) {
+    var score = stored[cat.key] || 0;
+    totalWeighted += score * cat.weight;
+    totalWeight += cat.weight;
+  });
+  var overall = totalWeight > 0 ? (totalWeighted / totalWeight) : 0;
+  var overallLabel = overall >= 4.5 ? 'Xuất sắc' : overall >= 3.5 ? 'Tốt' : overall >= 2.5 ? 'Khá' : overall >= 1.5 ? 'Trung bình' : overall > 0 ? 'Yếu' : '—';
+  var overallColor = overall >= 4.5 ? '#16a34a' : overall >= 3.5 ? '#2563eb' : overall >= 2.5 ? '#f97316' : '#ef4444';
+
+  var html = overall > 0
+    ? '<div style="background:#F2F6FA;border-radius:10px;padding:14px 16px;margin-bottom:14px;text-align:center;">'
+      + '<div style="font-size:28px;font-weight:800;color:' + overallColor + ';">' + overall.toFixed(1) + '<span style="font-size:14px;color:#7C8FAC;">/5</span></div>'
+      + '<div style="font-size:12px;font-weight:700;color:' + overallColor + ';margin-top:2px;">' + overallLabel + '</div>'
+      + '</div>'
+    : '';
+
+  KPI_CATEGORIES.forEach(function(cat) {
+    var score = stored[cat.key] || 0;
+    html += '<div style="margin-bottom:14px;">';
+    html += '<div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">';
+    html += '<span style="font-size:12px;font-weight:600;color:#2A3547;">' + cat.label + '</span>';
+    html += '<span style="font-size:11px;color:#7C8FAC;">Trọng số: ' + cat.weight + '%</span>';
+    html += '</div>';
+    // Star rating
+    html += '<div style="display:flex;gap:4px;">';
+    for (var s = 1; s <= 5; s++) {
+      var filled = s <= score;
+      var starColor = filled ? '#f59e0b' : '#e5eaef';
+      if (isManager) {
+        html += '<button onclick="setKpiScore(\'' + cat.key + '\',' + s + ')" style="width:32px;height:32px;border:none;background:none;cursor:pointer;padding:0;">'
+          + '<svg width="24" height="24" viewBox="0 0 24 24" fill="' + starColor + '" stroke="' + (filled ? '#d97706' : '#d1d5db') + '" stroke-width="1.5"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>'
+          + '</button>';
+      } else {
+        html += '<svg width="24" height="24" viewBox="0 0 24 24" fill="' + starColor + '" stroke="' + (filled ? '#d97706' : '#d1d5db') + '" stroke-width="1.5" style="flex-shrink:0;"><polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"/></svg>';
+      }
+    }
+    html += '</div>';
+    if (stored[cat.key + '_note'] && !isManager) {
+      html += '<div style="font-size:11px;color:#7C8FAC;margin-top:4px;font-style:italic;">' + stored[cat.key + '_note'] + '</div>';
+    }
+    if (isManager) {
+      html += '<input type="text" id="kpiNote_' + cat.key + '" value="' + (stored[cat.key + '_note'] || '') + '" placeholder="Ghi chú (tuỳ chọn)..." style="width:100%;margin-top:6px;padding:6px 8px;border:1px solid #e5eaef;border-radius:6px;font-size:11px;color:#2A3547;font-family:inherit;box-sizing:border-box;">';
+    }
+    html += '</div>';
+  });
+
+  var content = document.getElementById('kpiContent');
+  if (content) content.innerHTML = html;
+
+  // Store temp scores for editing
+  window._kpiEditScores = Object.assign({}, stored);
+
+  var saveWrap = document.getElementById('kpiSaveWrap');
+  if (saveWrap) saveWrap.style.display = isManager ? 'block' : 'none';
+}
+
+window.setKpiScore = function(catKey, score) {
+  if (!window._kpiEditScores) window._kpiEditScores = {};
+  // Capture current note values before re-render
+  KPI_CATEGORIES.forEach(function(cat) {
+    var noteEl = document.getElementById('kpiNote_' + cat.key);
+    if (noteEl) window._kpiEditScores[cat.key + '_note'] = noteEl.value;
+  });
+  window._kpiEditScores[catKey] = score;
+  loadKpiTab();
+};
+
+window.saveKpi = function() {
+  var empId = currentDrawerEmpId;
+  var sel = document.getElementById('kpiPeriodSel');
+  if (!empId || !sel) return;
+  var period = sel.value;
+  var data = Object.assign({}, window._kpiEditScores || {});
+  KPI_CATEGORIES.forEach(function(cat) {
+    var noteEl = document.getElementById('kpiNote_' + cat.key);
+    if (noteEl) data[cat.key + '_note'] = noteEl.value;
+  });
+  localStorage.setItem(kpiStorageKey(empId, period), JSON.stringify(data));
+  DB.utils.showToast('Đã lưu đánh giá KPI');
+  loadKpiTab();
+};
 
 // ==================== USER DROPDOWN ====================
 function toggleUserDropdown() {

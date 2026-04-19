@@ -1,6 +1,7 @@
 // Auth guard
   const _s = DB.auth.requireAuth(); if(!_s) throw 0;
   const currentUser = _s.user;
+  if (currentUser.roleId === 'employee') { window.location.href = '../index.html'; throw 0; }
 
 // ===== LOAD USER INFO (sidebar + topbar) =====
 (function loadUserInfo() {
@@ -971,6 +972,14 @@ function bulkApproveByCondition() {
     return;
   }
 
+  showConfirm(
+    'Sẽ duyệt ' + targets.length + ' ca công theo điều kiện đã chọn. Hành động này không thể hoàn tác.',
+    function() { _doBulkApprove(targets, note); },
+    { title: 'Xác nhận duyệt hàng loạt', okText: 'Duyệt tất cả' }
+  );
+}
+
+function _doBulkApprove(targets, note) {
   var touchedEmployees = new Set();
   var sentMessages = new Set();
 

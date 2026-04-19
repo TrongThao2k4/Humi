@@ -7,6 +7,7 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
   <script src="../js/db.js"></script>
   <script src="../js/theme.js"></script>
+  <script src="../js/common.js"></script>
   <script>(function(){var o=console.warn;console.warn=function(){var m=Array.prototype.join.call(arguments,' ');if(m.indexOf('cdn.tailwindcss.com should not be used in production')!==-1)return;return o.apply(console,arguments);};})();</script>
   <script src="https://cdn.tailwindcss.com"></script>
   <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
@@ -159,12 +160,12 @@
                 </div>
                 <div class="form-group">
                   <label class="form-label">Email</label>
-                  <input class="form-input" id="profEmail" type="email" placeholder="email@company.com" oninput="validateEmail(this)" />
+                  <input class="form-input" id="profEmail" type="email" placeholder="email@company.com" oninput="validateEmail(this);document.getElementById('btnSaveProfile').disabled=false" />
                   <span class="form-error" id="errEmail">Email không đúng định dạng</span>
                 </div>
                 <div class="form-group">
                   <label class="form-label">Số điện thoại</label>
-                  <input class="form-input" id="profPhone" type="tel" placeholder="0912345678" oninput="validatePhone(this)" />
+                  <input class="form-input" id="profPhone" type="tel" placeholder="0912345678" oninput="validatePhone(this);document.getElementById('btnSaveProfile').disabled=false" />
                   <span class="form-error" id="errPhone">Số điện thoại phải có 9–11 chữ số</span>
                 </div>
                 <div class="form-group">
@@ -177,7 +178,7 @@
                 </div>
                 <div class="form-group">
                   <label class="form-label">Ngày sinh</label>
-                  <input class="form-input" id="profBirth" type="date" oninput="validateBirthDate(this)" />
+                  <input class="form-input" id="profBirth" type="date" oninput="validateBirthDate(this);document.getElementById('btnSaveProfile').disabled=false" />
                   <span class="form-error" id="errBirth">Ngày sinh không hợp lệ</span>
                 </div>
               </div>
@@ -331,39 +332,17 @@
               <p class="card-head-title">Chủ đề giao diện</p>
             </div>
             <div class="card-body" style="padding-top:18px;">
-              <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;max-width:520px;">
-                <div class="theme-card" id="themeLight" onclick="selectTheme('light')">
+              <div style="display:flex;gap:12px;max-width:180px;">
+                <div class="theme-card selected" id="themeLight">
                   <div style="height:44px;border-radius:8px;background:linear-gradient(135deg,#F2F6FA,#e8edf5);margin-bottom:10px;border:1px solid #e5eaef;display:flex;align-items:center;justify-content:center;gap:4px;">
                     <div style="width:8px;height:8px;border-radius:50%;background:#e5eaef;"></div>
                     <div style="width:20px;height:4px;border-radius:4px;background:#cdd5e0;"></div>
                     <div style="width:12px;height:4px;border-radius:4px;background:#e5eaef;"></div>
                   </div>
                   <p class="theme-card-label" style="font-size:13px;font-weight:700;color:#2A3547;margin:0;">Sáng</p>
-                  <p class="theme-card-sub" id="themeSubLight" style="font-size:11px;color:#7C8FAC;margin:3px 0 0;">Nền trắng</p>
-                </div>
-                <div class="theme-card" id="themeDark" onclick="selectTheme('dark')">
-                  <div style="height:44px;border-radius:8px;background:linear-gradient(135deg,#1e293b,#0f172a);margin-bottom:10px;display:flex;align-items:center;justify-content:center;gap:4px;">
-                    <div style="width:8px;height:8px;border-radius:50%;background:#334155;"></div>
-                    <div style="width:20px;height:4px;border-radius:4px;background:#475569;"></div>
-                    <div style="width:12px;height:4px;border-radius:4px;background:#334155;"></div>
-                  </div>
-                  <p class="theme-card-label" style="font-size:13px;font-weight:700;color:#2A3547;margin:0;">Tối</p>
-                  <p class="theme-card-sub" id="themeSubDark" style="font-size:11px;color:#7C8FAC;margin:3px 0 0;">Nền tối</p>
-                </div>
-                <div class="theme-card" id="themeAuto" onclick="selectTheme('auto')">
-                  <div style="height:44px;border-radius:8px;overflow:hidden;margin-bottom:10px;display:flex;">
-                    <div style="flex:1;background:linear-gradient(135deg,#F2F6FA,#e8edf5);display:flex;align-items:center;justify-content:center;">
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/></svg>
-                    </div>
-                    <div style="flex:1;background:linear-gradient(135deg,#1e293b,#0f172a);display:flex;align-items:center;justify-content:center;">
-                      <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="#475569" stroke-width="2"><path d="M21 12.79A9 9 0 1111.21 3 7 7 0 0021 12.79z"/></svg>
-                    </div>
-                  </div>
-                  <p class="theme-card-label" style="font-size:13px;font-weight:700;color:#2A3547;margin:0;">Tự động</p>
-                  <p class="theme-card-sub" id="themeSubAuto" style="font-size:11px;color:#7C8FAC;margin:3px 0 0;">Theo giờ</p>
+                  <p class="theme-card-sub" id="themeSubLight" style="font-size:11px;color:#7C8FAC;margin:3px 0 0;">Đang dùng</p>
                 </div>
               </div>
-              <p style="font-size:12px;color:#7C8FAC;margin:10px 0 0;" id="themeAutoNote"></p>
             </div>
           </div>
           <div class="card">

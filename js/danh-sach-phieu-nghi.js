@@ -185,7 +185,9 @@ function filterTable() {
     if (status && r.status     !== status) return false;
     if (type   && r.leaveType  !== type)   return false;
     if (_dateRange) {
-      var start = new Date(r.startDate);
+      // Parse as local date to avoid UTC/local timezone mismatch
+      var p = (r.startDate || '').split('-');
+      var start = p.length === 3 ? new Date(+p[0], +p[1]-1, +p[2]) : new Date(r.startDate);
       if (start < _dateRange.from || start > _dateRange.to) return false;
     }
     return true;
@@ -543,8 +545,10 @@ function exportCSV() {
 window._fpInstance = flatpickr('#filterDate', {
   mode: 'range', dateFormat: 'd/m/Y', locale: 'vn', allowInput: false, disableMobile: true,
   onChange: function(dates) {
-    if (dates.length === 2) {
-      _dateRange = { from: dates[0], to: dates[1] };
+    if (dates.length >= 1) {
+      var toEnd = new Date(dates[dates.length - 1]);
+      toEnd.setHours(23, 59, 59, 999);
+      _dateRange = { from: dates[0], to: toEnd };
     } else {
       _dateRange = null;
     }

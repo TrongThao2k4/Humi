@@ -1,0 +1,705 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Humi HRM — Test Sheet</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;}
+body{font-family:'Segoe UI',sans-serif;background:#f0f4f8;color:#2A3547;font-size:13px;}
+.header{background:linear-gradient(135deg,#5D87FF,#4338ca);color:white;padding:28px 32px;}
+.header h1{font-size:22px;font-weight:800;letter-spacing:-0.5px;}
+.header p{font-size:13px;opacity:.8;margin-top:4px;}
+.summary{display:grid;grid-template-columns:repeat(5,1fr);gap:12px;padding:20px 32px;background:white;border-bottom:1px solid #e5eaef;}
+.sum-card{text-align:center;padding:12px;border-radius:10px;background:#F2F6FA;}
+.sum-card .val{font-size:28px;font-weight:800;}
+.sum-card .lbl{font-size:11px;color:#7C8FAC;font-weight:600;text-transform:uppercase;letter-spacing:.06em;margin-top:2px;}
+.sum-card.total .val{color:#2A3547;}
+.sum-card.pass .val{color:#16a34a;}
+.sum-card.fail .val{color:#ef4444;}
+.sum-card.na .val{color:#7C8FAC;}
+.sum-card.pct .val{color:#5D87FF;}
+.progress-bar{height:6px;background:#e5eaef;margin:0 32px 0;border-radius:99px;overflow:hidden;}
+.progress-fill{height:100%;background:linear-gradient(90deg,#5D87FF,#16a34a);border-radius:99px;transition:width .4s;}
+.toolbar{display:flex;gap:8px;padding:14px 32px;background:white;border-bottom:1px solid #e5eaef;align-items:center;flex-wrap:wrap;}
+.toolbar button{padding:7px 14px;border-radius:7px;border:1px solid #e5eaef;background:white;cursor:pointer;font-size:12px;font-weight:600;color:#5A6A85;font-family:inherit;}
+.toolbar button:hover{background:#F2F6FA;}
+.toolbar button.btn-p{background:#5D87FF;color:white;border-color:#5D87FF;}
+.toolbar button.btn-f{background:#ef4444;color:white;border-color:#ef4444;}
+.toolbar button.btn-n{background:#7C8FAC;color:white;border-color:#7C8FAC;}
+.toolbar .spacer{flex:1;}
+.toolbar .filter-lbl{font-size:12px;color:#7C8FAC;}
+.content{padding:24px 32px;max-width:1400px;}
+.module{background:white;border-radius:14px;margin-bottom:20px;overflow:hidden;box-shadow:0 1px 4px rgba(0,0,0,.06);}
+.mod-header{padding:16px 20px;border-bottom:1px solid #e5eaef;display:flex;align-items:center;gap:10px;cursor:pointer;user-select:none;}
+.mod-icon{width:34px;height:34px;border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:17px;flex-shrink:0;}
+.mod-title{font-size:14px;font-weight:700;}
+.mod-sub{font-size:11px;color:#7C8FAC;margin-top:1px;}
+.mod-badge{margin-left:auto;display:flex;gap:6px;}
+.badge{font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;}
+.badge-p{background:#dcfce7;color:#16a34a;}
+.badge-f{background:#fee2e2;color:#ef4444;}
+.badge-n{background:#f1f5f9;color:#7C8FAC;}
+.mod-toggle{width:20px;height:20px;display:flex;align-items:center;justify-content:center;color:#7C8FAC;transition:transform .2s;margin-left:8px;}
+.mod-toggle.open{transform:rotate(180deg);}
+.mod-body{display:none;}
+.mod-body.open{display:block;}
+table{width:100%;border-collapse:collapse;}
+thead th{padding:10px 16px;text-align:left;font-size:10px;font-weight:700;color:#7C8FAC;letter-spacing:.08em;text-transform:uppercase;background:#F2F6FA;border-bottom:1px solid #e5eaef;}
+tbody tr{border-bottom:1px solid #f5f5f8;}
+tbody tr:hover{background:#fafbfd;}
+tbody td{padding:10px 16px;vertical-align:middle;}
+.tc-id{font-size:11px;color:#7C8FAC;font-weight:700;white-space:nowrap;}
+.tc-name{font-weight:600;color:#2A3547;}
+.tc-steps{font-size:11px;color:#5A6A85;line-height:1.5;margin-top:3px;}
+.tc-expect{font-size:11px;color:#16a34a;margin-top:3px;}
+.tc-priority{font-size:10px;font-weight:700;padding:2px 7px;border-radius:99px;}
+.pri-high{background:#fee2e2;color:#dc2626;}
+.pri-med{background:#fef9c3;color:#a16207;}
+.pri-low{background:#f0fdf4;color:#16a34a;}
+.result-cell{white-space:nowrap;}
+.radio-group{display:flex;gap:4px;}
+.radio-btn{padding:5px 10px;border-radius:6px;border:1.5px solid #e5eaef;cursor:pointer;font-size:11px;font-weight:700;background:white;transition:all .12s;font-family:inherit;}
+.radio-btn:hover{border-color:#5D87FF;color:#5D87FF;}
+.radio-btn.pass{background:#dcfce7;border-color:#16a34a;color:#16a34a;}
+.radio-btn.fail{background:#fee2e2;border-color:#ef4444;color:#ef4444;}
+.radio-btn.na{background:#f1f5f9;border-color:#7C8FAC;color:#7C8FAC;}
+.notes-input{width:100%;padding:5px 8px;border:1px solid #e5eaef;border-radius:6px;font-size:11px;font-family:inherit;color:#2A3547;resize:none;}
+.notes-input:focus{outline:none;border-color:#5D87FF;}
+.row-pass td{background:#f0fdf4;}
+.row-fail td{background:#fff1f2;}
+.row-na td{background:#f8fafc;}
+@media print{
+  .toolbar,.progress-bar{display:none;}
+  .summary{border:1px solid #e5eaef;}
+  .mod-body{display:block!important;}
+  .radio-group{display:none;}
+  body{background:white;}
+}
+.section-label{font-size:10px;font-weight:700;color:#7C8FAC;letter-spacing:.1em;text-transform:uppercase;padding:8px 16px 4px;background:#fafbfd;border-bottom:1px solid #f5f5f8;}
+</style>
+</head>
+<body>
+
+<div class="header">
+  <h1>Humi HRM — Test Sheet</h1>
+  <p>Bảng kiểm thử toàn bộ hệ thống · Ngày: <span id="testDate"></span> · Người thực hiện: ___________________</p>
+</div>
+
+<div class="summary">
+  <div class="sum-card total"><div class="val" id="sTotal">0</div><div class="lbl">Tổng test case</div></div>
+  <div class="sum-card pass"><div class="val" id="sPass">0</div><div class="lbl">Pass</div></div>
+  <div class="sum-card fail"><div class="val" id="sFail">0</div><div class="lbl">Fail</div></div>
+  <div class="sum-card na"><div class="val" id="sNA">0</div><div class="lbl">N/A</div></div>
+  <div class="sum-card pct"><div class="val" id="sPct">—</div><div class="lbl">Pass Rate</div></div>
+</div>
+<div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+
+<div class="toolbar">
+  <button onclick="setAll('pass')" class="btn-p">✓ Pass tất cả</button>
+  <button onclick="setAll('fail')" class="btn-f">✗ Fail tất cả</button>
+  <button onclick="clearAll()">↺ Reset</button>
+  <button onclick="expandAll()">▼ Mở tất cả</button>
+  <button onclick="collapseAll()">▲ Thu tất cả</button>
+  <div class="spacer"></div>
+  <span class="filter-lbl">Lọc:</span>
+  <button onclick="filterRows('all')" id="fAll" class="btn-p">Tất cả</button>
+  <button onclick="filterRows('fail')" id="fFail">Chỉ Fail</button>
+  <button onclick="filterRows('empty')" id="fEmpty">Chưa test</button>
+  <button onclick="window.print()">🖨 In</button>
+</div>
+
+<div class="content" id="content"></div>
+
+<script>
+var testDate = new Date();
+document.getElementById('testDate').textContent =
+  String(testDate.getDate()).padStart(2,'0') + '/' +
+  String(testDate.getMonth()+1).padStart(2,'0') + '/' + testDate.getFullYear();
+
+// ═══════════════════════════════════════════
+// TEST DATA
+// ═══════════════════════════════════════════
+var MODULES = [
+{
+  id:'M01', title:'Đăng nhập / Xác thực', icon:'🔐', color:'#EEF2FF',
+  cases:[
+    {id:'TC001',name:'Đăng nhập thành công với tài khoản hợp lệ',pri:'high',
+     steps:'1. Mở login.html\n2. Nhập mã NV và mật khẩu đúng\n3. Nhấn Đăng nhập',
+     expect:'Chuyển về index.html, hiển thị tên/avatar đúng'},
+    {id:'TC002',name:'Đăng nhập thất bại — sai mật khẩu',pri:'high',
+     steps:'1. Nhập mã NV đúng, mật khẩu sai\n2. Nhấn Đăng nhập',
+     expect:'Hiện thông báo lỗi đỏ "Mật khẩu không đúng", không chuyển trang'},
+    {id:'TC003',name:'Đăng nhập thất bại — mã NV không tồn tại',pri:'high',
+     steps:'1. Nhập mã NV không tồn tại\n2. Nhấn Đăng nhập',
+     expect:'Hiện thông báo lỗi, không chuyển trang'},
+    {id:'TC004',name:'Truy cập trang nội bộ khi chưa đăng nhập',pri:'high',
+     steps:'1. Xóa localStorage\n2. Truy cập thẳng index.html',
+     expect:'Tự động redirect về login.html'},
+    {id:'TC005',name:'Đăng xuất',pri:'high',
+     steps:'1. Đang đăng nhập\n2. Click avatar → Đăng xuất',
+     expect:'Xóa session, redirect về login.html'},
+    {id:'TC006',name:'Nhân viên thường bị chặn trang manager',pri:'high',
+     steps:'1. Đăng nhập bằng tài khoản employee\n2. Vào thẳng URL duyet-cong.html',
+     expect:'Redirect về index.html ngay lập tức'},
+  ]
+},
+{
+  id:'M02', title:'Dashboard (Trang chủ)', icon:'🏠', color:'#F0FDF4',
+  cases:[
+    {id:'TC007',name:'Hiển thị thông tin người dùng đúng',pri:'high',
+     steps:'1. Đăng nhập\n2. Xem topbar và sidebar',
+     expect:'Tên, chức vụ, avatar hiển thị đúng với tài khoản đang đăng nhập'},
+    {id:'TC008',name:'Thống kê cá nhân (ngày công, phép tồn)',pri:'med',
+     steps:'1. Xem phần thống kê tháng hiện tại trên dashboard',
+     expect:'Số liệu ngày công, phép tồn khớp với dữ liệu trong DB'},
+    {id:'TC009',name:'Danh sách thông báo công ty',pri:'med',
+     steps:'1. Xem phần "Thông báo công ty"',
+     expect:'Hiển thị tối đa 3 thông báo mới nhất, đúng tiêu đề/ngày'},
+    {id:'TC010',name:'Widget hộp thư',pri:'med',
+     steps:'1. Xem phần "Thư mới từ đồng nghiệp"\n2. Chuyển tab Chưa đọc / Đã đọc',
+     expect:'Hiển thị đúng thư, badge số chưa đọc chính xác'},
+    {id:'TC011',name:'Chấm công (check-in/check-out)',pri:'high',
+     steps:'1. Nhấn Check-in\n2. Sau đó nhấn Check-out',
+     expect:'Ghi nhận giờ vào/ra, trạng thái cập nhật đúng'},
+    {id:'TC012',name:'Dashboard manager — thống kê tổng quan',pri:'high',
+     steps:'1. Đăng nhập bằng tài khoản manager\n2. Xem phần "Tổng quan công ty"',
+     expect:'Hiển thị 4 card: Nhân viên, Có mặt hôm nay, Đơn nghỉ, Tăng ca chờ'},
+    {id:'TC013',name:'Dashboard manager — ẩn với nhân viên thường',pri:'high',
+     steps:'1. Đăng nhập bằng tài khoản employee\n2. Xem trang chủ',
+     expect:'Không thấy section "Tổng quan công ty"'},
+    {id:'TC014',name:'Sidebar — ẩn menu manager với employee',pri:'high',
+     steps:'1. Đăng nhập tài khoản employee\n2. Xem sidebar',
+     expect:'"Duyệt công", "Duyệt phép", "Nhân viên" bị ẩn khỏi sidebar'},
+    {id:'TC015',name:'Đồng hồ thời gian thực',pri:'low',
+     steps:'1. Xem phần đồng hồ bên phải\n2. Đợi 3 giây',
+     expect:'Giờ:phút:giây cập nhật liên tục'},
+  ]
+},
+{
+  id:'M03', title:'Duyệt công', icon:'⏱', color:'#FFF7ED',
+  cases:[
+    {id:'TC016',name:'Xem bảng chấm công nhân viên',pri:'high',
+     steps:'1. Đăng nhập manager\n2. Vào Duyệt công',
+     expect:'Bảng hiển thị danh sách nhân viên và ca làm việc theo tuần'},
+    {id:'TC017',name:'Duyệt một ca chấm công',pri:'high',
+     steps:'1. Click ô chấm công pending\n2. Nhấn nút Duyệt',
+     expect:'Trạng thái chuyển sang "Đã duyệt", màu xanh'},
+    {id:'TC018',name:'Từ chối một ca chấm công',pri:'high',
+     steps:'1. Click ô pending\n2. Nhấn Từ chối\n3. Nhập lý do',
+     expect:'Trạng thái chuyển "Bị từ chối", nhân viên nhận thông báo'},
+    {id:'TC019',name:'Duyệt hàng loạt theo điều kiện',pri:'high',
+     steps:'1. Nhấn "Duyệt theo điều kiện"\n2. Chọn điều kiện\n3. Nhấn xác nhận',
+     expect:'Hiện confirm dialog → sau OK duyệt hàng loạt đúng điều kiện'},
+    {id:'TC020',name:'Confirm dialog xuất hiện trước duyệt hàng loạt',pri:'high',
+     steps:'1. Nhấn "Duyệt theo điều kiện" → thiết lập → Duyệt tất cả',
+     expect:'Modal xác nhận xuất hiện trước khi thực hiện'},
+    {id:'TC021',name:'Chuyển tuần trước/sau',pri:'med',
+     steps:'1. Nhấn nút ← và →',
+     expect:'Bảng cập nhật hiển thị tuần khác, nhãn tuần đúng'},
+    {id:'TC022',name:'Lọc theo ca / đơn vị',pri:'med',
+     steps:'1. Dùng bộ lọc chọn ca hoặc đơn vị\n2. Nhấn Áp dụng',
+     expect:'Bảng chỉ hiện nhân viên/ca phù hợp bộ lọc'},
+    {id:'TC023',name:'Nhân viên không truy cập được trang',pri:'high',
+     steps:'1. Đăng nhập employee\n2. Vào URL duyet-cong.html',
+     expect:'Redirect về index.html'},
+  ]
+},
+{
+  id:'M04', title:'Duyệt phép (Phiếu nghỉ)', icon:'📋', color:'#F0FDF4',
+  cases:[
+    {id:'TC024',name:'Xem danh sách đơn nghỉ chờ duyệt',pri:'high',
+     steps:'1. Đăng nhập manager\n2. Vào Duyệt phép',
+     expect:'Hiển thị đơn nghỉ có trạng thái Pending'},
+    {id:'TC025',name:'Duyệt đơn nghỉ',pri:'high',
+     steps:'1. Click vào đơn\n2. Nhấn Duyệt',
+     expect:'Trạng thái → Đã duyệt, nhân viên nhận thông báo'},
+    {id:'TC026',name:'Từ chối đơn nghỉ kèm lý do',pri:'high',
+     steps:'1. Click đơn → Từ chối\n2. Nhập lý do',
+     expect:'Trạng thái → Từ chối, lý do được lưu'},
+    {id:'TC027',name:'Lọc đơn theo loại nghỉ / đơn vị',pri:'med',
+     steps:'1. Dùng filter chọn loại\n2. Nhấn lọc',
+     expect:'Chỉ hiện đơn phù hợp'},
+    {id:'TC028',name:'Duyệt hàng loạt với confirm dialog',pri:'high',
+     steps:'1. Nhấn "Duyệt theo điều kiện"\n2. Chọn điều kiện → Duyệt tất cả',
+     expect:'Confirm dialog xuất hiện, sau OK thực hiện duyệt'},
+  ]
+},
+{
+  id:'M05', title:'Quản lý nhân viên (Danh sách)', icon:'👥', color:'#EEF2FF',
+  cases:[
+    {id:'TC029',name:'Xem danh sách nhân viên',pri:'high',
+     steps:'1. Đăng nhập manager\n2. Vào Nhân viên',
+     expect:'Bảng hiển thị danh sách NV với avatar, mã, tên, đơn vị, trạng thái'},
+    {id:'TC030',name:'Tìm kiếm nhân viên theo tên',pri:'high',
+     steps:'1. Gõ tên NV vào ô tìm kiếm',
+     expect:'Bảng lọc realtime chỉ hiện NV khớp tên'},
+    {id:'TC031',name:'Lọc theo đơn vị',pri:'med',
+     steps:'1. Chọn đơn vị từ dropdown',
+     expect:'Chỉ hiện NV thuộc đơn vị đó'},
+    {id:'TC032',name:'Lọc theo trạng thái',pri:'med',
+     steps:'1. Chọn trạng thái (active/inactive)',
+     expect:'Bảng lọc đúng'},
+    {id:'TC033',name:'Phân trang',pri:'med',
+     steps:'1. Nếu > 10 NV, nhấn trang 2',
+     expect:'Chuyển trang đúng, dữ liệu tiếp theo hiển thị'},
+    {id:'TC034',name:'Click NV → mở drawer chi tiết',pri:'high',
+     steps:'1. Click vào hàng nhân viên',
+     expect:'Drawer hiện thông tin đầy đủ: tab Thông tin, Hợp đồng, Lương, KPI'},
+    {id:'TC035',name:'Skeleton loading khi đầu trang',pri:'med',
+     steps:'1. Mở trang danh-sach-nhan-vien lần đầu',
+     expect:'Skeleton animation xuất hiện trước khi dữ liệu load'},
+    {id:'TC036',name:'Nhân viên không truy cập được trang',pri:'high',
+     steps:'1. Đăng nhập employee → URL danh-sach-nhan-vien.html',
+     expect:'Redirect về trang chủ'},
+  ]
+},
+{
+  id:'M06', title:'Hồ sơ nhân viên (Drawer)', icon:'🗂', color:'#FDF4FF',
+  cases:[
+    {id:'TC037',name:'Tab Thông tin cơ bản',pri:'high',
+     steps:'1. Mở drawer NV\n2. Xem tab Thông tin',
+     expect:'Hiện đầy đủ: tên, mã, sinh, giới tính, SĐT, email, đơn vị, vị trí'},
+    {id:'TC038',name:'Tab Hợp đồng & lịch sử',pri:'high',
+     steps:'1. Click tab Hợp đồng',
+     expect:'Hiển thị loại HĐ, ngày ký, hết hạn, lịch sử hợp đồng'},
+    {id:'TC039',name:'Tab Lương & Phúc lợi',pri:'med',
+     steps:'1. Click tab Lương & Phúc lợi',
+     expect:'Hiển thị lương cơ bản, phụ cấp, phép năm còn lại'},
+    {id:'TC040',name:'Tab KPI — xem đánh giá',pri:'high',
+     steps:'1. Click tab KPI\n2. Chọn kỳ đánh giá',
+     expect:'4 tiêu chí với sao vàng, điểm tổng tự tính'},
+    {id:'TC041',name:'Tab KPI — manager chỉnh sửa',pri:'high',
+     steps:'1. Đăng nhập manager\n2. Drawer NV → KPI\n3. Click sao để đánh giá\n4. Nhấn Lưu đánh giá',
+     expect:'Sao thay đổi, sau lưu dữ liệu persist khi mở lại'},
+    {id:'TC042',name:'Tab KPI — employee chỉ xem',pri:'high',
+     steps:'1. Đăng nhập employee → Hồ sơ\n2. Tab KPI',
+     expect:'Không có nút star tương tác, không có nút Lưu'},
+    {id:'TC043',name:'Chỉnh sửa thông tin nhân viên',pri:'high',
+     steps:'1. Drawer → nút Chỉnh sửa\n2. Sửa tên/SĐT\n3. Lưu',
+     expect:'Thông tin cập nhật trong bảng và drawer'},
+    {id:'TC044',name:'Xem hồ sơ đầy đủ',pri:'med',
+     steps:'1. Drawer → Xem hồ sơ đầy đủ',
+     expect:'Mở trang nhan-vien.html với đúng nhân viên'},
+  ]
+},
+{
+  id:'M07', title:'Lịch làm việc', icon:'📅', color:'#F0FDF4',
+  cases:[
+    {id:'TC045',name:'Hiển thị lịch tháng hiện tại',pri:'high',
+     steps:'1. Vào Lịch làm việc',
+     expect:'Calendar hiện tháng hiện tại, đúng thứ, ngày'},
+    {id:'TC046',name:'Ngày lễ hiển thị trên lịch',pri:'high',
+     steps:'1. Chuyển đến tháng 4 hoặc 9\n2. Tìm ngày 30/4, 1/5, 2/9',
+     expect:'Badge đỏ "🎌 Tên ngày lễ" hiển thị trên ô ngày đó'},
+    {id:'TC047',name:'Tết Nguyên Đán 2026 trên lịch',pri:'high',
+     steps:'1. Chuyển đến tháng 2/2026',
+     expect:'Các ngày 16-21/2/2026 có badge Tết Nguyên Đán'},
+    {id:'TC048',name:'Chuyển tháng trước/sau',pri:'med',
+     steps:'1. Click nút ← và →',
+     expect:'Lịch chuyển tháng đúng, nhãn tháng cập nhật'},
+    {id:'TC049',name:'Ca làm việc hiển thị trên ô ngày',pri:'high',
+     steps:'1. Xem ngày có ca được phân công',
+     expect:'Pill ca hiển thị với màu đúng trạng thái (chờ/duyệt/từ chối)'},
+    {id:'TC050',name:'Nghỉ phép hiển thị trên lịch',pri:'high',
+     steps:'1. Xem ngày đã có đơn nghỉ',
+     expect:'Pill màu vàng/xanh/đỏ theo trạng thái đơn nghỉ'},
+    {id:'TC051',name:'Cập nhật khi Supabase sync',pri:'med',
+     steps:'1. Mở trang\n2. Đợi humi_synced event',
+     expect:'Lịch tự reload dữ liệu mới từ Supabase'},
+  ]
+},
+{
+  id:'M08', title:'Đăng ký ca (Chia ca)', icon:'🕐', color:'#FFF7ED',
+  cases:[
+    {id:'TC052',name:'Hiển thị bảng ca nhân viên',pri:'high',
+     steps:'1. Vào Đăng ký ca',
+     expect:'Bảng nhân viên × ngày × slot ca hiển thị đúng'},
+    {id:'TC053',name:'Chọn slot ca cho nhân viên',pri:'high',
+     steps:'1. Click ô trống\n2. Chọn ca từ dropdown',
+     expect:'Ca được gán, hiển thị màu/tên ca'},
+    {id:'TC054',name:'Xóa ca đã gán',pri:'med',
+     steps:'1. Click vào slot có ca\n2. Chọn Xóa',
+     expect:'Ca bị xóa, ô trở về trống'},
+    {id:'TC055',name:'Lưu lịch ca',pri:'high',
+     steps:'1. Sắp xếp ca\n2. Nhấn Lưu',
+     expect:'Dữ liệu lưu vào DB, toast thành công'},
+    {id:'TC056',name:'Xuất CSV lịch ca',pri:'med',
+     steps:'1. Nhấn Xuất CSV',
+     expect:'File .csv tải xuống với đúng dữ liệu'},
+    {id:'TC057',name:'Chuyển tuần',pri:'med',
+     steps:'1. Nhấn ← hoặc →',
+     expect:'Bảng hiển thị tuần khác, ngày đúng'},
+  ]
+},
+{
+  id:'M09', title:'Xem phép tồn', icon:'🏖', color:'#EEF2FF',
+  cases:[
+    {id:'TC058',name:'Hiển thị số phép tồn đúng',pri:'high',
+     steps:'1. Vào Xem phép tồn',
+     expect:'Phép năm, phép ốm, thai sản hiển thị đúng với dữ liệu Supabase'},
+    {id:'TC059',name:'Cập nhật sau khi Supabase sync',pri:'high',
+     steps:'1. Mở trang\n2. Đợi humi_synced',
+     expect:'Số phép reload từ DB mới, không đọc cache cũ'},
+    {id:'TC060',name:'Lịch sử sử dụng phép',pri:'med',
+     steps:'1. Xem bảng lịch sử phép',
+     expect:'Các đơn nghỉ đã duyệt hiển thị đúng loại/ngày/số ngày'},
+    {id:'TC061',name:'Xuất CSV phép tồn',pri:'low',
+     steps:'1. Nhấn Xuất CSV',
+     expect:'File CSV tải xuống với đúng dữ liệu'},
+  ]
+},
+{
+  id:'M10', title:'Xem thu nhập', icon:'💰', color:'#F0FDF4',
+  cases:[
+    {id:'TC062',name:'Dropdown chọn kỳ lương hoạt động',pri:'high',
+     steps:'1. Vào Xem thu nhập\n2. Click nút chọn kỳ lương',
+     expect:'Dropdown mở ra, hiển thị các tháng có lương'},
+    {id:'TC063',name:'Chọn kỳ → bảng lương cập nhật',pri:'high',
+     steps:'1. Click kỳ lương từ dropdown',
+     expect:'Bảng lương và 3 card chi tiết cập nhật đúng kỳ chọn'},
+    {id:'TC064',name:'Card tổng thu nhập',pri:'high',
+     steps:'1. Xem Card "Tổng thu nhập"',
+     expect:'Lương gộp, khấu trừ, thực lãnh hiển thị đúng'},
+    {id:'TC065',name:'Card hợp đồng & chức vụ',pri:'med',
+     steps:'1. Xem Card hợp đồng',
+     expect:'Loại HĐ, chức vụ, đơn vị hiển thị đúng'},
+    {id:'TC066',name:'Card chấm công tháng',pri:'med',
+     steps:'1. Xem Card chấm công',
+     expect:'Ngày công chuẩn, thực tế, nghỉ phép đúng'},
+    {id:'TC067',name:'Xuất CSV bảng lương',pri:'med',
+     steps:'1. Chọn kỳ\n2. Nhấn Xuất dữ liệu',
+     expect:'File CSV đầy đủ thông tin lương tải xuống'},
+    {id:'TC068',name:'Manager — nút Xem toàn bộ nhân viên',pri:'high',
+     steps:'1. Đăng nhập manager\n2. Vào Xem thu nhập',
+     expect:'Nút "Xem toàn bộ nhân viên" xuất hiện'},
+    {id:'TC069',name:'Manager — bảng lương toàn công ty',pri:'high',
+     steps:'1. Click "Xem toàn bộ nhân viên"',
+     expect:'Bảng hiển thị tất cả NV active với lương gộp/thuế/thực lãnh'},
+    {id:'TC070',name:'Employee — không thấy nút xem toàn bộ',pri:'high',
+     steps:'1. Đăng nhập employee → Xem thu nhập',
+     expect:'Không có nút "Xem toàn bộ nhân viên"'},
+  ]
+},
+{
+  id:'M11', title:'Hộp thư', icon:'✉️', color:'#FFF7ED',
+  cases:[
+    {id:'TC071',name:'Xem danh sách thư nhận',pri:'high',
+     steps:'1. Vào Hộp thư\n2. Xem tab Nhận',
+     expect:'Danh sách thư với người gửi, tiêu đề, thời gian'},
+    {id:'TC072',name:'Tab Chưa đọc / Đã đọc',pri:'med',
+     steps:'1. Click tab Chưa đọc và Đã đọc',
+     expect:'Lọc đúng theo trạng thái đọc'},
+    {id:'TC073',name:'Đọc thư — mark đã đọc',pri:'high',
+     steps:'1. Click thư chưa đọc',
+     expect:'Thư chuyển sang đã đọc, số badge giảm 1'},
+    {id:'TC074',name:'Soạn & gửi thư',pri:'high',
+     steps:'1. Nhấn Soạn thư\n2. Chọn người nhận\n3. Nhập tiêu đề, nội dung\n4. Gửi',
+     expect:'Thư xuất hiện trong hộp thư người nhận'},
+    {id:'TC075',name:'Lọc theo ngày',pri:'med',
+     steps:'1. Nhập ngày From → To\n2. Áp dụng',
+     expect:'Chỉ hiện thư trong khoảng ngày đó'},
+    {id:'TC076',name:'Tìm kiếm trong hộp thư',pri:'med',
+     steps:'1. Gõ từ khóa vào ô tìm kiếm',
+     expect:'Lọc thư theo tiêu đề/người gửi'},
+  ]
+},
+{
+  id:'M12', title:'Duyệt yêu cầu (Tăng ca / Đổi ca)', icon:'📝', color:'#EEF2FF',
+  cases:[
+    {id:'TC077',name:'Xem danh sách yêu cầu',pri:'high',
+     steps:'1. Đăng nhập manager\n2. Vào Duyệt yêu cầu',
+     expect:'Danh sách yêu cầu tăng ca, đổi ca, remote...'},
+    {id:'TC078',name:'Duyệt yêu cầu đơn lẻ',pri:'high',
+     steps:'1. Click yêu cầu\n2. Nhấn Duyệt',
+     expect:'Trạng thái → Đã duyệt'},
+    {id:'TC079',name:'Từ chối yêu cầu',pri:'high',
+     steps:'1. Click yêu cầu → Từ chối',
+     expect:'Trạng thái → Từ chối'},
+    {id:'TC080',name:'Duyệt hàng loạt với confirm',pri:'high',
+     steps:'1. Nhấn Duyệt theo điều kiện\n2. Chọn loại/đơn vị\n3. Duyệt tất cả',
+     expect:'Confirm dialog xuất hiện, sau OK duyệt đúng target'},
+    {id:'TC081',name:'Nhân viên không vào được trang',pri:'high',
+     steps:'1. Employee → URL duyet-yeu-cau.html',
+     expect:'Redirect về index.html'},
+  ]
+},
+{
+  id:'M13', title:'Cài đặt', icon:'⚙️', color:'#F0FDF4',
+  cases:[
+    {id:'TC082',name:'Đổi mật khẩu thành công',pri:'high',
+     steps:'1. Vào Cài đặt → tab Bảo mật\n2. Nhập mật khẩu cũ đúng\n3. Nhập mật khẩu mới 2 lần\n4. Lưu',
+     expect:'Thành công, đăng nhập lại bằng mật khẩu mới'},
+    {id:'TC083',name:'Đổi mật khẩu — sai mật khẩu cũ',pri:'high',
+     steps:'1. Nhập mật khẩu cũ sai\n2. Lưu',
+     expect:'Hiện thông báo lỗi, không đổi được'},
+    {id:'TC084',name:'Xác minh 2 bước — gửi OTP',pri:'high',
+     steps:'1. Tab Bảo mật → Bật 2FA\n2. Nhấn Gửi mã OTP',
+     expect:'OTP 6 số hiển thị trong hộp demo màu cam, countdown 120s'},
+    {id:'TC085',name:'Xác minh 2 bước — OTP đúng',pri:'high',
+     steps:'1. Sao chép OTP hiển thị\n2. Nhập vào ô xác nhận\n3. Xác nhận',
+     expect:'2FA được bật, thông báo thành công'},
+    {id:'TC086',name:'Cập nhật avatar',pri:'med',
+     steps:'1. Tab Hồ sơ → Chọn ảnh upload\n2. Lưu',
+     expect:'Avatar cập nhật ở sidebar, topbar, và card'},
+    {id:'TC087',name:'Đổi theme màu sắc',pri:'low',
+     steps:'1. Tab Giao diện → Chọn màu khác',
+     expect:'Màu primary thay đổi trên toàn bộ UI'},
+    {id:'TC088',name:'Dark mode',pri:'med',
+     steps:'1. Tab Giao diện → Chọn Dark mode',
+     expect:'Giao diện chuyển sang tối, text sáng'},
+    {id:'TC089',name:'Xóa tài khoản — cần nhập mật khẩu',pri:'high',
+     steps:'1. Tab Bảo mật → Xóa tài khoản\n2. Nhập mật khẩu đúng → Xóa',
+     expect:'Xóa thành công, redirect về login'},
+    {id:'TC090',name:'Xóa tài khoản — sai mật khẩu',pri:'high',
+     steps:'1. Nhập mật khẩu sai → Xóa',
+     expect:'Thông báo lỗi, không thực hiện xóa'},
+  ]
+},
+{
+  id:'M14', title:'Thiết lập chia ca', icon:'🛠', color:'#FDF4FF',
+  cases:[
+    {id:'TC091',name:'Xem danh sách ca làm việc',pri:'high',
+     steps:'1. Vào Thiết lập chia ca',
+     expect:'Danh sách ca với tên, giờ bắt đầu, kết thúc, loại ca'},
+    {id:'TC092',name:'Tạo ca mới',pri:'high',
+     steps:'1. Nhấn Thêm ca\n2. Điền thông tin\n3. Lưu',
+     expect:'Ca mới xuất hiện trong danh sách'},
+    {id:'TC093',name:'Chỉnh sửa ca',pri:'high',
+     steps:'1. Click Sửa trên ca\n2. Thay đổi giờ\n3. Lưu',
+     expect:'Ca cập nhật đúng'},
+    {id:'TC094',name:'Xóa ca',pri:'med',
+     steps:'1. Click Xóa trên ca',
+     expect:'Ca bị xóa khỏi danh sách'},
+  ]
+},
+{
+  id:'M15', title:'Cải tiến chung (common.js)', icon:'🚀', color:'#EEF2FF',
+  cases:[
+    {id:'TC095',name:'Confirm dialog — hủy không thực hiện',pri:'high',
+     steps:'1. Kích hoạt hành động bulk\n2. Click Hủy trong dialog',
+     expect:'Dialog đóng, không có gì thay đổi'},
+    {id:'TC096',name:'Confirm dialog — click ngoài modal',pri:'med',
+     steps:'1. Mở confirm dialog\n2. Click vùng tối bên ngoài',
+     expect:'Dialog đóng'},
+    {id:'TC097',name:'Mobile — hamburger xuất hiện',pri:'high',
+     steps:'1. Thu nhỏ browser < 768px\n2. Xem topbar',
+     expect:'Nút hamburger (≡) xuất hiện bên trái topbar'},
+    {id:'TC098',name:'Mobile — sidebar slide-in',pri:'high',
+     steps:'1. < 768px\n2. Click hamburger',
+     expect:'Sidebar trượt vào từ trái, có overlay mờ sau'},
+    {id:'TC099',name:'Mobile — click overlay đóng sidebar',pri:'med',
+     steps:'1. Sidebar đang mở\n2. Click overlay mờ',
+     expect:'Sidebar đóng'},
+    {id:'TC100',name:'Global search — Ctrl+K mở modal',pri:'high',
+     steps:'1. Nhấn Ctrl+K trên bất kỳ trang nào',
+     expect:'Modal tìm kiếm xuất hiện với ô nhập'},
+    {id:'TC101',name:'Global search — tìm nhân viên',pri:'high',
+     steps:'1. Ctrl+K\n2. Gõ tên nhân viên',
+     expect:'Kết quả hiện tên NV, mã, đơn vị; click điều hướng đúng'},
+    {id:'TC102',name:'Global search — Escape đóng modal',pri:'med',
+     steps:'1. Mở search\n2. Nhấn Escape',
+     expect:'Modal đóng'},
+    {id:'TC103',name:'Global search — không có kết quả',pri:'med',
+     steps:'1. Gõ chuỗi không khớp gì',
+     expect:'Hiện "Không tìm thấy kết quả"'},
+    {id:'TC104',name:'Skeleton loading — animation đúng',pri:'med',
+     steps:'1. Mở danh-sach-nhan-vien.html lần đầu\n2. Quan sát trước khi dữ liệu load',
+     expect:'Shimmer animation rows xuất hiện'},
+    {id:'TC105',name:'Notification polling — badge cập nhật',pri:'low',
+     steps:'1. Đợi 5 phút hoặc kiểm tra console\n2. Xem badge chuông',
+     expect:'Badge chuông phản ánh dữ liệu mới nhất'},
+    {id:'TC106',name:'Ngày lễ — Giỗ Tổ Hùng Vương',pri:'med',
+     steps:'1. Vào Lịch làm việc\n2. Chuyển đến tháng 4/2025',
+     expect:'Ngày 7/4/2025 có badge "🎌 Giỗ Tổ Hùng Vương"'},
+    {id:'TC107',name:'Ngày lễ — 30/4 và 1/5',pri:'med',
+     steps:'1. Chuyển đến tháng 4 bất kỳ',
+     expect:'30/4 hiện "Ngày Giải phóng miền Nam", 1/5 hiện "Ngày Quốc tế Lao động"'},
+  ]
+},
+{
+  id:'M16', title:'Hiệu năng & Tích hợp', icon:'🔗', color:'#F0FDF4',
+  cases:[
+    {id:'TC108',name:'Supabase sync — dữ liệu đồng bộ sau đăng nhập',pri:'high',
+     steps:'1. Đăng nhập\n2. Đợi 3-5 giây\n3. Kiểm tra dữ liệu',
+     expect:'Dữ liệu từ Supabase xuất hiện, không dùng dữ liệu demo cũ'},
+    {id:'TC109',name:'humi_synced event kích hoạt re-render',pri:'high',
+     steps:'1. Mở bất kỳ trang có bảng dữ liệu\n2. Giả lập event: window.dispatchEvent(new CustomEvent("humi_synced"))',
+     expect:'Trang tự render lại với dữ liệu mới'},
+    {id:'TC110',name:'Dark mode — không vỡ layout',pri:'med',
+     steps:'1. Bật dark mode\n2. Lướt qua tất cả trang',
+     expect:'Không có text đen trên nền đen, không có vùng trắng lộ ra'},
+    {id:'TC111',name:'Đổi màu theme — áp dụng toàn trang',pri:'low',
+     steps:'1. Đổi màu primary\n2. Kiểm tra buttons, active sidebar, badges',
+     expect:'Màu mới áp dụng đồng nhất'},
+    {id:'TC112',name:'localStorage — dữ liệu persist sau reload',pri:'high',
+     steps:'1. Thực hiện thao tác (tạo NV, phân ca...)\n2. F5 reload',
+     expect:'Dữ liệu vẫn còn sau reload'},
+    {id:'TC113',name:'Session hết hạn — redirect login',pri:'high',
+     steps:'1. Xóa humi_session trong localStorage\n2. Reload trang',
+     expect:'Redirect về login.html'},
+  ]
+}
+];
+
+// ═══════════════════════════════════════════
+// RENDER
+// ═══════════════════════════════════════════
+var totalCases = 0;
+MODULES.forEach(function(m){ totalCases += m.cases.length; });
+document.getElementById('sTotal').textContent = totalCases;
+
+var content = document.getElementById('content');
+MODULES.forEach(function(mod) {
+  var modEl = document.createElement('div');
+  modEl.className = 'module';
+  modEl.id = 'mod_' + mod.id;
+
+  var header = '<div class="mod-header" onclick="toggleModule(\'' + mod.id + '\')">'
+    + '<div class="mod-icon" style="background:' + mod.color + '">' + mod.icon + '</div>'
+    + '<div><div class="mod-title">' + mod.id + ' — ' + mod.title + '</div>'
+    + '<div class="mod-sub">' + mod.cases.length + ' test case</div></div>'
+    + '<div class="mod-badge">'
+    + '<span class="badge badge-p" id="badge_p_' + mod.id + '">0 Pass</span>'
+    + '<span class="badge badge-f" id="badge_f_' + mod.id + '">0 Fail</span>'
+    + '<span class="badge badge-n" id="badge_n_' + mod.id + '">0 N/A</span>'
+    + '</div>'
+    + '<div class="mod-toggle" id="toggle_' + mod.id + '">▼</div>'
+    + '</div>';
+
+  var table = '<div class="mod-body" id="body_' + mod.id + '">'
+    + '<table><thead><tr>'
+    + '<th style="width:80px">ID</th>'
+    + '<th>Tên test case & Mô tả</th>'
+    + '<th style="width:70px">Độ ưu tiên</th>'
+    + '<th style="width:160px">Kết quả</th>'
+    + '<th>Ghi chú / Bug</th>'
+    + '</tr></thead><tbody>';
+
+  mod.cases.forEach(function(tc) {
+    var priCls = tc.pri === 'high' ? 'pri-high' : tc.pri === 'med' ? 'pri-med' : 'pri-low';
+    var priLbl = tc.pri === 'high' ? 'Cao' : tc.pri === 'med' ? 'Trung bình' : 'Thấp';
+    table += '<tr id="row_' + tc.id + '">'
+      + '<td class="tc-id">' + tc.id + '</td>'
+      + '<td><div class="tc-name">' + tc.name + '</div>'
+      + '<div class="tc-steps">' + tc.steps.replace(/\n/g,'<br>') + '</div>'
+      + '<div class="tc-expect">✓ ' + tc.expect + '</div></td>'
+      + '<td><span class="tc-priority ' + priCls + '">' + priLbl + '</span></td>'
+      + '<td class="result-cell"><div class="radio-group">'
+      + '<button class="radio-btn" id="p_' + tc.id + '" onclick="setResult(\'' + tc.id + '\',\'pass\')">Pass</button>'
+      + '<button class="radio-btn" id="f_' + tc.id + '" onclick="setResult(\'' + tc.id + '\',\'fail\')">Fail</button>'
+      + '<button class="radio-btn" id="n_' + tc.id + '" onclick="setResult(\'' + tc.id + '\',\'na\')">N/A</button>'
+      + '</div></td>'
+      + '<td><textarea class="notes-input" id="note_' + tc.id + '" rows="2" placeholder="Ghi chú lỗi..."></textarea></td>'
+      + '</tr>';
+  });
+
+  table += '</tbody></table></div>';
+  modEl.innerHTML = header + table;
+  content.appendChild(modEl);
+});
+
+// ═══════════════════════════════════════════
+// STATE
+// ═══════════════════════════════════════════
+var results = {};
+
+function setResult(tcId, val) {
+  results[tcId] = val;
+  // Update row style
+  var row = document.getElementById('row_' + tcId);
+  row.className = val === 'pass' ? 'row-pass' : val === 'fail' ? 'row-fail' : val === 'na' ? 'row-na' : '';
+  // Update buttons
+  ['pass','fail','na'].forEach(function(r) {
+    var btn = document.getElementById((r === 'pass' ? 'p' : r === 'fail' ? 'f' : 'n') + '_' + tcId);
+    btn.className = 'radio-btn' + (val === r ? ' ' + r : '');
+  });
+  updateSummary();
+}
+
+function updateSummary() {
+  var pass = 0, fail = 0, na = 0;
+  Object.values(results).forEach(function(r){ if(r==='pass') pass++; else if(r==='fail') fail++; else if(r==='na') na++; });
+  document.getElementById('sPass').textContent = pass;
+  document.getElementById('sFail').textContent = fail;
+  document.getElementById('sNA').textContent = na;
+  var done = pass + fail + na;
+  var pct = done > 0 ? Math.round(pass / (pass + fail) * 100) : 0;
+  document.getElementById('sPct').textContent = (pass+fail) > 0 ? pct + '%' : '—';
+  var fillPct = totalCases > 0 ? (done / totalCases * 100) : 0;
+  document.getElementById('progressFill').style.width = fillPct + '%';
+
+  // Update module badges
+  MODULES.forEach(function(mod) {
+    var p = 0, f = 0, n = 0;
+    mod.cases.forEach(function(tc) {
+      var r = results[tc.id];
+      if (r === 'pass') p++; else if (r === 'fail') f++; else if (r === 'na') n++;
+    });
+    document.getElementById('badge_p_' + mod.id).textContent = p + ' Pass';
+    document.getElementById('badge_f_' + mod.id).textContent = f + ' Fail';
+    document.getElementById('badge_n_' + mod.id).textContent = n + ' N/A';
+  });
+}
+
+function toggleModule(modId) {
+  var body = document.getElementById('body_' + modId);
+  var toggle = document.getElementById('toggle_' + modId);
+  var isOpen = body.classList.contains('open');
+  body.classList.toggle('open');
+  toggle.textContent = isOpen ? '▼' : '▲';
+}
+
+function expandAll() {
+  MODULES.forEach(function(m) {
+    document.getElementById('body_' + m.id).classList.add('open');
+    document.getElementById('toggle_' + m.id).textContent = '▲';
+  });
+}
+function collapseAll() {
+  MODULES.forEach(function(m) {
+    document.getElementById('body_' + m.id).classList.remove('open');
+    document.getElementById('toggle_' + m.id).textContent = '▼';
+  });
+}
+
+function setAll(val) {
+  MODULES.forEach(function(mod) {
+    mod.cases.forEach(function(tc) { setResult(tc.id, val); });
+  });
+}
+function clearAll() {
+  results = {};
+  MODULES.forEach(function(mod) {
+    mod.cases.forEach(function(tc) {
+      document.getElementById('row_' + tc.id).className = '';
+      ['p','f','n'].forEach(function(p) {
+        var id = p + '_' + tc.id;
+        document.getElementById(id).className = 'radio-btn';
+      });
+      var note = document.getElementById('note_' + tc.id);
+      if (note) note.value = '';
+    });
+  });
+  updateSummary();
+}
+
+function filterRows(mode) {
+  expandAll();
+  MODULES.forEach(function(mod) {
+    mod.cases.forEach(function(tc) {
+      var row = document.getElementById('row_' + tc.id);
+      var res = results[tc.id];
+      if (mode === 'all') row.style.display = '';
+      else if (mode === 'fail') row.style.display = (res === 'fail') ? '' : 'none';
+      else if (mode === 'empty') row.style.display = (!res) ? '' : 'none';
+    });
+  });
+}
+
+// Auto-open first module
+document.getElementById('body_M01').classList.add('open');
+document.getElementById('toggle_M01').textContent = '▲';
+</script>
+</body>
+</html>

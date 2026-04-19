@@ -1,6 +1,7 @@
 // Auth guard
 const _s = DB.auth.requireAuth(); if(!_s) throw 0;
 const currentUser = _s.user;
+if (currentUser.roleId === 'employee') { window.location.href = '../index.html'; throw 0; }
 
 // ===== LOAD USER INFO (sidebar + topbar) =====
 (function loadUserInfo() {
@@ -283,27 +284,32 @@ function showConditionModal() {
 function bulkApprove() {
   const type = document.getElementById('condType').value;
   const unit = document.getElementById('condUnit').value;
-  let count = 0;
-  var reqList = DB.requests.getAll();
-  reqList.forEach(function(r) {
+  var targets = [];
+  DB.requests.getAll().forEach(function(r) {
     if (r.status !== 'pending') return;
     if (type && r.typeLabel !== type && r.type !== type) return;
     if (unit) {
       var emp = DB.employees.getById(r.employeeId);
       if (!emp || emp.unit !== unit) return;
     }
-    DB.requests.approve(r.id, currentUser.id);
-    count++;
+    targets.push(r);
   });
-  REQUESTS = loadRequests();
-  closeModal();
-  renderTable();
-  applyFilters();
-  if (count > 0) {
-    DB.utils.showToast(`Đã duyệt ${count} yêu cầu thành công`);
-  } else {
+  if (!targets.length) {
     DB.utils.showToast('Không có yêu cầu nào phù hợp', 'error');
+    return;
   }
+  showConfirm(
+    'Sẽ duyệt ' + targets.length + ' yêu cầu' + (type ? ' loại "' + type + '"' : '') + (unit ? ' đơn vị "' + unit + '"' : '') + '. Hành động này không thể hoàn tác.',
+    function() {
+      targets.forEach(function(r) { DB.requests.approve(r.id, currentUser.id); });
+      REQUESTS = loadRequests();
+      closeModal();
+      renderTable();
+      applyFilters();
+      DB.utils.showToast('Đã duyệt ' + targets.length + ' yêu cầu thành công');
+    },
+    { title: 'Xác nhận duyệt hàng loạt', okText: 'Duyệt tất cả' }
+  );
 }
 
 document.getElementById('detailModal').addEventListener('click', function(e) {
