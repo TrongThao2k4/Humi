@@ -2,6 +2,43 @@
  * common.js — Shared utilities for all Humi pages
  * Improvements: role-based sidebar, confirm dialog, mobile sidebar, skeleton loader
  */
+
+// ── Global scale – áp dụng toàn site ──────────────────
+(function() {
+  var s = document.createElement('style');
+  s.textContent = [
+    'html { font-size: 15px; }',
+    'body { font-size: 14px; }',
+    /* Sidebar items */
+    '.sidebar-item { font-size: 14px !important; padding: 11px 14px !important; }',
+    /* Tables */
+    'table, th, td { font-size: 13.5px; }',
+    /* Labels & small text */
+    'label { font-size: 13px !important; }',
+    'input, select, textarea, button { font-size: 14px !important; }',
+  ].join('\n');
+  document.head.appendChild(s);
+})();
+
+// ── Avatar mặc định bằng chữ cái viết tắt ──────────────
+window.genAvatar = function(name, size) {
+  size = size || 36;
+  if (!name) name = '?';
+  var words = name.trim().split(/\s+/);
+  var initials = words.length >= 2
+    ? (words[0][0] + words[words.length - 1][0]).toUpperCase()
+    : words[0].slice(0, 2).toUpperCase();
+  var palette = ['#5D87FF','#4570EA','#22c55e','#f97316','#a855f7','#0d9488','#ec4899','#6366f1','#ef4444','#14b8a6'];
+  var color = palette[name.split('').reduce(function(s,c){ return s + c.charCodeAt(0); }, 0) % palette.length];
+  var fs = Math.round(size * 0.38);
+  var half = size / 2;
+  var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="' + size + '" height="' + size + '" viewBox="0 0 ' + size + ' ' + size + '">'
+    + '<circle cx="' + half + '" cy="' + half + '" r="' + half + '" fill="' + color + '"/>'
+    + '<text x="' + half + '" y="' + (half + fs * 0.37) + '" text-anchor="middle" font-family="Plus Jakarta Sans,sans-serif" font-size="' + fs + '" font-weight="700" fill="white">' + initials + '</text>'
+    + '</svg>';
+  return 'data:image/svg+xml;base64,' + btoa(unescape(encodeURIComponent(svg)));
+};
+
 (function () {
   'use strict';
 

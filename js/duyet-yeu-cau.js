@@ -30,7 +30,7 @@ function reqToUi(r) {
     id: r.id,
     name: emp.name || r.employeeId,
     code: emp.code || r.employeeId,
-    avatar: emp.avatar || ('https://i.pravatar.cc/40?img=' + (Math.abs((r.employeeId||'x').charCodeAt(2)%50)+1)),
+    avatar: emp.avatar || genAvatar(emp.name),
     branch: emp.unit || '—',
     role: emp.roleId === 'manager' ? 'Quản lý' : 'Nhân viên',
     type: r.typeLabel || r.type,
@@ -41,7 +41,22 @@ function reqToUi(r) {
   };
 }
 
-function loadRequests() { return DB.requests.getAll().map(reqToUi); }
+function getScopedEmployeeIds() {
+  var all = DB.employees.getAll();
+  if (currentUser.roleId === 'admin') return null; // null = không lọc
+  var ids = new Set();
+  all.forEach(function(e) {
+    if (e.managerId === currentUser.id || e.id === currentUser.id) ids.add(e.id);
+  });
+  return ids;
+}
+
+function loadRequests() {
+  var ids = getScopedEmployeeIds();
+  return DB.requests.getAll()
+    .filter(function(r){ return !ids || ids.has(r.employeeId); })
+    .map(reqToUi);
+}
 let REQUESTS = loadRequests();
 
 let filtered = [...REQUESTS];

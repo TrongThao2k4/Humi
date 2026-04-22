@@ -33,7 +33,7 @@
     return {
       id: e.id, name: e.name, code: e.code,
       rawStatus: e.status || 'active',
-      avatar: e.avatar || ('https://i.pravatar.cc/52?img=' + (Math.abs((e.id||'x').charCodeAt(2)%50)+1)),
+      avatar: e.avatar || genAvatar(e.name, 52),
       unit: trunc(e.unit, 16), unitFull: e.unit || '',
       position: trunc(e.position, 18), positionFull: e.position,
       manager: e.managerName || '—',

@@ -64,7 +64,7 @@ var SB = {
 function syncFromSupabase() {
   if (!SUPABASE_READY) return;
   var tables = [
-    { remote:'employees',     local:'humi_employees',     map: function(r){ return { id:r.id, code:r.code, name:r.name, avatar:r.avatar, unit:r.unit, position:r.position, roleId:r.role_id, status:r.status, gender:r.gender, phone:r.phone, email:r.email, dob:r.dob, startDate:r.start_date, contractStatus:r.contract_status, contractType:r.contract_type, workMode:r.work_mode, managerName:r.manager_name, leaveBalance:r.leave_balance||{annual:12,sick:30,maternity:180,unpaid:99}, idCard:r.id_card, faceImage:r.face_image||null, faceDescriptor:r.face_descriptor||null }; } },
+    { remote:'employees',     local:'humi_employees',     map: function(r){ return { id:r.id, code:r.code, name:r.name, avatar:r.avatar, unit:r.unit, position:r.position, roleId:r.role_id, status:r.status, gender:r.gender, phone:r.phone, email:r.email, dob:r.dob, startDate:r.start_date, contractStatus:r.contract_status, contractType:r.contract_type, workMode:r.work_mode, managerName:r.manager_name, managerId:r.manager_id||null, leaveBalance:r.leave_balance||{annual:12,sick:30,maternity:180,unpaid:99}, idCard:r.id_card, faceImage:r.face_image||null, faceDescriptor:r.face_descriptor||null }; } },
     { remote:'shifts',        local:'humi_shifts',        map: function(r){ return { id:r.id, name:r.name, code:r.code, startTime:r.start_time, endTime:r.end_time, breakMinutes:r.break_minutes, workHours:r.work_hours, quota:r.quota, active:r.active, color:r.color, applyDays:r.apply_days }; } },
     { remote:'leave_requests',local:'humi_leave_requests',map: function(r){ return { id:r.id, employeeId:r.employee_id, leaveType:r.leave_type, leaveTypeName:r.leave_type_name, startDate:r.start_date, endDate:r.end_date, totalDays:r.total_days, status:r.status, reason:r.reason, approverId:r.approver_id, approvedAt:r.approved_at||null, rejectedAt:r.rejected_at||null, rejectReason:r.reject_reason||null, createdAt:r.created_at }; } },
     { remote:'requests',      local:'humi_requests',      map: function(r){ return { id:r.id, employeeId:r.employee_id, type:r.type, typeLabel:r.type_label, content:r.content, status:r.status, approverId:r.approver_id, createdAt:r.created_at }; } },
@@ -87,7 +87,7 @@ function syncFromSupabase() {
         var rawTag = (r.tags && r.tags[0]) || '';
         return { id:r.id, toId:r.to_id, fromId:r.from_id||'',
           sender:  r.from_name  || r.sender  || 'Hệ thống',
-          avatar:  r.avatar || 'https://i.pravatar.cc/36?img=12',
+          avatar:  r.avatar || (typeof genAvatar === 'function' ? genAvatar(r.from_name || r.sender || 'HT') : ''),
           subject: r.subject,
           preview: r.preview || strip(r.body),
           body:    r.body || '',
@@ -197,7 +197,7 @@ function syncFromSupabase() {
 
   var REMOTE_MAPS = {
     humi_accounts: function(r) { return { employeeId: r.employee_id, password: r.password }; },
-    humi_employees: function(r) { return { id:r.id, code:r.code, name:r.name, avatar:r.avatar, unit:r.unit, position:r.position, roleId:r.role_id, status:r.status, gender:r.gender, phone:r.phone, email:r.email, dob:r.dob, startDate:r.start_date, contractStatus:r.contract_status, contractType:r.contract_type, workMode:r.work_mode, managerName:r.manager_name, leaveBalance:r.leave_balance||{annual:12,sick:30,maternity:180,unpaid:99}, idCard:r.id_card, faceImage:r.face_image||null, faceDescriptor:r.face_descriptor||null }; },
+    humi_employees: function(r) { return { id:r.id, code:r.code, name:r.name, avatar:r.avatar, unit:r.unit, position:r.position, roleId:r.role_id, status:r.status, gender:r.gender, phone:r.phone, email:r.email, dob:r.dob, startDate:r.start_date, contractStatus:r.contract_status, contractType:r.contract_type, workMode:r.work_mode, managerName:r.manager_name, managerId:r.manager_id||null, leaveBalance:r.leave_balance||{annual:12,sick:30,maternity:180,unpaid:99}, idCard:r.id_card, faceImage:r.face_image||null, faceDescriptor:r.face_descriptor||null }; },
     humi_shifts: function(r) { return { id:r.id, name:r.name, code:r.code, startTime:r.start_time, endTime:r.end_time, breakMinutes:r.break_minutes, workHours:r.work_hours, quota:r.quota, active:r.active, color:r.color, applyDays:r.apply_days }; },
     humi_leave_requests: function(r) { return { id:r.id, employeeId:r.employee_id, leaveType:r.leave_type, leaveTypeName:r.leave_type_name, startDate:r.start_date, endDate:r.end_date, totalDays:r.total_days, status:r.status, reason:r.reason, approverId:r.approver_id, approvedAt:r.approved_at||null, rejectedAt:r.rejected_at||null, rejectReason:r.reject_reason||null, createdAt:r.created_at }; },
     humi_requests: function(r) { return { id:r.id, employeeId:r.employee_id, type:r.type, typeLabel:r.type_label, content:r.content, status:r.status, approverId:r.approver_id, createdAt:r.created_at }; },
@@ -386,7 +386,7 @@ function syncFromSupabase() {
     });
 
     // ── Sinh tin nhắn hệ thống động từ dữ liệu thực ──────────────────────
-    var _sysAvatar = 'https://i.pravatar.cc/36?img=12';
+    var _sysAvatar = typeof genAvatar === 'function' ? genAvatar('Humi') : '';
     function _daysAgo(n, h) {
       var d = new Date(); d.setDate(d.getDate() - n);
       d.setHours(h !== undefined ? h : 8 + Math.floor(Math.random()*9), Math.floor(Math.random()*59), 0, 0);
@@ -545,15 +545,20 @@ function syncFromSupabase() {
         if (!s) { var _inPages = window.location.pathname.indexOf('/pages/') !== -1; window.location.href = (_inPages ? '../' : '') + 'login.html'; return null; }
         return s;
       },
-      login: function(empId, pwd) {
+      verifyCredentials: function(empId, pwd) {
         var accounts = load(K.accounts);
         var acc = accounts.find(function(a){ return a.employeeId === empId && a.password === pwd; });
         if (!acc) return { ok:false, error:'Mã nhân viên hoặc mật khẩu không đúng' };
         var emp = load(K.employees).find(function(e){ return e.id === empId; });
         if (!emp || emp.status !== 'active') return { ok:false, error:'Tài khoản không hoạt động' };
-        var session = { user: emp, loginAt: new Date().toISOString() };
-        save(K.session, session);
         return { ok:true, user:emp };
+      },
+      login: function(empId, pwd) {
+        var res = this.verifyCredentials(empId, pwd);
+        if (!res.ok) return res;
+        var session = { user: res.user, loginAt: new Date().toISOString() };
+        save(K.session, session);
+        return { ok:true, user:res.user };
       },
       logout: function() { localStorage.removeItem(K.session); },
       changePassword: function(oldPwd, newPwd) {
@@ -1030,7 +1035,7 @@ function syncFromSupabase() {
         // SB.update('messages', { id: id }, { deleted: true });
       },
       sendSystem: function(toId, subject, body, tagKey, actions) {
-        var msg = this.send('SYSTEM', 'Hệ thống Humi', 'https://i.pravatar.cc/36?img=12', toId, subject, body, tagKey);
+        var msg = this.send('SYSTEM', 'Hệ thống Humi', typeof genAvatar === 'function' ? genAvatar('Humi') : '', toId, subject, body, tagKey);
         if (msg && actions) { msg.actions = actions; var list = this.getAll(); var idx = list.findIndex(function(m){ return m.id === msg.id; }); if (idx !== -1) { list[idx].actions = actions; save(K.messages, list); } }
         return msg;
       },
@@ -1041,7 +1046,7 @@ function syncFromSupabase() {
         var now = new Date().toISOString();
         var preview = body.replace(/<[^>]*>/g,'').replace(/\s+/g,' ').trim().slice(0,120);
         var msg = { id:id, fromId:fromId, toId:toId, sender:fromName,
-          avatar: fromAvatar || 'https://i.pravatar.cc/36?img=47',
+          avatar: fromAvatar || (typeof genAvatar === 'function' ? genAvatar(fromName) : ''),
           subject:subject, preview:preview, body:body,
           tag: tagMap[tagKey]||'Chung', tagClass: clsMap[tagKey]||'tag-purple',
           isRead:false, important:false, deleted:false, timestamp:now, actions:[] };

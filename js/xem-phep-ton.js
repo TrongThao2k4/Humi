@@ -31,16 +31,28 @@
   }
 
   const LEAVE_TYPE_NAMES = { annual: 'Nghỉ phép năm', sick: 'Nghỉ ốm', unpaid: 'Nghỉ không lương' };
+
   const STATUS_PILL = {
-    approved: '<span class="status-pill pill-green">Đã duyệt</span>',
-    rejected:  '<span class="status-pill" style="background:#fee2e2;color:#ef4444;">Từ chối</span>',
-    pending:   '<span class="status-pill pill-orange">Chờ duyệt</span>',
+    approved: '<span class="status-pill pill-green"><span style="width:6px;height:6px;border-radius:50%;background:#16a34a;display:inline-block;"></span>Đã duyệt</span>',
+    rejected: '<span class="status-pill pill-red"><span style="width:6px;height:6px;border-radius:50%;background:#dc2626;display:inline-block;"></span>Từ chối</span>',
+    pending:  '<span class="status-pill pill-orange"><span style="width:6px;height:6px;border-radius:50%;background:#ea580c;display:inline-block;"></span>Chờ duyệt</span>',
+  };
+
+  const BADGE_CLASS = { annual:'badge-green', sick:'badge-red', unpaid:'badge-gray', maternity:'badge-blue' };
+
+  // Leave type SVG icons
+  const LEAVE_ICONS = {
+    annual:   `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg>`,
+    sick:     `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>`,
+    unpaid:   `<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>`,
+    maternity:`<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M20.84 4.61a5.5 5.5 0 00-7.78 0L12 5.67l-1.06-1.06a5.5 5.5 0 00-7.78 7.78l1.06 1.06L12 21.23l7.78-7.78 1.06-1.06a5.5 5.5 0 000-7.78z"/></svg>`,
   };
 
   // ===== HELPERS =====
   function fmtD(iso) { return iso ? iso.split('-').reverse().join('/') : '—'; }
   function setVal(id, n) {
-    document.getElementById(id).innerHTML = n + ' <span style="font-size:14px;font-weight:600;color:#7C8FAC;">ngày</span>';
+    var el = document.getElementById(id);
+    if (el) el.innerHTML = n + ' <span>ngày</span>';
   }
 
   // Count Mon-Sat working days between two Date objects (inclusive)
@@ -48,7 +60,7 @@
     let days = 0;
     const cur = new Date(start);
     while (cur <= end) {
-      if (cur.getDay() !== 0) days++; // exclude Sunday
+      if (cur.getDay() !== 0) days++;
       cur.setDate(cur.getDate() + 1);
     }
     return days;
@@ -56,6 +68,8 @@
 
   // ===== LOAD & RENDER PAGE DATA =====
   function loadLeaveData() {
+    const now    = new Date();
+    const year   = now.getFullYear();
     const empId  = currentUser.id;
     const bal    = DB.leaves.getBalance(empId);
     const history = DB.leaves.getHistory(empId).sort((a, b) => (b.createdAt || '').localeCompare(a.createdAt || ''));
@@ -64,66 +78,102 @@
     const SICK_TOTAL      = getLeaveTotal('sick',      30);
     const MATERNITY_TOTAL = getLeaveTotal('maternity', 180);
 
-    const usedAnnual    = ANNUAL_TOTAL   - (bal.annual    || 0);
-    const usedSick      = SICK_TOTAL     - (bal.sick      || 0);
+    const usedAnnual    = ANNUAL_TOTAL    - (bal.annual    || 0);
+    const usedSick      = SICK_TOTAL      - (bal.sick      || 0);
     const usedMaternity = MATERNITY_TOTAL - (bal.maternity || 0);
 
-    const pendingDays   = history.filter(l => l.status === 'pending').reduce((s, l) => s + (l.totalDays || 0), 0);
-    const totalUsed     = history.filter(l => l.status === 'approved').reduce((s, l) => s + (l.totalDays || 0), 0);
+    const pendingDays    = history.filter(l => l.status === 'pending').reduce((s, l) => s + (l.totalDays || 0), 0);
+    const totalUsed      = history.filter(l => l.status === 'approved').reduce((s, l) => s + (l.totalDays || 0), 0);
     const totalRemaining = (bal.annual || 0) + (bal.sick || 0);
 
+    // Year badges
+    var yb = document.getElementById('yearBadge');
+    if (yb) yb.textContent = year;
+    var hy = document.getElementById('histYear');
+    if (hy) hy.textContent = year;
+
+    // KPI cards
     setVal('sumTotal',     ANNUAL_TOTAL);
     setVal('sumUsed',      totalUsed);
     setVal('sumRemaining', totalRemaining);
     setVal('sumPending',   pendingDays);
 
-    // Leave type breakdown table
+    // ── Leave type breakdown cards ──
     const leaveTypes = [
-      { label: 'Nghỉ phép năm',    color: '#16a34a', total: ANNUAL_TOTAL,    used: usedAnnual,    remaining: bal.annual    || 0,
-        pending: history.filter(l => l.leaveType === 'annual'   && l.status === 'pending').reduce((s, l) => s + l.totalDays, 0) },
-      { label: 'Nghỉ thai sản',    color: '#2563eb', total: MATERNITY_TOTAL, used: usedMaternity, remaining: bal.maternity || 0, pending: 0 },
-      { label: 'Nghỉ ốm',          color: '#ea580c', total: SICK_TOTAL,      used: usedSick,      remaining: bal.sick      || 0,
-        pending: history.filter(l => l.leaveType === 'sick'     && l.status === 'pending').reduce((s, l) => s + l.totalDays, 0) },
-      { label: 'Nghỉ không lương', color: '#7C8FAC', total: '—',
-        used: history.filter(l => l.leaveType === 'unpaid' && l.status === 'approved').reduce((s, l) => s + l.totalDays, 0),
-        remaining: bal.unpaid || 0,
-        pending:   history.filter(l => l.leaveType === 'unpaid' && l.status === 'pending').reduce((s, l) => s + l.totalDays, 0) },
+      { key:'annual',   label:'Phép năm',      color:'#5D87FF', iconBg:'rgba(93,135,255,0.12)',
+        total: ANNUAL_TOTAL,    used: usedAnnual,    remaining: bal.annual    || 0,
+        pending: history.filter(l => l.leaveType==='annual'   && l.status==='pending').reduce((s,l)=>s+l.totalDays,0) },
+      { key:'sick',     label:'Phép bệnh',     color:'#ef4444', iconBg:'rgba(239,68,68,0.10)',
+        total: SICK_TOTAL,      used: usedSick,      remaining: bal.sick      || 0,
+        pending: history.filter(l => l.leaveType==='sick'     && l.status==='pending').reduce((s,l)=>s+l.totalDays,0) },
+      { key:'unpaid',   label:'Phép không lương', color:'#7C8FAC', iconBg:'rgba(124,143,172,0.12)',
+        total: null,
+        used: history.filter(l=>l.leaveType==='unpaid'&&l.status==='approved').reduce((s,l)=>s+l.totalDays,0),
+        remaining: null,
+        pending: history.filter(l=>l.leaveType==='unpaid'&&l.status==='pending').reduce((s,l)=>s+l.totalDays,0) },
+      { key:'maternity',label:'Phép thai sản', color:'#ec4899', iconBg:'rgba(236,72,153,0.10)',
+        total: MATERNITY_TOTAL, used: usedMaternity, remaining: bal.maternity || 0, pending: 0 },
     ];
 
-    const pct = (used, total) => typeof total === 'number' && total > 0 ? Math.round(used / total * 100) : 0;
-    const statusPillFn = (remaining) => typeof remaining === 'number' && remaining > 0
-      ? '<span class="status-pill pill-green">Còn phép</span>'
-      : '<span class="status-pill" style="background:#fee2e2;color:#ef4444;">Hết phép</span>';
+    const pct = (used, total) => (typeof total === 'number' && total > 0) ? Math.round(used / total * 100) : 0;
+    const statusBadge = (remaining) => {
+      if (remaining === null) return '';
+      return remaining > 0
+        ? `<span class="status-pill pill-green" style="margin-left:auto;"><span style="width:6px;height:6px;border-radius:50%;background:#16a34a;display:inline-block;"></span>Còn phép</span>`
+        : `<span class="status-pill pill-red" style="margin-left:auto;"><span style="width:6px;height:6px;border-radius:50%;background:#dc2626;display:inline-block;"></span>Hết phép</span>`;
+    };
 
-    document.getElementById('leaveTableBody').innerHTML = leaveTypes.map(t => {
+    document.getElementById('leaveCardsGrid').innerHTML = leaveTypes.map(t => {
       const p = pct(t.used, t.total);
-      return `<tr>
-        <td><div style="display:flex;align-items:center;gap:8px;"><div style="width:8px;height:8px;border-radius:50%;background:${t.color};flex-shrink:0;"></div><span style="font-weight:600;color:#2A3547;">${t.label}</span></div></td>
-        <td style="font-weight:700;color:#2A3547;">${typeof t.total === 'number' ? t.total + ' ngày' : t.total}</td>
-        <td style="color:#ea580c;font-weight:600;">${t.used} ngày</td>
-        <td style="color:#16a34a;font-weight:700;">${t.remaining} ngày</td>
-        <td style="color:#2563eb;font-weight:600;">${t.pending} ngày</td>
-        <td><div class="progress-wrap"><div class="progress-bar-bg"><div class="progress-bar-fill" style="width:${p}%;background:${t.color};"></div></div><span style="font-size:12px;font-weight:600;color:#2A3547;min-width:32px;">${p > 0 ? p + '%' : '—'}</span></div></td>
-        <td>${statusPillFn(t.remaining)}</td>
-      </tr>`;
+      const remDisplay = t.remaining === null
+        ? `<span style="font-size:38px;font-weight:800;color:${t.color};">∞</span>`
+        : `<span style="font-size:38px;font-weight:800;color:${t.color};">${t.remaining}</span>`;
+      const totalText = t.total !== null ? `Tổng cấp: ${t.total} ngày/năm` : 'Không giới hạn';
+      return `
+        <div class="leave-card">
+          <div class="leave-card-header">
+            <div class="leave-card-header-left">
+              <div class="leave-card-icon" style="background:${t.iconBg};color:${t.color};">
+                ${LEAVE_ICONS[t.key] || ''}
+              </div>
+              <div>
+                <div class="leave-card-name">${t.label}</div>
+                <div class="leave-card-total">${totalText}</div>
+              </div>
+            </div>
+          </div>
+          <div class="leave-card-remaining">
+            ${remDisplay}
+            <span class="leave-card-unit">ngày còn lại</span>
+          </div>
+          <div class="leave-progress-bg">
+            <div class="leave-progress-fill" style="width:${p}%;background:${t.color};"></div>
+          </div>
+          <div class="leave-card-footer">
+            <span class="leave-card-stat">Đã dùng: <strong>${t.used}</strong></span>
+            <span class="leave-card-stat">Chờ duyệt: <strong style="color:#ca8a04;">${t.pending}</strong></span>
+            ${statusBadge(t.remaining)}
+          </div>
+        </div>`;
     }).join('');
 
-    // History card
-    const histEl = document.getElementById('leaveHistory');
+    // ── History table ──
+    const histTbody = document.getElementById('leaveHistoryTable');
     if (!history.length) {
-      histEl.innerHTML = '<p style="font-size:13px;color:#7C8FAC;text-align:center;padding:20px 0;">Chưa có đơn nghỉ phép</p>';
+      histTbody.innerHTML = `<tr><td colspan="7" style="text-align:center;padding:40px;color:#7C8FAC;font-size:13px;">Chưa có đơn nghỉ phép nào</td></tr>`;
     } else {
-      histEl.innerHTML = history.slice(0, 6).map(l => {
-        const dateRange = l.startDate === l.endDate
-          ? fmtD(l.startDate) + ' • ' + l.totalDays + ' ngày'
-          : fmtD(l.startDate) + ' – ' + fmtD(l.endDate) + ' • ' + l.totalDays + ' ngày';
-        return `<div class="hist-row">
-          <div style="flex:1;">
-            <p style="font-size:13px;font-weight:600;color:#2A3547;margin:0;">${l.leaveTypeName || l.leaveType}</p>
-            <p class="hist-date">${dateRange}</p>
-          </div>
-          ${STATUS_PILL[l.status] || ''}
-        </div>`;
+      histTbody.innerHTML = history.slice(0, 10).map(l => {
+        const bClass = BADGE_CLASS[l.leaveType] || 'badge-gray';
+        const submittedAt = l.createdAt ? l.createdAt.slice(0,10).split('-').reverse().join('/') : '—';
+        return `<tr>
+          <td><span class="leave-badge ${bClass}">${l.leaveTypeName || l.leaveType}</span></td>
+          <td>${fmtD(l.startDate)}</td>
+          <td>${fmtD(l.endDate)}</td>
+          <td style="font-weight:700;color:#2A3547;">${l.totalDays}</td>
+          <td><span class="hist-reason">${l.reason || '—'}</span></td>
+          <td style="color:#7C8FAC;">${submittedAt}</td>
+          <td>${STATUS_PILL[l.status] || ''}</td>
+        </tr>`;
       }).join('');
     }
   }

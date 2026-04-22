@@ -529,6 +529,18 @@
     document.getElementById('twoFactorInfo').style.display = 'block';
   }
 
+  // Restore emailAuth toggle
+  const _emailAuthEl = document.getElementById('toggleEmailAuth');
+  if (_emailAuthEl) {
+    _emailAuthEl.checked = _savedSettings.emailAuth === true;
+    _emailAuthEl.addEventListener('change', function() {
+      saveSettings({ emailAuth: this.checked });
+      DB.utils.showToast(this.checked
+        ? 'Đã bật xác thực email — OTP sẽ được gửi khi đăng nhập'
+        : 'Đã tắt xác thực email');
+    });
+  }
+
   // Restore saved theme mode from either settings or HumiTheme
   (function() {
     const savedMode = _savedSettings.themeMode || HumiTheme.getSavedMode();

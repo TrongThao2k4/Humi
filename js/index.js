@@ -27,12 +27,17 @@
     const period = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0');
     const stats = DB.attendance.getMonthStats(currentUser.id, period);
     const bal   = DB.leaves.getBalance(currentUser.id);
-    const totalWD = stats.total || 22;
-    const worked  = stats.worked || 0;
+    const totalWD   = stats.total || 22;
+    const worked    = stats.worked || 0;
+    const leaveLeft = bal.annual || 0;
+    const maxLeave  = 12;
     const pct = totalWD > 0 ? Math.round(worked / totalWD * 100) : 0;
     const el = id => document.getElementById(id);
-    if (el('statWorkDays'))  el('statWorkDays').textContent  = worked + '/' + totalWD;
-    if (el('statLeaveLeft')) el('statLeaveLeft').textContent = (bal.annual || 0) + ' ngày';
+    if (el('statMonth'))     el('statMonth').textContent     = now.getMonth() + 1;
+    if (el('statWorkDays'))  el('statWorkDays').textContent  = worked + ' ngày';
+    if (el('statWorkBar'))   el('statWorkBar').style.width   = pct + '%';
+    if (el('statLeaveLeft')) el('statLeaveLeft').textContent = leaveLeft + ' ngày';
+    if (el('statLeaveBar'))  el('statLeaveBar').style.width  = Math.min(leaveLeft / maxLeave * 100, 100) + '%';
     if (el('statPct'))       el('statPct').textContent       = pct + '%';
     if (el('statBar'))       el('statBar').style.width       = pct + '%';
   })();
@@ -442,8 +447,8 @@
         if (shiftEl) { shiftEl.textContent = 'Không có ca hôm nay'; }
         if (shiftNextEl) shiftNextEl.style.display = 'none';
         if (modalShiftEl) modalShiftEl.textContent = 'Không có ca hôm nay';
-        actionArea.classList.add('hidden');
-        noShiftEl.classList.remove('hidden');
+        actionArea.style.display = 'none';
+        noShiftEl.style.display = 'block';
         noShiftMsg.textContent = 'Hôm nay không có ca làm việc';
         return;
       }
@@ -453,8 +458,8 @@
         if (shiftEl) shiftEl.textContent = 'Đã hoàn thành tất cả ca';
         if (shiftNextEl) shiftNextEl.style.display = 'none';
         if (modalShiftEl) modalShiftEl.textContent = 'Đã hoàn thành tất cả ca';
-        actionArea.classList.add('hidden');
-        noShiftEl.classList.remove('hidden');
+        actionArea.style.display = 'none';
+        noShiftEl.style.display = 'block';
         noShiftMsg.textContent = 'Ca làm việc hôm nay đã kết thúc';
         return;
       }
@@ -479,12 +484,12 @@
       }
 
       // 7. Render khu vực chấm công
-      actionArea.classList.remove('hidden');
-      noShiftEl.classList.add('hidden');
+      actionArea.style.display = 'block';
+      noShiftEl.style.display = 'none';
 
       if (!activeStatus.checkedIn) {
-        statusBox.classList.add('hidden');
-        noteWrap.classList.remove('hidden');
+        statusBox.style.display = 'none';
+        noteWrap.style.display = 'block';
         btn.textContent = 'Bắt đầu ca';
         btn.style.background = '';
         btn.disabled = false;
@@ -492,8 +497,8 @@
       } else {
         inEl.textContent  = activeStatus.record.checkIn || '—';
         outEl.textContent = '—';
-        statusBox.classList.remove('hidden');
-        noteWrap.classList.add('hidden');
+        statusBox.style.display = 'block';
+        noteWrap.style.display = 'none';
         btn.textContent = 'Kết thúc ca';
         btn.style.background = 'linear-gradient(135deg,#dc2626,#b91c1c)';
         btn.disabled = false;
@@ -1007,3 +1012,67 @@
     document.body.appendChild(t);
     setTimeout(function(){ t.style.opacity='0'; setTimeout(function(){ t.remove(); }, 300); }, 3000);
   }
+
+
+// ── Modal tạo ca thủ công ────────────────────────────────
+function openManualShiftModal() {
+  var modal = document.getElementById('manualShiftModal');
+  modal.style.display = 'flex';
+  // Default ngày = hôm nay
+  var now = new Date();
+  var ymd = now.getFullYear() + '-' + String(now.getMonth()+1).padStart(2,'0') + '-' + String(now.getDate()).padStart(2,'0');
+  document.getElementById('msDate').value = ymd;
+  document.getElementById('msShiftName').value = '';
+  document.getElementById('msCheckIn').value = '';
+  document.getElementById('msCheckOut').value = '';
+  document.getElementById('msNote').value = '';
+  document.getElementById('msErrMsg').style.display = 'none';
+}
+
+function closeManualShiftModal() {
+  document.getElementById('manualShiftModal').style.display = 'none';
+}
+
+function saveManualShift() {
+  var date     = document.getElementById('msDate').value;
+  var shiftName = document.getElementById('msShiftName').value.trim();
+  var checkIn  = document.getElementById('msCheckIn').value;
+  var checkOut = document.getElementById('msCheckOut').value;
+  var note     = document.getElementById('msNote').value.trim();
+  var errEl    = document.getElementById('msErrMsg');
+  var btn      = document.getElementById('msSaveBtn');
+
+  errEl.style.display = 'none';
+  if (!date)     { errEl.textContent = 'Vui lòng chọn ngày làm việc'; errEl.style.display='block'; return; }
+  if (!shiftName){ errEl.textContent = 'Vui lòng nhập tên ca'; errEl.style.display='block'; return; }
+  if (!checkIn)  { errEl.textContent = 'Vui lòng nhập giờ vào'; errEl.style.display='block'; return; }
+  if (!checkOut) { errEl.textContent = 'Vui lòng nhập giờ ra'; errEl.style.display='block'; return; }
+  if (checkOut <= checkIn) { errEl.textContent = 'Giờ ra phải sau giờ vào'; errEl.style.display='block'; return; }
+
+  btn.disabled = true;
+  btn.textContent = 'Đang lưu...';
+
+  var record = {
+    id:         'ATT-M-' + Date.now(),
+    employeeId: currentUser.id,
+    date:       date,
+    shiftName:  shiftName,
+    checkIn:    checkIn,
+    checkOut:   checkOut,
+    note:       note,
+    manual:     true,
+    status:     'present'
+  };
+
+  var key = 'humi_attendance';
+  var list = JSON.parse(localStorage.getItem(key) || '[]');
+  list.push(record);
+  localStorage.setItem(key, JSON.stringify(list));
+
+  setTimeout(function() {
+    btn.disabled = false;
+    btn.textContent = 'Lưu ca';
+    closeManualShiftModal();
+    DB.utils.showToast('Đã tạo ca thủ công thành công!');
+  }, 500);
+}

@@ -319,7 +319,7 @@ const _s = DB.auth.requireAuth(); if(!_s) throw 0;
 
     var emp = (DB.employees.getAll()||[]).find(function(e){ return e.id === currentUser.id; });
     var fromName   = (emp && emp.name)   || currentUser.name || 'Nhân viên';
-    var fromAvatar = (emp && emp.avatar) || 'https://i.pravatar.cc/36?img=47';
+    var fromAvatar = (emp && emp.avatar) || genAvatar(fromName);
 
     DB.messages.send(currentUser.id, fromName, fromAvatar, toId, subject, body, tagKey);
     closeCompose();

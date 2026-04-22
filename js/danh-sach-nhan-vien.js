@@ -31,7 +31,7 @@ function empToUi(e) {
     name: e.name,
     code: e.code,
     email: e.email || '',
-    avatar: e.avatar || `https://i.pravatar.cc/36?img=${Math.abs(e.id.charCodeAt(2)%50)+1}`,
+    avatar: e.avatar || genAvatar(e.name),
     unit: e.unit || '',
     position: e.position || '—',
     manager: e.managerName || '—',
@@ -51,8 +51,18 @@ function isValidEmail(v) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v); }
 // Validate phone (10-11 digits, allow spaces/dashes)
 function isValidPhone(v) { return /^[0-9\s\-]{9,12}$/.test(v.replace(/\s/g,'')); }
 
+// Trả về danh sách nhân viên theo phạm vi quyền hạn:
+// admin → tất cả | manager → chỉ nhân viên do mình quản lý
+function getScopedEmployees() {
+  var all = DB.employees.getAll();
+  if (currentUser.roleId === 'admin') return all;
+  return all.filter(function(e) {
+    return e.managerId === currentUser.id || e.id === currentUser.id;
+  });
+}
+
 function loadEmployees() {
-  return DB.employees.getAll().map(empToUi);
+  return getScopedEmployees().map(empToUi);
 }
 
 let EMPLOYEES = loadEmployees();

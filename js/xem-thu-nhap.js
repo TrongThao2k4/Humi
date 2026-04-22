@@ -209,7 +209,7 @@
     tr.innerHTML = `
       <td class="col-emp">
         <div style="display:flex;align-items:center;gap:10px;">
-          <img src="${emp.avatar || 'https://i.pravatar.cc/34?img=1'}" style="width:34px;height:34px;border-radius:50%;border:2px solid #bbf7d0;flex-shrink:0;" />
+          <img src="${emp.avatar || genAvatar(emp.name, 34)}" style="width:34px;height:34px;border-radius:50%;border:2px solid #bbf7d0;flex-shrink:0;" />
           <div>
             <p style="font-size:12.5px;font-weight:700;color:#2A3547;margin:0;">${emp.name}</p>
             <p style="font-size:10.5px;color:#7C8FAC;margin:1px 0 0;">${emp.code} · ${emp.position || '—'}</p>

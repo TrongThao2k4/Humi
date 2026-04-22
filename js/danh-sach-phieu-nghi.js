@@ -32,8 +32,16 @@ let _dateRange = null;  // { from: Date, to: Date }
 let _rejectIds = [];    // IDs being rejected (single or bulk)
 
 // ─── Populate unit filter ────────────────────────────────
+function getScopedEmployees() {
+  var all = DB.employees.getAll();
+  if (currentUser.roleId === 'admin') return all;
+  return all.filter(function(e) {
+    return e.managerId === currentUser.id || e.id === currentUser.id;
+  });
+}
+
 function populateUnitFilter() {
-  var emps = DB.employees.getAll() || [];
+  var emps = getScopedEmployees();
   var units = [...new Set(emps.map(function(e){ return e.unit; }).filter(Boolean))].sort();
   var sel = document.getElementById('filterUnit');
   if (!sel) return;
@@ -61,8 +69,9 @@ function calcDays(start, end) {
 
 // ─── Load data ───────────────────────────────────────────
 function loadData() {
-  var emps = DB.employees.getAll() || [];
-  return DB.leaves.getAll().map(function(l) {
+  var emps = getScopedEmployees();
+  var scopedIds = new Set(emps.map(function(e){ return e.id; }));
+  return DB.leaves.getAll().filter(function(l){ return scopedIds.has(l.employeeId); }).map(function(l) {
     var emp = emps.find(function(e){ return e.id === l.employeeId; }) || {};
     var approver = l.approverId ? (emps.find(function(e){ return e.id === l.approverId; }) || {}) : null;
     return {
@@ -73,7 +82,7 @@ function loadData() {
       empCode:  emp.code   || l.employeeId,
       empUnit:  emp.unit   || '—',
       empRole:  emp.position || '—',
-      avatar:   emp.avatar || ('https://i.pravatar.cc/36?img='+(Math.abs(((l.employeeId||'x').charCodeAt(2)||5)%50)+1)),
+      avatar:   emp.avatar || genAvatar(emp.name),
       leaveType: l.leaveType,
       type:     l.leaveTypeName || TYPE_LABEL[l.leaveType] || l.leaveType,
       status:   l.status,

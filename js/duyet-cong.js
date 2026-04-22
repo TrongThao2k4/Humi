@@ -56,7 +56,7 @@ function buildWeekDays(employeeId, weekMonday) {
     const rec = allRecs[0];
     if (!rec) {
       const leave = getApprovedLeave(employeeId, dateStr);
-      days.push(leave ? {leave:true, label:fmtLeaveLabel(leave)} : {empty:true});
+      days.push(leave ? {leave:true, label:fmtLeaveLabel(leave), date:dateStr} : {empty:true, date:dateStr});
       continue;
     }
     let checkOut = rec.checkOut || null;
@@ -101,8 +101,16 @@ function getBaseMonday() {
   return mon;
 }
 
+function getScopedEmployees() {
+  var all = DB.employees.getAll();
+  if (currentUser.roleId === 'admin') return all;
+  return all.filter(function(e) {
+    return e.managerId === currentUser.id || e.id === currentUser.id;
+  });
+}
+
 function buildEmployees(weekMondayDate) {
-  return DB.employees.getAll().map(emp => {
+  return getScopedEmployees().map(emp => {
     const days = buildWeekDays(emp.id, weekMondayDate);
     // Count worked hours: each day with checkIn = 8h, each with checkOut counted
     let workedHours = 0;
@@ -119,7 +127,7 @@ function buildEmployees(weekMondayDate) {
     return {
       id: emp.id, name: emp.name, code: emp.code,
       branch: emp.unit, role: ROLE_MAP[emp.roleId]||'Nhân viên',
-      avatar: emp.avatar||('https://i.pravatar.cc/36?img='+(Math.abs((emp.id||'x').charCodeAt(2)%50)+1)),
+      avatar: emp.avatar || genAvatar(emp.name),
       faceImage: emp.faceImage || null,
       worked: workedHours, scheduled: scheduledHours,
       days
@@ -135,7 +143,7 @@ let filterState = {
 };
 
 function getAllUnits() {
-  return [...new Set(DB.employees.getAll().map(function(e) { return e.unit; }).filter(Boolean))].sort();
+  return [...new Set(getScopedEmployees().map(function(e) { return e.unit; }).filter(Boolean))].sort();
 }
 
 function getVisibleEmployees() {
@@ -309,7 +317,7 @@ function buildEmployeesFromRows(employeeRows, attendanceRows) {
       code: emp.code,
       branch: emp.unit,
       role: ROLE_MAP[emp.roleId] || 'Nhân viên',
-      avatar: emp.avatar || ('https://i.pravatar.cc/36?img=' + (Math.abs((emp.id || 'x').charCodeAt(2) % 50) + 1)),
+      avatar: emp.avatar || genAvatar(emp.name),
       faceImage: emp.faceImage || null,
       worked: workedHours,
       scheduled: 40,
@@ -342,10 +350,12 @@ setTimeout(function() {
 
 setTimeout(hydrateFromSupabase, 150);
 
-function renderDayCell(day, isSunday) {
+function renderDayCell(day, isSunday, empId) {
   const bgStyle = isSunday ? 'background:rgba(220,252,231,0.35);' : '';
   const tdStyle = `${bgStyle}padding:0 8px;text-align:center;vertical-align:middle;height:72px;border-bottom:1px solid #f5f5f8;`;
-  const circle = `<svg width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style="cursor:pointer;flex-shrink:0;" title="Thêm chấm công">
+  const dateAttr = day.date ? `data-date="${day.date}"` : '';
+  const empAttr  = empId   ? `data-empid="${empId}"`    : '';
+  const circle = `<svg class="add-att-circle" ${dateAttr} ${empAttr} width="16" height="16" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg" style="cursor:pointer;flex-shrink:0;transition:opacity .15s;" title="Thêm chấm công" onmouseover="this.style.opacity='.6'" onmouseout="this.style.opacity='1'">
     <circle cx="8" cy="8" r="7" stroke="#DFE5EF" stroke-width="1.25" stroke-dasharray="3 2"/>
     <line x1="8" y1="4.5" x2="8" y2="11.5" stroke="#DFE5EF" stroke-width="1.25" stroke-linecap="round"/>
     <line x1="4.5" y1="8" x2="11.5" y2="8" stroke="#DFE5EF" stroke-width="1.25" stroke-linecap="round"/>
@@ -438,7 +448,7 @@ function renderTable() {
     const approvedH = emp.days.reduce((s,d) => d.approvalStatus === 'approved' ? s + dayHours(d) : s, 0);
     // Tổng đã chấm (approved + rejected + pending)
     const stampedH  = emp.days.reduce((s,d) => (d.checkIn && d.checkOut) ? s + dayHours(d) : s, 0);
-    const dayCells = emp.days.map((d, i) => renderDayCell(d, i === 6)).join('');
+    const dayCells = emp.days.map((d, i) => renderDayCell(d, i === 6, emp.id)).join('');
 
     return `<tr class="att-row" data-empid="${emp.id}" style="transition:background 0.12s;">
       <td class="col-employee" style="padding:0 12px 0 20px;vertical-align:middle;height:72px;border-bottom:1px solid #f5f5f8;">
@@ -814,9 +824,109 @@ function initPillClick() {
       e.stopPropagation();
       const td = this.closest('td');
       const tr = this.closest('tr');
-      openDetail(this, td, tr); // truyền pill để lấy đúng data của ca được click
+      openDetail(this, td, tr);
     });
   });
+  document.querySelectorAll('.add-att-circle').forEach(function(svg) {
+    svg.addEventListener('click', function(e) {
+      e.stopPropagation();
+      var empId = this.dataset.empid || this.closest('tr')?.dataset.empid;
+      var date  = this.dataset.date;
+      if (empId && date) openAddAttModal(empId, date);
+    });
+  });
+}
+
+// ===== MODAL THÊM CHẤM CÔNG =====
+var _addAttCtx = { empId: null, date: null };
+
+function openAddAttModal(empId, date) {
+  _addAttCtx = { empId, date };
+  var emp = employees.find(function(e) { return String(e.id) === String(empId); });
+  var parts = date.split('-');
+  var dateVn = parts[2] + '/' + parts[1] + '/' + parts[0];
+
+  document.getElementById('addAttTitle').textContent = 'Thêm chấm công' + (emp ? ' – ' + emp.name : '');
+  document.getElementById('addAttSubtitle').textContent = dateVn;
+  document.getElementById('addAttErr').style.display = 'none';
+  document.getElementById('addAttCheckIn').value = '';
+  document.getElementById('addAttCheckOut').value = '';
+  document.getElementById('addAttNote').value = '';
+  document.getElementById('addAttStatus').value = 'pending';
+
+  // Populate shift dropdown
+  var sel = document.getElementById('addAttShift');
+  sel.innerHTML = '<option value="">-- Chọn ca (hoặc nhập thủ công) --</option>';
+  (DB.shifts.getAll() || []).filter(function(s) { return s.active !== false; }).forEach(function(s) {
+    var opt = document.createElement('option');
+    opt.value = s.id;
+    opt.textContent = s.name + ' (' + (s.startTime || '') + ' – ' + (s.endTime || '') + ')';
+    opt.dataset.start = s.startTime || '';
+    opt.dataset.end   = s.endTime   || '';
+    sel.appendChild(opt);
+  });
+
+  document.getElementById('addAttOverlay').style.display = 'block';
+  document.getElementById('addAttModal').style.display = 'block';
+}
+
+function fillShiftTimes() {
+  var sel = document.getElementById('addAttShift');
+  var opt = sel.options[sel.selectedIndex];
+  if (opt && opt.dataset.start) {
+    document.getElementById('addAttCheckIn').value  = opt.dataset.start;
+    document.getElementById('addAttCheckOut').value = opt.dataset.end;
+  }
+}
+
+function closeAddAttModal() {
+  document.getElementById('addAttOverlay').style.display = 'none';
+  document.getElementById('addAttModal').style.display = 'none';
+}
+
+function saveAddAtt() {
+  var checkIn  = document.getElementById('addAttCheckIn').value;
+  var checkOut = document.getElementById('addAttCheckOut').value;
+  var note     = document.getElementById('addAttNote').value.trim();
+  var status   = document.getElementById('addAttStatus').value;
+  var shiftSel = document.getElementById('addAttShift');
+  var shiftId  = shiftSel.value || null;
+  var errEl    = document.getElementById('addAttErr');
+  errEl.style.display = 'none';
+
+  if (!checkIn)  { errEl.textContent = 'Vui lòng nhập giờ vào'; errEl.style.display='block'; return; }
+  if (!checkOut) { errEl.textContent = 'Vui lòng nhập giờ ra';  errEl.style.display='block'; return; }
+  if (checkOut <= checkIn) { errEl.textContent = 'Giờ ra phải sau giờ vào'; errEl.style.display='block'; return; }
+  if (!note) { errEl.textContent = 'Ghi chú là bắt buộc khi chấm công thủ công'; errEl.style.display='block'; document.getElementById('addAttNote').style.borderColor='#ef4444'; return; }
+
+  var btn = document.getElementById('addAttSaveBtn');
+  btn.disabled = true; btn.textContent = 'Đang lưu...';
+
+  var record = {
+    id:             'ATT-M-' + Date.now(),
+    employeeId:     _addAttCtx.empId,
+    date:           _addAttCtx.date,
+    shiftId:        shiftId,
+    checkIn:        checkIn,
+    checkOut:       checkOut,
+    note:           note,
+    approvalStatus: status,
+    status:         'present',
+    manual:         true
+  };
+
+  var key = 'humi_attendance';
+  var list = JSON.parse(localStorage.getItem(key) || '[]');
+  list.push(record);
+  localStorage.setItem(key, JSON.stringify(list));
+
+  setTimeout(function() {
+    btn.disabled = false; btn.textContent = 'Lưu chấm công';
+    closeAddAttModal();
+    employees = buildEmployees(_baseMonday);
+    reRender();
+    showToast('Đã thêm chấm công thủ công cho ' + _addAttCtx.date);
+  }, 400);
 }
 
 // ===== FILTER PANEL =====

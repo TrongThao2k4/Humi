@@ -83,13 +83,17 @@
 
   <!-- MAIN -->
   <main class="main-content fade-in">
+
     <!-- Page header -->
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:16px 24px;border-bottom:1px solid #e5eaef;background:white;flex-shrink:0;">
-      <div style="display:flex;align-items:center;gap:10px;">
-        <h1 style="font-size:18px;font-weight:700;color:#2A3547;margin:0;">Phép tồn</h1>
-        <span id="yearBadge" style="font-size:12px;font-weight:600;color:#16a34a;background:#dcfce7;padding:3px 10px;border-radius:20px;"></span>
+    <div class="page-header">
+      <div>
+        <h1 class="page-title">
+          Phép tồn
+          <span id="yearBadge" style="font-size:12px;font-weight:600;color:#16a34a;background:#dcfce7;padding:3px 10px;border-radius:20px;vertical-align:middle;"></span>
+        </h1>
+        <p class="page-subtitle">Theo dõi số ngày phép và lịch sử nghỉ phép của bạn</p>
       </div>
-      <div style="display:flex;align-items:center;gap:8px;">
+      <div class="page-actions">
         <button class="btn-outline" onclick="exportCSV()">
           <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15v4a2 2 0 01-2 2H5a2 2 0 01-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
           Xuất CSV
@@ -101,61 +105,32 @@
       </div>
     </div>
 
+    <!-- Leave type cards (rendered by JS) -->
+    <div class="leave-cards-grid" id="leaveCardsGrid"></div>
 
-    <!-- Summary cards -->
-    <div class="summary-grid" style="padding:16px 24px;flex-shrink:0;">
-      <div class="sum-card">
-        <p class="sum-label">Tổng phép năm</p>
-        <p class="sum-value" id="sumTotal">—</p>
-      </div>
-      <div class="sum-card">
-        <p class="sum-label">Đã sử dụng</p>
-        <p class="sum-value" id="sumUsed" style="color:#ea580c;">—</p>
-      </div>
-      <div class="sum-card">
-        <p class="sum-label">Còn lại</p>
-        <p class="sum-value" id="sumRemaining" style="color:#16a34a;">—</p>
-      </div>
-      <div class="sum-card">
-        <p class="sum-label">Chờ duyệt</p>
-        <p class="sum-value" id="sumPending" style="color:#d97706;">—</p>
-      </div>
-    </div>
-
-    <!-- Leave breakdown table -->
-    <div style="margin:0 24px 16px;background:white;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.05);overflow:hidden;flex-shrink:0;">
-      <div style="padding:14px 18px;border-bottom:1px solid #EAEFF4;">
-        <h2 style="font-size:14px;font-weight:700;color:#2A3547;margin:0;">Phân tích theo loại phép</h2>
+    <!-- History table -->
+    <div class="history-section">
+      <div class="section-head">
+        <h2 class="section-title">Lịch sử nghỉ phép <span id="histYear"></span></h2>
       </div>
       <div style="overflow-x:auto;">
-        <table class="leave-table">
+        <table class="hist-table">
           <thead>
             <tr>
               <th>Loại phép</th>
-              <th>Tổng</th>
-              <th>Đã dùng</th>
-              <th>Còn lại</th>
-              <th>Đang chờ</th>
-              <th style="min-width:160px;">Tỷ lệ sử dụng</th>
+              <th>Từ ngày</th>
+              <th>Đến ngày</th>
+              <th>Số ngày</th>
+              <th>Lý do</th>
+              <th>Ngày nộp</th>
               <th>Trạng thái</th>
             </tr>
           </thead>
-          <tbody id="leaveTableBody"></tbody>
+          <tbody id="leaveHistoryTable">
+            <tr><td colspan="7" style="text-align:center;padding:36px;color:#7C8FAC;font-size:13px;">Đang tải...</td></tr>
+          </tbody>
         </table>
       </div>
-    </div>
-
-    <!-- History and detail grid -->
-    <div class="detail-grid" style="padding:0 24px 16px;">
-
-      <!-- Leave history card -->
-      <div style="background:white;border-radius:8px;box-shadow:0 2px 8px rgba(0,0,0,0.05);overflow:hidden;">
-        <div style="padding:14px 18px;border-bottom:1px solid #EAEFF4;display:flex;align-items:center;justify-content:space-between;">
-          <h2 style="font-size:14px;font-weight:700;color:#2A3547;margin:0;">Lịch sử nghỉ phép gần đây</h2>
-        </div>
-        <div id="leaveHistory" style="padding:12px 18px;"></div>
-      </div>
-
     </div>
 
   </main>

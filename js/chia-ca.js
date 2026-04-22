@@ -7,7 +7,7 @@
 function populateBranchDropdown(selId) {
   var sel = document.getElementById(selId);
   if (!sel) return;
-  var emps = DB.employees.getAll() || [];
+  var emps = getScopedRaw() || [];
   var units = [...new Set(emps.map(function(e){ return e.unit; }).filter(Boolean))].sort();
   var current = sel.value;
   // Keep first option (placeholder)
@@ -83,10 +83,18 @@ function isAssigned(dayDate, slotIdx) {
 
 loadConfig();
 
-const ALL_EMPLOYEES = DB.employees.getAll().filter(e=>e.status==='active').map(e=>({
+function getScopedRaw() {
+  var all = DB.employees.getAll().filter(function(e){ return e.status === 'active'; });
+  if (currentUser.roleId === 'admin') return all;
+  return all.filter(function(e) {
+    return e.managerId === currentUser.id || e.id === currentUser.id;
+  });
+}
+
+const ALL_EMPLOYEES = getScopedRaw().map(e=>({
   id: e.id, name: e.name, code: e.code, branch: e.unit,
   role: e.roleId==='manager' ? 'Quản lý' : 'Nhân viên',
-  avatar: e.avatar || ('https://i.pravatar.cc/36?img='+(Math.abs((e.id||'x').charCodeAt(2)%50)+1))
+  avatar: e.avatar || genAvatar(e.name)
 }));
 
 // ===== STATE =====
@@ -191,7 +199,7 @@ function toggleCheck(empId, dayIdx, slotIdx) {
   if (box) {
     box.className = 'cb-box' + (checked[key] ? ' checked' : '');
     box.innerHTML = checked[key]
-      ? `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>`
+      ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>`
       : '';
   }
   updateRatioCell(dayIdx, slotIdx);
@@ -275,10 +283,10 @@ function getFilteredEmployees() {
 function renderTable() {
   // ---- THEAD ----
   let hhtml = '<tr>';
-  hhtml += `<th class="col-emp" rowspan="4" style="min-width:220px;padding:12px 16px;background:#F2F6FA;font-size:12px;font-weight:600;color:#5A6A85;text-align:left;border:1px solid #e5eaef;">Nhân viên</th>`;
+  hhtml += `<th class="col-emp" rowspan="4" style="min-width:260px;padding:14px 18px;background:#F2F6FA;font-size:14px;font-weight:600;color:#5A6A85;text-align:left;border:1px solid #e5eaef;">Nhân viên</th>`;
   currentDays.forEach((day, di) => {
     const sep = di > 0 ? 'border-left:5px solid #F0F2F8;' : '';
-    hhtml += `<th colspan="${SLOTS.length}" class="th-day" style="border:1px solid var(--primary-dark);${sep}">${day.label}<br><span style="font-weight:500;font-size:10px;opacity:0.85;">${day.date}</span></th>`;
+    hhtml += `<th colspan="${SLOTS.length}" class="th-day" style="border:1px solid var(--primary-dark);${sep}">${day.label}<br><span style="font-weight:500;font-size:12px;opacity:0.85;">${day.date}</span></th>`;
   });
   hhtml += '</tr><tr>';
   currentDays.forEach(() => {
@@ -319,13 +327,13 @@ function renderTable() {
     bhtml = `<tr><td colspan="${1 + currentDays.length * SLOTS.length}" style="text-align:center;padding:32px;color:#7C8FAC;font-size:13px;">Không có nhân viên thuộc đơn vị này</td></tr>`;
   } else {
     currentEmployees.forEach(emp => {
-      bhtml += `<tr class="emp-row"><td class="col-emp" style="padding:8px 12px;border:1px solid #e5eaef;">
-        <div style="display:flex;align-items:center;gap:10px;">
-          <img src="${emp.avatar}" alt="" style="width:36px;height:36px;border-radius:50%;object-fit:cover;flex-shrink:0;" />
+      bhtml += `<tr class="emp-row"><td class="col-emp" style="padding:10px 14px;border:1px solid #e5eaef;">
+        <div style="display:flex;align-items:center;gap:12px;">
+          <img src="${emp.avatar}" alt="" style="width:44px;height:44px;border-radius:50%;object-fit:cover;flex-shrink:0;" />
           <div style="flex:1;">
-            <p style="font-size:12.5px;font-weight:700;color:#2A3547;margin:0 0 1px;">${emp.name}</p>
-            <p style="font-size:11px;color:#7C8FAC;margin:0 0 1px;">${emp.code}</p>
-            <p style="font-size:10.5px;color:#7C8FAC;margin:0;">${emp.branch} – ${emp.role}</p>
+            <p style="font-size:14px;font-weight:700;color:#2A3547;margin:0 0 2px;">${emp.name}</p>
+            <p style="font-size:12.5px;color:#7C8FAC;margin:0 0 2px;">${emp.code}</p>
+            <p style="font-size:12px;color:#7C8FAC;margin:0;">${emp.branch} – ${emp.role}</p>
           </div>
           <span class="prog-badge" id="badge-${emp.id}">${calcEmpHours(emp.id)}/56</span>
         </div>
@@ -343,7 +351,7 @@ function renderTable() {
             bhtml += `<td class="td-check" style="border:1px solid #e5eaef;${sep}${lockedPast ? 'background:#F8FAFC;' : ''}">
               <div class="cb-wrap${lockedPast ? ' disabled' : ''}" ${lockedPast ? '' : `onclick="toggleCheck('${emp.id}',${di},${si})"`}>
                 <div id="cb-${key}" class="cb-box${isChecked?' checked':''}">
-                  ${isChecked ? `<svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>` : ''}
+                  ${isChecked ? `<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="3"><polyline points="20 6 9 17 4 12"/></svg>` : ''}
                 </div>
               </div>
             </td>`;

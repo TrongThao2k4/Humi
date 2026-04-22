@@ -7,7 +7,7 @@
 
     .layout {
       display: grid;
-      grid-template-columns: 240px 1fr;
+      grid-template-columns: 260px 1fr;
       grid-template-rows: 64px 1fr;
       min-height: 100vh;
     }
@@ -59,43 +59,43 @@
     /* Frozen employee column */
     .col-emp {
       position: sticky; left: 0; z-index: 4;
-      background: white; min-width: 220px;
+      background: white; min-width: 260px;
     }
     th.col-emp { z-index: 20; background: #F2F6FA; }
 
     /* Day header (spans multiple shift cols) */
     .th-day {
       background: var(--primary);
-      color: white; font-size: 11px; font-weight: 700;
-      text-align: center; padding: 6px 8px;
+      color: white; font-size: 13px; font-weight: 700;
+      text-align: center; padding: 9px 10px;
       border-bottom: 1px solid var(--primary-dark);
     }
 
     /* Shift sub-header */
     .th-shift {
       background: #ECF2FF; color: #4338ca;
-      font-size: 10px; font-weight: 700; text-align: center;
-      padding: 4px 6px; border-bottom: 1px solid #e0e7ff;
+      font-size: 12px; font-weight: 700; text-align: center;
+      padding: 6px 8px; border-bottom: 1px solid #e0e7ff;
     }
 
     /* Time sub-header */
     .th-time {
       background: #F2F6FA; color: #5A6A85;
-      font-size: 10px; font-weight: 500; text-align: center;
-      padding: 3px 4px; border-bottom: 1px solid #e5eaef;
+      font-size: 12px; font-weight: 500; text-align: center;
+      padding: 5px 6px; border-bottom: 1px solid #e5eaef;
     }
 
     /* Ratio sub-header */
     .th-ratio {
       background: #F2F6FA; color: #2A3547;
-      font-size: 10px; font-weight: 600; text-align: center;
-      padding: 3px 4px; border-bottom: 1px solid #e5eaef;
+      font-size: 12px; font-weight: 600; text-align: center;
+      padding: 5px 6px; border-bottom: 1px solid #e5eaef;
     }
 
     /* Cell */
     .td-check {
       text-align: center; vertical-align: middle;
-      padding: 0; width: 36px; height: 46px;
+      padding: 0; width: 48px; height: 58px;
     }
 
     /* Custom checkbox */
@@ -105,7 +105,7 @@
     }
     .cb-wrap.disabled { cursor: not-allowed; }
     .cb-box {
-      width: 18px; height: 18px; border-radius: 4px;
+      width: 22px; height: 22px; border-radius: 5px;
       border: 1.5px solid #DFE5EF; background: white;
       display: flex; align-items: center; justify-content: center;
       transition: all 0.15s; flex-shrink: 0;
@@ -116,15 +116,15 @@
     .cb-wrap.disabled .cb-box.checked { background: #9CA3AF; border-color: #9CA3AF; }
 
     /* Employee row */
-    .emp-row td { height: 60px; }
+    .emp-row td { height: 72px; }
     .emp-row:hover td { background: #fafafa; }
     .emp-row:hover td.col-emp { background: #fafafa; }
 
     /* Progress badge */
     .prog-badge {
       display: inline-flex; align-items: center; justify-content: center;
-      padding: 3px 10px; border-radius: 20px;
-      font-size: 11px; font-weight: 700; color: white;
+      padding: 4px 12px; border-radius: 20px;
+      font-size: 13px; font-weight: 700; color: white;
       background: #f97316; flex-shrink: 0;
     }
 

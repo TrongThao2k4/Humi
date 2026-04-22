@@ -488,6 +488,74 @@
   </div>
 </div>
 
+<!-- ===== MODAL THÊM CHẤM CÔNG THỦ CÔNG ===== -->
+<div id="addAttOverlay" style="display:none;position:fixed;inset:0;z-index:1200;background:rgba(10,10,40,0.5);backdrop-filter:blur(3px);" onclick="closeAddAttModal()"></div>
+<div id="addAttModal" style="display:none;position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);z-index:1201;background:white;border-radius:20px;width:400px;max-width:calc(100vw - 32px);box-shadow:0 20px 60px rgba(0,0,0,0.2);overflow:hidden;font-family:inherit;">
+  <!-- Header -->
+  <div style="display:flex;align-items:center;justify-content:space-between;padding:18px 20px 14px;border-bottom:1px solid #f0f0f8;">
+    <div style="display:flex;align-items:center;gap:10px;">
+      <div style="width:32px;height:32px;border-radius:8px;background:linear-gradient(135deg,#5D87FF,#4570EA);display:flex;align-items:center;justify-content:center;">
+        <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5">
+          <circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="16"/><line x1="8" y1="12" x2="16" y2="12"/>
+        </svg>
+      </div>
+      <div>
+        <p id="addAttTitle" style="font-size:15px;font-weight:700;color:#2A3547;margin:0;">Thêm chấm công</p>
+        <p id="addAttSubtitle" style="font-size:11px;color:#7C8FAC;margin:0;"></p>
+      </div>
+    </div>
+    <button onclick="closeAddAttModal()" style="width:30px;height:30px;border-radius:8px;border:none;background:#EAEFF4;cursor:pointer;display:flex;align-items:center;justify-content:center;">
+      <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#5A6A85" stroke-width="2.5"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+    </button>
+  </div>
+
+  <!-- Body -->
+  <div style="padding:20px;">
+    <p id="addAttErr" style="font-size:12px;color:#ef4444;margin:0 0 12px;display:none;background:#fef2f2;padding:8px 12px;border-radius:8px;"></p>
+
+    <!-- Ca làm -->
+    <div style="margin-bottom:14px;">
+      <label style="font-size:12px;font-weight:700;color:#374151;display:block;margin-bottom:6px;">Ca làm việc</label>
+      <select id="addAttShift" style="width:100%;border:1.5px solid #e8edf4;border-radius:9px;padding:10px 13px;font-size:13px;color:#2A3547;font-family:inherit;outline:none;background:#fafbfc;transition:border-color .15s;" onfocus="this.style.borderColor='#5D87FF'" onblur="this.style.borderColor='#e8edf4'" onchange="fillShiftTimes()">
+        <option value="">-- Chọn ca (hoặc nhập thủ công) --</option>
+      </select>
+    </div>
+
+    <!-- Giờ vào / ra -->
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
+      <div>
+        <label style="font-size:12px;font-weight:700;color:#374151;display:block;margin-bottom:6px;">Giờ vào</label>
+        <input id="addAttCheckIn" type="time" style="width:100%;border:1.5px solid #e8edf4;border-radius:9px;padding:10px 13px;font-size:14px;color:#2A3547;font-family:inherit;outline:none;background:#fafbfc;transition:border-color .15s;" onfocus="this.style.borderColor='#5D87FF'" onblur="this.style.borderColor='#e8edf4'"/>
+      </div>
+      <div>
+        <label style="font-size:12px;font-weight:700;color:#374151;display:block;margin-bottom:6px;">Giờ ra</label>
+        <input id="addAttCheckOut" type="time" style="width:100%;border:1.5px solid #e8edf4;border-radius:9px;padding:10px 13px;font-size:14px;color:#2A3547;font-family:inherit;outline:none;background:#fafbfc;transition:border-color .15s;" onfocus="this.style.borderColor='#5D87FF'" onblur="this.style.borderColor='#e8edf4'"/>
+      </div>
+    </div>
+
+    <!-- Trạng thái -->
+    <div style="margin-bottom:14px;">
+      <label style="font-size:12px;font-weight:700;color:#374151;display:block;margin-bottom:6px;">Trạng thái duyệt</label>
+      <select id="addAttStatus" style="width:100%;border:1.5px solid #e8edf4;border-radius:9px;padding:10px 13px;font-size:13px;color:#2A3547;font-family:inherit;outline:none;background:#fafbfc;">
+        <option value="pending">Chờ duyệt</option>
+        <option value="approved">Đã duyệt</option>
+      </select>
+    </div>
+
+    <!-- Ghi chú -->
+    <div style="margin-bottom:20px;">
+      <label style="font-size:12px;font-weight:700;color:#374151;display:block;margin-bottom:6px;">Ghi chú <span style="color:#ef4444;">*</span></label>
+      <textarea id="addAttNote" rows="2" placeholder="Bắt buộc – Nhập lý do chấm công thủ công..." style="width:100%;border:1.5px solid #e8edf4;border-radius:9px;padding:10px 13px;font-size:13px;color:#2A3547;font-family:inherit;outline:none;background:#fafbfc;resize:none;transition:border-color .15s;" onfocus="this.style.borderColor='#5D87FF';document.getElementById('addAttErr').style.display='none'" onblur="this.style.borderColor='#e8edf4'"></textarea>
+    </div>
+
+    <!-- Buttons -->
+    <div style="display:flex;gap:10px;">
+      <button onclick="closeAddAttModal()" style="flex:1;padding:12px;border-radius:9px;border:1.5px solid #e8edf4;background:white;font-size:13px;font-weight:600;color:#5A6A85;cursor:pointer;font-family:inherit;" onmouseover="this.style.background='#f5f5f5'" onmouseout="this.style.background='white'">Huỷ</button>
+      <button id="addAttSaveBtn" onclick="saveAddAtt()" style="flex:2;padding:12px;border-radius:9px;border:none;background:linear-gradient(135deg,#5D87FF,#4570EA);color:white;font-size:13px;font-weight:700;cursor:pointer;font-family:inherit;box-shadow:0 4px 12px rgba(93,135,255,.3);">Lưu chấm công</button>
+    </div>
+  </div>
+</div>
+
 <script src="../js/duyet-cong.js"></script>
 </body>
 </html>
