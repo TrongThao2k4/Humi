@@ -67,7 +67,7 @@ function syncFromSupabase() {
     { remote:'employees',     local:'humi_employees',     map: function(r){ return { id:r.id, code:r.code, name:r.name, avatar:r.avatar, unit:r.unit, position:r.position, roleId:r.role_id, status:r.status, gender:r.gender, phone:r.phone, email:r.email, dob:r.dob, startDate:r.start_date, contractStatus:r.contract_status, contractType:r.contract_type, workMode:r.work_mode, managerName:r.manager_name, managerId:r.manager_id||null, leaveBalance:r.leave_balance||{annual:12,sick:30,maternity:180,unpaid:99}, idCard:r.id_card, faceImage:r.face_image||null, faceDescriptor:r.face_descriptor||null }; } },
     { remote:'shifts',        local:'humi_shifts',        map: function(r){ return { id:r.id, name:r.name, code:r.code, startTime:r.start_time, endTime:r.end_time, breakMinutes:r.break_minutes, workHours:r.work_hours, quota:r.quota, active:r.active, color:r.color, applyDays:r.apply_days }; } },
     { remote:'leave_requests',local:'humi_leave_requests',map: function(r){ return { id:r.id, employeeId:r.employee_id, leaveType:r.leave_type, leaveTypeName:r.leave_type_name, startDate:r.start_date, endDate:r.end_date, totalDays:r.total_days, status:r.status, reason:r.reason, approverId:r.approver_id, approvedAt:r.approved_at||null, rejectedAt:r.rejected_at||null, rejectReason:r.reject_reason||null, createdAt:r.created_at }; } },
-    { remote:'requests',      local:'humi_requests',      map: function(r){ return { id:r.id, employeeId:r.employee_id, type:r.type, typeLabel:r.type_label, content:r.content, status:r.status, approverId:r.approver_id, createdAt:r.created_at }; } },
+    { remote:'requests',      local:'humi_requests',      map: function(r){ return { id:r.id, employeeId:r.employee_id, type:r.request_type||r.type, typeLabel:r.type_label, content:r.content, status:r.status, approverId:r.approver_id, createdAt:r.created_at }; } },
     { remote:'salary',        local:'humi_salary',        map: function(r){ return { id:r.id, employeeId:r.employee_id, period:r.period, baseSalary:r.base_salary, grossSalary:r.gross_salary, netSalary:r.net_salary, workDays:r.work_days, actualWorkDays:r.actual_work_days, allowances:r.allowances||{}, deductions:r.deductions||{}, bonus:r.bonus, overtimePay:r.overtime_pay }; } },
     // announcements: Supabase dùng body thay preview, created_by_id thay creator
     { remote:'announcements', local:'humi_announcements', map: function(r){
@@ -200,7 +200,7 @@ function syncFromSupabase() {
     humi_employees: function(r) { return { id:r.id, code:r.code, name:r.name, avatar:r.avatar, unit:r.unit, position:r.position, roleId:r.role_id, status:r.status, gender:r.gender, phone:r.phone, email:r.email, dob:r.dob, startDate:r.start_date, contractStatus:r.contract_status, contractType:r.contract_type, workMode:r.work_mode, managerName:r.manager_name, managerId:r.manager_id||null, leaveBalance:r.leave_balance||{annual:12,sick:30,maternity:180,unpaid:99}, idCard:r.id_card, faceImage:r.face_image||null, faceDescriptor:r.face_descriptor||null }; },
     humi_shifts: function(r) { return { id:r.id, name:r.name, code:r.code, startTime:r.start_time, endTime:r.end_time, breakMinutes:r.break_minutes, workHours:r.work_hours, quota:r.quota, active:r.active, color:r.color, applyDays:r.apply_days }; },
     humi_leave_requests: function(r) { return { id:r.id, employeeId:r.employee_id, leaveType:r.leave_type, leaveTypeName:r.leave_type_name, startDate:r.start_date, endDate:r.end_date, totalDays:r.total_days, status:r.status, reason:r.reason, approverId:r.approver_id, approvedAt:r.approved_at||null, rejectedAt:r.rejected_at||null, rejectReason:r.reject_reason||null, createdAt:r.created_at }; },
-    humi_requests: function(r) { return { id:r.id, employeeId:r.employee_id, type:r.type, typeLabel:r.type_label, content:r.content, status:r.status, approverId:r.approver_id, createdAt:r.created_at }; },
+    humi_requests: function(r) { return { id:r.id, employeeId:r.employee_id, type:r.request_type||r.type, typeLabel:r.type_label, content:r.content, status:r.status, approverId:r.approver_id, createdAt:r.created_at }; },
     humi_salary: function(r) { return { id:r.id, employeeId:r.employee_id, period:r.period, baseSalary:r.base_salary, grossSalary:r.gross_salary, netSalary:r.net_salary, workDays:r.work_days, actualWorkDays:r.actual_work_days, allowances:r.allowances||{}, deductions:r.deductions||{}, bonus:r.bonus, overtimePay:r.overtime_pay }; },
     humi_announcements: function(r){
       function strip(h){ return (h||'').replace(/<[^>]*>/g,'').replace(/\s+/g,' ').trim().slice(0,150); }
@@ -666,25 +666,26 @@ function syncFromSupabase() {
         var list = this.getAll({ employeeId:employeeId }).filter(function(r){ return r.date && r.date.startsWith(period); });
         return { worked: list.filter(function(r){ return r.checkIn; }).length, total: list.length };
       },
-      // Duyệt công: lưu vào approved_check_in/out — KHÔNG ghi đè check_in/out gốc
+      // Duyệt công: cập nhật check_in/check_out và approval_status lên cả localStorage lẫn Supabase
       approve: function(id, approverId, overrides) {
         var list = load(K.attendance);
         var idx = list.findIndex(function(r){ return r.id === id; });
         if (idx === -1) return false;
         var now = new Date().toISOString();
-        list[idx].approvalStatus  = 'approved';
-        list[idx].approverId      = approverId;
-        list[idx].approvedAt      = now;
+        list[idx].approvalStatus = 'approved';
+        list[idx].approverId     = approverId;
+        list[idx].approvedAt     = now;
         if (overrides) {
-          if (overrides.checkIn)      list[idx].approvedCheckIn  = overrides.checkIn;
-          if (overrides.checkOut)     list[idx].approvedCheckOut = overrides.checkOut;
-          if (overrides.approverNote) list[idx].approverNote     = overrides.approverNote;
+          // Ghi đè checkIn/checkOut bằng giờ đã duyệt để sau sync vẫn giữ đúng
+          if (overrides.checkIn)      { list[idx].checkIn  = overrides.checkIn;  list[idx].approvedCheckIn  = overrides.checkIn; }
+          if (overrides.checkOut)     { list[idx].checkOut = overrides.checkOut; list[idx].approvedCheckOut = overrides.checkOut; }
+          if (overrides.approverNote) list[idx].approverNote = overrides.approverNote;
         }
         save(K.attendance, list);
-        var sbData = { approval_status:'approved', approver_id:approverId, approved_at:now };
-        if (overrides && overrides.checkIn)      sbData.approved_check_in  = overrides.checkIn;
-        if (overrides && overrides.checkOut)     sbData.approved_check_out = overrides.checkOut;
-        if (overrides && overrides.approverNote) sbData.approver_note      = overrides.approverNote;
+        // Supabase: chỉ dùng các cột chắc chắn tồn tại (check_in, check_out, approval_status)
+        var sbData = { approval_status: 'approved' };
+        if (overrides && overrides.checkIn)  sbData.check_in  = overrides.checkIn;
+        if (overrides && overrides.checkOut) sbData.check_out = overrides.checkOut;
         SB.update('attendance', { id: id }, sbData);
         return true;
       },
@@ -699,7 +700,7 @@ function syncFromSupabase() {
         list[idx].approvedAt     = now;
         if (note) list[idx].approverNote = note;
         save(K.attendance, list);
-        SB.update('attendance', { id: id }, { approval_status:'rejected', approver_id:approverId, approved_at:now, approver_note:note||'' });
+        SB.update('attendance', { id: id }, { approval_status: 'rejected' });
         return true;
       }
     },

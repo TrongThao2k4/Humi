@@ -415,13 +415,23 @@
       <div style="display:flex;gap:12px;">
         <div class="chitiet-field" style="flex:1;">
           <label>Giờ vào</label>
-          <input id="ct-checkin" type="time" class="chitiet-input" />
+          <div style="display:flex;align-items:center;gap:4px;border:1px solid #e5eaef;border-radius:7px;padding:6px 10px;background:white;">
+            <select id="ct-checkin-h" onchange="updateCtHoursPreview()" style="border:none;outline:none;font-size:14px;font-weight:600;color:#2A3547;font-family:inherit;background:transparent;cursor:pointer;width:44px;text-align:center;"></select>
+            <span style="font-weight:700;color:#7C8FAC;">:</span>
+            <select id="ct-checkin-m" onchange="updateCtHoursPreview()" style="border:none;outline:none;font-size:14px;font-weight:600;color:#2A3547;font-family:inherit;background:transparent;cursor:pointer;width:44px;text-align:center;"></select>
+          </div>
         </div>
         <div class="chitiet-field" style="flex:1;">
           <label>Giờ kết ca</label>
-          <input id="ct-checkout" type="time" class="chitiet-input" />
+          <div style="display:flex;align-items:center;gap:4px;border:1px solid #e5eaef;border-radius:7px;padding:6px 10px;background:white;">
+            <select id="ct-checkout-h" onchange="updateCtHoursPreview()" style="border:none;outline:none;font-size:14px;font-weight:600;color:#2A3547;font-family:inherit;background:transparent;cursor:pointer;width:44px;text-align:center;"></select>
+            <span style="font-weight:700;color:#7C8FAC;">:</span>
+            <select id="ct-checkout-m" onchange="updateCtHoursPreview()" style="border:none;outline:none;font-size:14px;font-weight:600;color:#2A3547;font-family:inherit;background:transparent;cursor:pointer;width:44px;text-align:center;"></select>
+          </div>
         </div>
       </div>
+      <!-- Live hours preview -->
+      <div id="ct-hours-preview" style="display:none;background:#f0fdf4;border:1px solid #bbf7d0;border-radius:8px;padding:10px 14px;font-size:13px;color:#166534;font-weight:600;text-align:center;"></div>
       <div class="chitiet-field">
         <label>Ghi chú</label>
         <textarea id="ct-note" class="chitiet-input" rows="3" placeholder="Ghi chú điều chỉnh..." style="resize:none;"></textarea>
@@ -525,11 +535,19 @@
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:14px;">
       <div>
         <label style="font-size:12px;font-weight:700;color:#374151;display:block;margin-bottom:6px;">Giờ vào</label>
-        <input id="addAttCheckIn" type="time" style="width:100%;border:1.5px solid #e8edf4;border-radius:9px;padding:10px 13px;font-size:14px;color:#2A3547;font-family:inherit;outline:none;background:#fafbfc;transition:border-color .15s;" onfocus="this.style.borderColor='#5D87FF'" onblur="this.style.borderColor='#e8edf4'"/>
+        <div style="display:flex;align-items:center;gap:6px;border:1.5px solid #e8edf4;border-radius:9px;padding:8px 13px;background:#fafbfc;">
+          <select id="addAttCheckIn-h" style="border:none;outline:none;font-size:14px;font-weight:600;color:#2A3547;font-family:inherit;background:transparent;cursor:pointer;width:44px;text-align:center;"></select>
+          <span style="font-weight:700;color:#7C8FAC;">:</span>
+          <select id="addAttCheckIn-m" style="border:none;outline:none;font-size:14px;font-weight:600;color:#2A3547;font-family:inherit;background:transparent;cursor:pointer;width:44px;text-align:center;"></select>
+        </div>
       </div>
       <div>
         <label style="font-size:12px;font-weight:700;color:#374151;display:block;margin-bottom:6px;">Giờ ra</label>
-        <input id="addAttCheckOut" type="time" style="width:100%;border:1.5px solid #e8edf4;border-radius:9px;padding:10px 13px;font-size:14px;color:#2A3547;font-family:inherit;outline:none;background:#fafbfc;transition:border-color .15s;" onfocus="this.style.borderColor='#5D87FF'" onblur="this.style.borderColor='#e8edf4'"/>
+        <div style="display:flex;align-items:center;gap:6px;border:1.5px solid #e8edf4;border-radius:9px;padding:8px 13px;background:#fafbfc;">
+          <select id="addAttCheckOut-h" style="border:none;outline:none;font-size:14px;font-weight:600;color:#2A3547;font-family:inherit;background:transparent;cursor:pointer;width:44px;text-align:center;"></select>
+          <span style="font-weight:700;color:#7C8FAC;">:</span>
+          <select id="addAttCheckOut-m" style="border:none;outline:none;font-size:14px;font-weight:600;color:#2A3547;font-family:inherit;background:transparent;cursor:pointer;width:44px;text-align:center;"></select>
+        </div>
       </div>
     </div>
 

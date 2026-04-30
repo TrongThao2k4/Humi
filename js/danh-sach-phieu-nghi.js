@@ -384,8 +384,8 @@ function closeDetail() { document.getElementById('detailModal').style.display = 
 
 // ─── Create modal ─────────────────────────────────────────
 function openCreateModal() {
-  // Populate employee dropdown
-  var emps = (DB.employees.getAll()||[]).filter(function(e){ return e.status !== 'inactive'; });
+  // Populate employee dropdown — manager chỉ thấy nhân viên thuộc quyền quản lý
+  var emps = getScopedEmployees().filter(function(e){ return e.status !== 'inactive'; });
   var sel = document.getElementById('createEmpId');
   sel.innerHTML = '<option value="">— Chọn nhân viên —</option>'
     + emps.map(function(e){ return '<option value="'+e.id+'">'+e.name+' ('+e.code+')</option>'; }).join('');

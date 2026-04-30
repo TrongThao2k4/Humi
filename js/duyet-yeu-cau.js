@@ -207,7 +207,9 @@ function closeModal() { document.getElementById('detailModal').classList.remove(
 function populateBranchDropdown(selId) {
   var sel = document.getElementById(selId);
   if (!sel) return;
-  var emps = DB.employees.getAll() || [];
+  var ids = getScopedEmployeeIds();
+  var all = DB.employees.getAll() || [];
+  var emps = ids ? all.filter(function(e){ return ids.has(e.id); }) : all;
   var units = [...new Set(emps.map(function(e){ return e.unit; }).filter(Boolean))].sort();
   var current = sel.value;
   // Keep first option (placeholder)

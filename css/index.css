@@ -22,13 +22,13 @@
 
     /* Gradient button */
     .btn-primary {
-      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 50%, #2563EB 100%);
+      background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
       transition: all 0.2s ease;
-      box-shadow: 0 4px 14px rgba(99, 60, 236, 0.35);
+      box-shadow: 0 4px 14px rgba(93, 135, 255, 0.35);
     }
     .btn-primary:hover {
       transform: translateY(-1px);
-      box-shadow: 0 6px 20px rgba(99, 60, 236, 0.45);
+      box-shadow: 0 6px 20px rgba(93, 135, 255, 0.45);
     }
     .btn-primary:active { transform: translateY(0); }
 

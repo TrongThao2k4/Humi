@@ -508,7 +508,7 @@ function openDetail(pill, td, tr) {
   const dayIdx = cells.indexOf(td) - 2; // 0=Mon..6=Sun
   const clickedShiftId = pill.dataset.shiftid || null;
   const clickedRecId   = pill.dataset.recid   || null;
-  _detailCtx = { empIdx, dayIdx, shiftId: clickedShiftId, recId: clickedRecId };
+  _detailCtx = { empIdx, dayIdx, shiftId: clickedShiftId, recId: clickedRecId, checkIn, checkOut };
 
   const cellDate = new Date(_baseMonday);
   cellDate.setDate(cellDate.getDate() + dayIdx);
@@ -534,6 +534,29 @@ function openDetail(pill, td, tr) {
   document.getElementById('det-checkin').textContent = checkIn || '—';
   document.getElementById('det-checkout').textContent = checkOut || '—';
   document.getElementById('det-note').value = '';
+
+  // Cập nhật label nút Duyệt nửa ca đầu/sau với giờ và số tiếng cụ thể
+  var _fBtn = document.querySelector('[onclick="applyHalfShift(\'first\')"]');
+  var _lBtn = document.querySelector('[onclick="applyHalfShift(\'last\')"]');
+  if (checkIn && checkOut && _fBtn && _lBtn) {
+    var _toMin2 = function(t) { var p = t.split(':').map(Number); return p[0]*60+p[1]; };
+    var _totalMin2 = _toMin2(checkOut) - _toMin2(checkIn);
+    if (_totalMin2 > 0) {
+      var _halfMin2 = Math.floor(_totalMin2 / 2);
+      var _mh2 = String(Math.floor((_toMin2(checkIn) + _halfMin2)/60)%24).padStart(2,'0');
+      var _mm2 = String((_toMin2(checkIn) + _halfMin2) % 60).padStart(2,'0');
+      var _mid2 = _mh2 + ':' + _mm2;
+      var _hh2 = (_halfMin2/60).toFixed(1);
+      _fBtn.textContent = 'Nửa ca đầu (' + checkIn + '–' + _mid2 + ', ' + _hh2 + 'h)';
+      _lBtn.textContent = 'Nửa ca sau (' + _mid2 + '–' + checkOut + ', ' + _hh2 + 'h)';
+    } else {
+      _fBtn.textContent = 'Duyệt nửa ca đầu';
+      _lBtn.textContent = 'Duyệt nửa ca sau';
+    }
+  } else {
+    if (_fBtn) _fBtn.textContent = 'Duyệt nửa ca đầu';
+    if (_lBtn) _lBtn.textContent = 'Duyệt nửa ca sau';
+  }
 
   // Tự động xác định đi muộn / về sớm dựa vào ca làm việc của pill được click
   (function() {
@@ -599,36 +622,54 @@ function recalcWorked(emp) {
 
 function applyHalfShift(half) {
   if (!_detailCtx) return;
-  const { empIdx, dayIdx } = _detailCtx;
+  const { empIdx, dayIdx, recId: ctxRecId } = _detailCtx;
   const emp = employees[empIdx];
   const day = emp.days[dayIdx];
-  if (!day.checkIn || !day.checkOut) return;
 
-  const [ih, im] = day.checkIn.split(':').map(Number);
-  const [oh, om] = day.checkOut.split(':').map(Number);
+  // Dùng checkIn/checkOut từ pill được click (lưu trong _detailCtx), không dùng day-level
+  const checkIn  = _detailCtx.checkIn  || day.checkIn;
+  const checkOut = _detailCtx.checkOut || day.checkOut;
+  if (!checkIn || !checkOut) return;
+
+  const [ih, im] = checkIn.split(':').map(Number);
+  const [oh, om] = checkOut.split(':').map(Number);
   const totalMin = (oh*60+om) - (ih*60+im);
+  if (totalMin <= 0) return;
   const halfMin = Math.floor(totalMin / 2);
-  const midTime = addMinutes(day.checkIn, halfMin);
+  const midTime = addMinutes(checkIn, halfMin);
 
-  const origIn = day.checkIn, origOut = day.checkOut;
-  if (half === 'first') {
-    day.checkOut = midTime;  // 08:00 → 11:30
-  } else {
-    day.checkIn  = midTime;  // 11:30 → 15:00
-  }
+  const newIn  = half === 'first' ? checkIn  : midTime;
+  const newOut = half === 'first' ? midTime  : checkOut;
+
+  // Cập nhật day-level
+  day.checkIn  = newIn;
+  day.checkOut = newOut;
   day.approvalStatus = 'approved';
   day.type = undefined;
-  if (day.records) day.records.forEach(function(rec) { rec.approvalStatus = 'approved'; });
-  const attId = 'att_' + emp.id + '_' + day.date;
-  DB.attendance.approve(attId, currentUser.id, { checkIn: day.checkIn, checkOut: day.checkOut });
+
+  // Cập nhật record tương ứng trong day.records (để pill hiển thị đúng duration)
+  if (day.records && day.records.length) {
+    day.records.forEach(function(rec) {
+      var isTarget = ctxRecId ? String(rec.id) === String(ctxRecId) : true;
+      if (isTarget) {
+        rec.checkIn       = newIn;
+        rec.checkOut      = newOut;
+        rec.approvalStatus = 'approved';
+      }
+    });
+  }
+
+  // Lưu DB
+  var attId = (ctxRecId) || ('att_' + emp.id + '_' + day.date);
+  DB.attendance.approve(attId, currentUser.id, { checkIn: newIn, checkOut: newOut });
 
   recalcWorked(emp);
   reRender();
   closeDetail();
 
   const label = half === 'first'
-    ? `✓ Nửa ca đầu: ${origIn} – ${midTime}`
-    : `✓ Nửa ca sau: ${midTime} – ${origOut}`;
+    ? '✓ Nửa ca đầu: ' + checkIn + ' – ' + midTime + ' (' + (halfMin/60).toFixed(1) + 'h)'
+    : '✓ Nửa ca sau: ' + midTime + ' – ' + checkOut + ' (' + (halfMin/60).toFixed(1) + 'h)';
   showToast(label);
 }
 
@@ -691,13 +732,75 @@ function applyApproval(approvalStatus, label) {
   })();
 }
 
+// ===== HELPER: 24h time select =====
+function _initTimeSelect(prefix) {
+  var hEl = document.getElementById(prefix + '-h');
+  var mEl = document.getElementById(prefix + '-m');
+  if (!hEl || !mEl || hEl.options.length) return;
+  for (var h = 0; h < 24; h++) {
+    var o = document.createElement('option');
+    o.value = o.textContent = String(h).padStart(2, '0');
+    hEl.appendChild(o);
+  }
+  for (var m = 0; m < 60; m += 5) {
+    var o2 = document.createElement('option');
+    o2.value = o2.textContent = String(m).padStart(2, '0');
+    mEl.appendChild(o2);
+  }
+}
+
+function _setTimeSelect(prefix, timeStr) {
+  _initTimeSelect(prefix);
+  var parts = (timeStr || '08:00').split(':');
+  var hEl = document.getElementById(prefix + '-h');
+  var mEl = document.getElementById(prefix + '-m');
+  if (hEl) hEl.value = String(parseInt(parts[0] || 8)).padStart(2, '0');
+  if (mEl) {
+    var mm = parseInt(parts[1] || 0);
+    var nearest = String(Math.round(mm / 5) * 5 % 60).padStart(2, '0');
+    mEl.value = nearest;
+    if (!mEl.value) mEl.value = '00';
+  }
+}
+
+function _getTimeSelect(prefix) {
+  var hEl = document.getElementById(prefix + '-h');
+  var mEl = document.getElementById(prefix + '-m');
+  if (!hEl || !mEl) return '';
+  return hEl.value + ':' + mEl.value;
+}
+
+function updateCtHoursPreview() {
+  var ci = _getTimeSelect('ct-checkin');
+  var co = _getTimeSelect('ct-checkout');
+  var preview = document.getElementById('ct-hours-preview');
+  if (!preview) return;
+  if (ci && co) {
+    var _toMin3 = function(t) { var p = t.split(':').map(Number); return p[0]*60+p[1]; };
+    var mins = _toMin3(co) - _toMin3(ci);
+    if (mins > 0) {
+      var h = Math.floor(mins/60), m = mins%60;
+      var parts = [];
+      if (h > 0) parts.push(h + ' giờ');
+      if (m > 0) parts.push(m + ' phút');
+      preview.textContent = '⏱ ' + ci + ' – ' + co + '  →  ' + (mins/60).toFixed(1) + 'h (' + parts.join(' ') + ')';
+      preview.style.display = 'block';
+      return;
+    }
+  }
+  preview.style.display = 'none';
+}
+
 function openChiTiet() {
   if (!_detailCtx) return;
   const { empIdx, dayIdx } = _detailCtx;
   const day = employees[empIdx].days[dayIdx];
-  document.getElementById('ct-checkin').value = day.checkIn || '';
-  document.getElementById('ct-checkout').value = day.checkOut || '';
+  _initTimeSelect('ct-checkin');
+  _initTimeSelect('ct-checkout');
+  _setTimeSelect('ct-checkin',  day.checkIn  || '08:00');
+  _setTimeSelect('ct-checkout', day.checkOut || '17:00');
   document.getElementById('ct-note').value = '';
+  updateCtHoursPreview();
   document.getElementById('chitietOverlay').classList.add('open');
 }
 
@@ -710,8 +813,8 @@ function confirmChiTiet() {
   const { empIdx, dayIdx } = _detailCtx;
   const emp = employees[empIdx];
   const day = emp.days[dayIdx];
-  const newIn  = document.getElementById('ct-checkin').value;
-  const newOut = document.getElementById('ct-checkout').value;
+  const newIn  = _getTimeSelect('ct-checkin');
+  const newOut = _getTimeSelect('ct-checkout');
   const note   = document.getElementById('ct-note') ? document.getElementById('ct-note').value.trim() : '';
   // Lưu approved_check_in/out — giữ nguyên check_in/out gốc
   day.approvedCheckIn  = newIn  || day.checkIn;
@@ -849,8 +952,10 @@ function openAddAttModal(empId, date) {
   document.getElementById('addAttTitle').textContent = 'Thêm chấm công' + (emp ? ' – ' + emp.name : '');
   document.getElementById('addAttSubtitle').textContent = dateVn;
   document.getElementById('addAttErr').style.display = 'none';
-  document.getElementById('addAttCheckIn').value = '';
-  document.getElementById('addAttCheckOut').value = '';
+  _initTimeSelect('addAttCheckIn');
+  _initTimeSelect('addAttCheckOut');
+  _setTimeSelect('addAttCheckIn',  '08:00');
+  _setTimeSelect('addAttCheckOut', '17:00');
   document.getElementById('addAttNote').value = '';
   document.getElementById('addAttStatus').value = 'pending';
 
@@ -874,8 +979,8 @@ function fillShiftTimes() {
   var sel = document.getElementById('addAttShift');
   var opt = sel.options[sel.selectedIndex];
   if (opt && opt.dataset.start) {
-    document.getElementById('addAttCheckIn').value  = opt.dataset.start;
-    document.getElementById('addAttCheckOut').value = opt.dataset.end;
+    _setTimeSelect('addAttCheckIn',  opt.dataset.start);
+    _setTimeSelect('addAttCheckOut', opt.dataset.end);
   }
 }
 
@@ -885,8 +990,8 @@ function closeAddAttModal() {
 }
 
 function saveAddAtt() {
-  var checkIn  = document.getElementById('addAttCheckIn').value;
-  var checkOut = document.getElementById('addAttCheckOut').value;
+  var checkIn  = _getTimeSelect('addAttCheckIn');
+  var checkOut = _getTimeSelect('addAttCheckOut');
   var note     = document.getElementById('addAttNote').value.trim();
   var status   = document.getElementById('addAttStatus').value;
   var shiftSel = document.getElementById('addAttShift');

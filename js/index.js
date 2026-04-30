@@ -54,13 +54,19 @@
     var avatar = _st.avatar || (emp && emp.avatar) || '';
 
     var el = function(id) { return document.getElementById(id); };
-    if (el('sidebarAvatar'))   el('sidebarAvatar').src       = avatar || el('sidebarAvatar').src;
-    if (el('topbarAvatar'))    el('topbarAvatar').src        = avatar || el('topbarAvatar').src;
+    var _makeAv = function(sz) {
+      if (avatar) return avatar;
+      var ini = name.trim().split(/\s+/).slice(-2).map(function(w){return w[0]||'';}).join('').toUpperCase()||'?';
+      var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="'+sz+'" height="'+sz+'"><circle cx="'+(sz/2)+'" cy="'+(sz/2)+'" r="'+(sz/2)+'" fill="#ECF2FF"/><text x="50%" y="50%" text-anchor="middle" dominant-baseline="central" fill="#5D87FF" font-size="'+Math.round(sz*0.38)+'" font-family="Plus Jakarta Sans,sans-serif" font-weight="700">'+ini+'</text></svg>';
+      return 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
+    };
+    if (el('sidebarAvatar'))   el('sidebarAvatar').src       = _makeAv(32);
+    if (el('topbarAvatar'))    el('topbarAvatar').src        = _makeAv(32);
     if (el('sidebarUserName')) el('sidebarUserName').textContent = name;
     if (el('sidebarUserRole')) el('sidebarUserRole').textContent = role;
     if (el('topbarUserName'))  el('topbarUserName').textContent  = name;
     if (el('topbarUserRole'))  el('topbarUserRole').textContent  = role;
-    if (el('dropdownAvatar'))  el('dropdownAvatar').src          = avatar || el('dropdownAvatar').src;
+    if (el('dropdownAvatar'))  el('dropdownAvatar').src          = _makeAv(36);
     if (el('dropdownName'))    el('dropdownName').textContent    = name;
     if (el('dropdownRole'))    el('dropdownRole').textContent    = role;
     if (el('modalUnitName'))   el('modalUnitName').textContent   = (emp && emp.unit) || currentUser.unit || '—';
@@ -81,6 +87,23 @@
       var attendance    = (DB.attendance ? DB.attendance.getAll({ employeeId: currentUser.id }) : []) || [];
 
       var items = [];
+
+      // Thông báo từ HumiNotify (theo preferences)
+      if (window.HumiNotify) {
+        var SETTINGS_KEY = 'humi_user_settings_' + currentUser.id;
+        var _ns = {}; try { _ns = (JSON.parse(localStorage.getItem(SETTINGS_KEY)) || {}).notify || {}; } catch(e) {}
+        var _prefs = {
+          attendance : _ns.notify_attendance !== false,
+          leave      : _ns.notify_leave      !== false,
+          payroll    : _ns.notify_payroll    !== false,
+          shift      : _ns.notify_shift      === true,
+          inbox      : _ns.notify_inbox      !== false,
+          weekly     : _ns.notify_weekly     !== false,
+          urgent     : _ns.notify_urgent     !== false
+        };
+        HumiNotify.getItems(_prefs).forEach(function(item) { items.push(item); });
+      }
+
       // Thông báo công ty
       announcements.slice(0,5).forEach(function(a) {
         items.push({ id: 'ann_'+a.id, icon: '📢', title: a.title || 'Thông báo', sub: a.department || '', time: a.createdAt || '' });
@@ -184,32 +207,30 @@
     el.innerHTML = list.slice(0,3).map((a, i) => {
       const isLast = i === list.slice(0,3).length - 1;
       const badge = a.status === 'active'
-        ? '<span class="badge-active text-[10px] font-600 px-2 py-0.5 rounded-full" style="font-weight:600;">Đang hiệu lực</span>'
-        : '<span class="badge-expired text-[10px] font-600 px-2 py-0.5 rounded-full" style="font-weight:600;">Đã kết thúc</span>';
-      return `<div class="announcement-item px-5 py-4${isLast ? '' : ' border-b border-gray-50'}">
-        <div class="flex gap-4">
-          <div class="flex-1 min-w-0">
-            <div class="flex items-center gap-2 mb-1.5">
-              <span class="text-[10px] font-600 text-purple-600 bg-purple-50 px-2 py-0.5 rounded-md" style="font-weight:600;">${a.department}</span>
+        ? '<span style="font-size:10px;font-weight:600;color:#16a34a;background:#f0fdf4;border:1px solid #bbf7d0;padding:2px 8px;border-radius:999px;">Đang hiệu lực</span>'
+        : '<span style="font-size:10px;font-weight:600;color:#6b7280;background:#f3f4f6;border:1px solid #e5e7eb;padding:2px 8px;border-radius:999px;">Đã kết thúc</span>';
+      return `<div style="padding:14px 20px;${isLast ? '' : 'border-bottom:1px solid #f5f5f8;'}font-family:\'Plus Jakarta Sans\',sans-serif;">
+        <div style="display:flex;gap:16px;align-items:flex-start;">
+          <div style="flex:1;min-width:0;">
+            <div style="margin-bottom:6px;">
+              <span style="font-size:10px;font-weight:600;color:#5D87FF;background:#eef2ff;padding:2px 8px;border-radius:5px;">${a.department}</span>
             </div>
-            <h3 class="font-700 text-gray-900 text-sm mb-1" style="font-weight:700;">${a.title}</h3>
-            <p class="text-xs text-gray-400 leading-relaxed line-clamp-2">${a.preview}</p>
+            <p style="font-size:13px;font-weight:700;color:#2A3547;margin:0 0 4px;line-height:1.4;">${a.title}</p>
+            <p style="font-size:12px;color:#7C8FAC;margin:0;line-height:1.5;overflow:hidden;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;">${a.preview || ''}</p>
           </div>
-          <div class="flex-shrink-0 text-right space-y-1.5" style="min-width:180px;">
-            <div class="flex items-center justify-end gap-1.5">
-              <span class="text-xs text-gray-500">Người tạo:</span>
-              <a href="#" class="text-xs font-500 text-purple-600 hover:underline">${a.creator}</a>
+          <div style="flex-shrink:0;text-align:right;min-width:175px;display:flex;flex-direction:column;gap:5px;">
+            <div style="display:flex;align-items:center;justify-content:flex-end;gap:5px;">
+              <span style="font-size:11px;color:#7C8FAC;">Người tạo:</span>
+              <span style="font-size:11px;font-weight:600;color:#5D87FF;">${a.creator || '—'}</span>
             </div>
-            <div class="flex items-center justify-end gap-1.5">${badge}</div>
-            <div class="flex items-center justify-end gap-1.5">
-              <span class="text-xs text-gray-500">Người duyệt:</span>
-              <a href="#" class="text-xs font-500 text-purple-600 hover:underline">${a.approver}</a>
+            <div style="display:flex;justify-content:flex-end;">${badge}</div>
+            <div style="display:flex;align-items:center;justify-content:flex-end;gap:5px;">
+              <span style="font-size:11px;color:#7C8FAC;">Người duyệt:</span>
+              <span style="font-size:11px;font-weight:600;color:#5D87FF;">${a.approver || '—'}</span>
             </div>
-            <div class="flex items-center justify-end">
-              <div class="flex items-center gap-1 text-gray-400">
-                <svg width="11" height="11" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/></svg>
-                <span class="text-[10px]">Hiệu lực từ ${fmtD(a.startDate)} – ${fmtD(a.endDate)}</span>
-              </div>
+            <div style="display:flex;align-items:center;justify-content:flex-end;gap:4px;color:#9ca3af;">
+              <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="18" rx="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/></svg>
+              <span style="font-size:10px;">${fmtD(a.startDate)} – ${fmtD(a.endDate)}</span>
             </div>
           </div>
         </div>
@@ -262,15 +283,29 @@
       return d.toLocaleDateString('vi-VN', { day: '2-digit', month: '2-digit' });
     };
 
-    var colors = ['bg-purple-100 text-purple-700', 'bg-blue-100 text-blue-700', 'bg-green-100 text-green-700', 'bg-orange-100 text-orange-700'];
+    var colors = [
+      'background:#eef2ff;color:#5D87FF',
+      'background:#f0fdf4;color:#16a34a',
+      'background:#fff7ed;color:#ea580c',
+      'background:#fdf4ff;color:#9333ea'
+    ];
+    var _sysIconHtml = '<div style="width:32px;height:32px;border-radius:50%;background:linear-gradient(135deg,#5D87FF,#4570EA);display:flex;align-items:center;justify-content:center;flex-shrink:0;">'
+      + '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5">'
+      + '<path d="M12 2L2 7l10 5 10-5-10-5z"/><path d="M2 17l10 5 10-5"/><path d="M2 12l10 5 10-5"/>'
+      + '</svg></div>';
+
     container.innerHTML = list.slice(0, 5).map(function(m, i) {
+      var isSystem = m.fromId === 'SYSTEM' || m.sender === 'Hệ thống Humi';
       var initials = (m.sender || 'HT').split(' ').slice(-2).map(function(w) { return w[0]; }).join('').toUpperCase();
-      var colorCls = colors[i % colors.length];
+      var colorStyle = colors[i % colors.length];
       var isLast = (i === Math.min(list.length, 5) - 1);
+      var avatarHtml = isSystem
+        ? _sysIconHtml
+        : '<div style="width:32px;height:32px;border-radius:50%;' + colorStyle + ';display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:11px;font-weight:700;">'
+          + (m.avatar ? '<img src="' + m.avatar + '" style="width:32px;height:32px;border-radius:50%;object-fit:cover;" />' : '<span>' + initials + '</span>')
+          + '</div>';
       return '<div class="inbox-row flex items-center gap-4 px-5 py-3 cursor-pointer transition-colors' + (isLast ? '' : ' border-b border-gray-50') + '" onclick="window.location.href=\'pages/hop-thu.html\'">' +
-        '<div class="w-8 h-8 rounded-full ' + colorCls + ' flex items-center justify-center flex-shrink-0">' +
-          (m.avatar ? '<img src="' + m.avatar + '" style="width:32px;height:32px;border-radius:50%;object-fit:cover;" />' : '<span class="text-xs font-700">' + initials + '</span>') +
-        '</div>' +
+        avatarHtml +
         '<div class="flex-1 min-w-0">' +
           '<div class="flex items-center justify-between mb-0.5">' +
             '<span class="text-sm ' + (!m.isRead ? 'font-700 text-gray-900' : 'font-500 text-gray-600') + '" style="font-weight:' + (!m.isRead ? '700' : '500') + ';">' + (m.sender || '—') + '</span>' +

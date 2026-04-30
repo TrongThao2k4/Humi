@@ -2,6 +2,11 @@
   const _s = DB.auth.requireAuth(); if(!_s) throw 0;
   const currentUser = _s.user;
 
+// ====== EMAILJS INIT ======
+(function() {
+  try { emailjs.init('0dfSpIx0a7yiAJjIK'); } catch(e) { console.warn('EmailJS init lỗi:', e); }
+})();
+
 // ===== LOAD USER INFO (sidebar + topbar) =====
 (function loadUserInfo() {
   var emp = (DB.employees.getAll()||[]).find(function(e){ return e.id === currentUser.id; });
@@ -261,77 +266,173 @@
     }, 600);
   }
 
-  // 2FA
+  // ====== QR CODE / TOTP ======
+  function generateTOTPSecret() {
+    var chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ234567';
+    var s = '';
+    for (var i = 0; i < 16; i++) s += chars[Math.floor(Math.random() * chars.length)];
+    return s;
+  }
+
+  function openQRModal() {
+    var settings  = getSettings();
+    var secret    = settings.totpSecret;
+    if (!secret) {
+      secret = generateTOTPSecret();
+      saveSettings({ totpSecret: secret });
+    }
+    var freshEmp  = DB.employees.getById(currentUser.id) || currentUser;
+    var userEmail = freshEmp.email || currentUser.id;
+    var uri = 'otpauth://totp/Humi%20HRM:' + encodeURIComponent(userEmail)
+            + '?secret=' + secret + '&issuer=Humi%20HRM';
+
+    var container = document.getElementById('qrCanvas');
+    container.innerHTML = '';
+    new QRCode(container, { text: uri, width: 180, height: 180, colorDark: '#2A3547', colorLight: '#ffffff', correctLevel: QRCode.CorrectLevel.H });
+
+    var disp = document.getElementById('qrSecretDisplay');
+    if (disp) disp.textContent = secret.match(/.{1,4}/g).join('-');
+
+    openModal('modalQR');
+  }
+
+  // ====== 2FA ======
+  var EMAILJS_SERVICE_ID  = 'service_ri6ho74';
+  var EMAILJS_TEMPLATE_ID = 'template_7p5qr8s';
+
+  // Kiểm tra link xác nhận khi trang load
+  (function check2FAVerifyLink() {
+    var params = new URLSearchParams(window.location.search);
+    var token  = params.get('verify2fa');
+    if (!token) return;
+    var stored = localStorage.getItem('humi_2fa_token');
+    var ts     = parseInt(localStorage.getItem('humi_2fa_ts') || '0');
+    history.replaceState({}, '', window.location.pathname);
+    localStorage.removeItem('humi_2fa_token');
+    localStorage.removeItem('humi_2fa_ts');
+    if (token === stored && Date.now() - ts < 10 * 60 * 1000) {
+      saveSettings({ twoFA: true });
+      DB.employees.update(currentUser.id, { twoFA: true });
+      setTimeout(function() {
+        var info   = document.getElementById('twoFactorInfo');
+        var toggle = document.getElementById('toggle2FA');
+        if (info)   info.style.display = 'block';
+        if (toggle) toggle.checked = true;
+        DB.utils.showToast('Đã bật xác thực 2 bước');
+      }, 300);
+    } else {
+      setTimeout(function() {
+        DB.utils.showToast('Link xác nhận không hợp lệ hoặc đã hết hạn', 'error');
+      }, 300);
+    }
+  })();
+
   function on2FAToggle(checkbox) {
     const info = document.getElementById('twoFactorInfo');
     if (checkbox.checked) {
-      info.style.display = 'block';
-      // Generate and send OTP
-      sendOTP();
+      send2FALink();
       openModal('modal2fa');
     } else {
       info.style.display = 'none';
       saveSettings({ twoFA: false });
+      DB.employees.update(currentUser.id, { twoFA: false });
       DB.utils.showToast('Đã tắt xác thực 2 bước');
     }
   }
 
-  function sendOTP() {
-    var otp = String(Math.floor(Math.random() * 999999)).padStart(6, '0');
+  function cancel2FASetup() {
+    var toggle = document.getElementById('toggle2FA');
+    if (toggle) toggle.checked = false;
+    var info = document.getElementById('twoFactorInfo');
+    if (info) info.style.display = 'none';
+    localStorage.removeItem('humi_2fa_token');
+    localStorage.removeItem('humi_2fa_ts');
+    sessionStorage.removeItem('humi_otp_sent');
+    clearInterval(window._otpTimer);
+  }
+
+  function show2FAState(state) {
+    ['m2faSending','m2faLinkSent','m2faFallback'].forEach(function(id) {
+      var el = document.getElementById(id);
+      if (el) el.style.display = (id === state) ? '' : 'none';
+    });
+  }
+
+  function send2FALink() {
+    show2FAState('m2faSending');
+    var freshEmp  = DB.employees.getById(currentUser.id) || currentUser;
+    var userEmail = freshEmp.email || null;
+    var userName  = freshEmp.name  || 'Bạn';
+
+    if (!userEmail) {
+      showFallbackOTP();
+      return;
+    }
+
+    // Tạo token xác thực (localStorage để dùng được khi mở tab mới)
+    var token = Math.random().toString(36).substring(2) + Date.now().toString(36);
+    localStorage.setItem('humi_2fa_token', token);
+    localStorage.setItem('humi_2fa_ts', Date.now().toString());
+
+    var verifyUrl = window.location.href.split('?')[0] + '?verify2fa=' + token;
+    var masked    = userEmail.replace(/(.{2}).+(@.+)/, '$1***$2');
+
+    try {
+      emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+        to_email:   userEmail,
+        to_name:    userName,
+        app_name:   'Humi HRM',
+        verify_url: verifyUrl
+      }).then(function() {
+        show2FAState('m2faLinkSent');
+        var disp = document.getElementById('m2faEmailDisplay');
+        if (disp) disp.textContent = masked;
+      }).catch(function(err) {
+        console.error('❌ EmailJS 2FA lỗi:', err);
+        showFallbackOTP();
+      });
+    } catch(e) { showFallbackOTP(); }
+  }
+
+  function resend2FALink() {
+    send2FALink();
+    DB.utils.showToast('Đã gửi lại link xác nhận');
+  }
+
+  function showFallbackOTP() {
+    var otp = String(Math.floor(100000 + Math.random() * 900000));
     sessionStorage.setItem('humi_otp_sent', otp);
-    sessionStorage.setItem('humi_otp_ts', Date.now().toString());
-
-    // Hiển thị OTP nổi bật trong modal (chế độ demo)
-    var box  = document.getElementById('otpDemoBox');
     var code = document.getElementById('otpDemoCode');
-    var cd   = document.getElementById('otpCountdown');
-    if (box)  box.style.display  = 'block';
-    if (code) code.textContent   = otp;
-
-    // Đếm ngược 120 giây
+    if (code) code.textContent = otp;
+    show2FAState('m2faFallback');
     var remaining = 120;
-    if (cd) cd.textContent = remaining;
+    var cdD = document.getElementById('otpCountdownDemo');
+    if (cdD) cdD.textContent = remaining;
     clearInterval(window._otpTimer);
     window._otpTimer = setInterval(function() {
       remaining--;
-      if (cd) cd.textContent = remaining;
+      if (cdD) cdD.textContent = remaining;
       if (remaining <= 0) {
         clearInterval(window._otpTimer);
         sessionStorage.removeItem('humi_otp_sent');
         if (code) code.textContent = '------';
-        if (box)  box.style.display = 'none';
       }
     }, 1000);
-
-    DB.utils.showToast('Mã OTP đã được tạo — xem trong ô màu cam bên trên');
   }
 
-  function confirm2FA() {
-    const otp = document.getElementById('otpInput').value;
-    if (otp.length !== 6) { 
-      DB.utils.showToast('Vui lòng nhập đủ 6 chữ số OTP', 'error'); 
-      return; 
-    }
-    
-    // Verify OTP
+  function confirm2FAFallback() {
+    var otp  = document.getElementById('otpInput').value;
     var sent = sessionStorage.getItem('humi_otp_sent');
-    if (!sent) {
-      DB.utils.showToast('Chưa gửi OTP, vui lòng thử lại', 'error');
-      return;
-    }
-    
-    if (otp === sent) {
-      // OTP correct
-      saveSettings({ twoFA: true });
-      sessionStorage.removeItem('humi_otp_sent');
-      closeModal('modal2fa');
-      document.getElementById('twoFactorInfo').style.display = 'block';
-      document.getElementById('otpInput').value = '';
-      DB.utils.showToast('Xác thực 2 bước đã được bật!');
-    } else {
-      // OTP incorrect
-      DB.utils.showToast('Mã OTP không chính xác', 'error');
-    }
+    if (otp.length !== 6) { DB.utils.showToast('Vui lòng nhập đủ 6 chữ số', 'error'); return; }
+    if (!sent)             { DB.utils.showToast('OTP đã hết hạn, vui lòng thử lại', 'error'); return; }
+    if (otp !== sent)      { DB.utils.showToast('Mã OTP không chính xác', 'error'); return; }
+    saveSettings({ twoFA: true });
+    DB.employees.update(currentUser.id, { twoFA: true });
+    sessionStorage.removeItem('humi_otp_sent');
+    clearInterval(window._otpTimer);
+    closeModal('modal2fa');
+    document.getElementById('twoFactorInfo').style.display = 'block';
+    DB.utils.showToast('Đã bật xác thực 2 bước');
   }
 
   // ====== TAB 3: THÔNG BÁO ======
@@ -376,19 +477,21 @@
     // Update subtitles
     const effective = HumiTheme.getEffectiveTheme(mode);
     const h = new Date().getHours();
-    document.getElementById('themeSubLight').textContent = mode === 'light' ? 'Đang dùng' : 'Nền trắng';
-    document.getElementById('themeSubDark').textContent  = mode === 'dark'  ? 'Đang dùng' : 'Nền tối';
-    document.getElementById('themeSubAuto').textContent  = mode === 'auto'  ? 'Đang dùng' : 'Theo giờ';
+    var elL = document.getElementById('themeSubLight'); if (elL) elL.textContent = mode === 'light' ? 'Đang dùng' : 'Nền trắng';
+    var elD = document.getElementById('themeSubDark');  if (elD) elD.textContent = mode === 'dark'  ? 'Đang dùng' : 'Nền tối';
+    var elA = document.getElementById('themeSubAuto');  if (elA) elA.textContent = mode === 'auto'  ? 'Đang dùng' : 'Theo giờ';
 
     // Auto note
     const note = document.getElementById('themeAutoNote');
-    if (mode === 'auto') {
-      const nextSwitch = effective === 'light'
-        ? 'Sẽ chuyển sang tối lúc 18:00'
-        : 'Sẽ chuyển sang sáng lúc 06:00';
-      note.textContent = `Chế độ tự động đang bật — ${nextSwitch} (hiện tại ${h}:${String(new Date().getMinutes()).padStart(2,'0')})`;
-    } else {
-      note.textContent = 'Chế độ tự động: Sáng 06:00–18:00 · Tối 18:00–06:00';
+    if (note) {
+      if (mode === 'auto') {
+        const nextSwitch = effective === 'light'
+          ? 'Sẽ chuyển sang tối lúc 18:00'
+          : 'Sẽ chuyển sang sáng lúc 06:00';
+        note.textContent = `Chế độ tự động đang bật — ${nextSwitch} (hiện tại ${h}:${String(new Date().getMinutes()).padStart(2,'0')})`;
+      } else {
+        note.textContent = 'Chế độ tự động: Sáng 06:00–18:00 · Tối 18:00–06:00';
+      }
     }
   }
 
@@ -522,11 +625,13 @@
   loadLanguageSettings();
   loadAppearance();
 
-  // Restore 2FA state
+  // Restore 2FA state — đọc từ cả settings lẫn employee record
   const _savedSettings = getSettings();
-  if (_savedSettings.twoFA) {
+  const _empRecord = DB.employees.getById(currentUser.id) || {};
+  if (_savedSettings.twoFA || _empRecord.twoFA) {
     document.getElementById('toggle2FA').checked = true;
     document.getElementById('twoFactorInfo').style.display = 'block';
+    if (!_savedSettings.twoFA) saveSettings({ twoFA: true });
   }
 
   // Restore emailAuth toggle

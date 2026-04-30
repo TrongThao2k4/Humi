@@ -1,0 +1,652 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Humi HRM – Seed Data</title>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  *{box-sizing:border-box;margin:0;padding:0;font-family:'Segoe UI',sans-serif}
+  body{background:#0f172a;color:#e2e8f0;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:flex-start;padding:40px 20px}
+  h1{font-size:24px;font-weight:700;color:#5D87FF;margin-bottom:4px}
+  .sub{color:#94a3b8;font-size:13px;margin-bottom:28px}
+  .card{background:#1e293b;border:1px solid #334155;border-radius:12px;padding:28px;width:100%;max-width:720px;margin-bottom:20px}
+  .card h2{font-size:14px;font-weight:600;color:#94a3b8;text-transform:uppercase;letter-spacing:.05em;margin-bottom:16px}
+  .steps{display:flex;flex-direction:column;gap:8px}
+  .step-item{display:flex;align-items:center;gap:12px;padding:10px 14px;border-radius:8px;background:#0f172a;border:1px solid #1e293b;font-size:13px;transition:all .2s}
+  .step-item.running{border-color:#5D87FF;background:#1a2540}
+  .step-item.done{border-color:#22c55e;background:#0d2416}
+  .step-item.error{border-color:#ef4444;background:#2a0d0d}
+  .step-dot{width:10px;height:10px;border-radius:50%;background:#334155;flex-shrink:0;transition:background .2s}
+  .step-item.running .step-dot{background:#5D87FF;animation:pulse 1s infinite}
+  .step-item.done .step-dot{background:#22c55e}
+  .step-item.error .step-dot{background:#ef4444}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+  .step-label{flex:1;color:#cbd5e1}
+  .step-count{font-size:12px;color:#64748b}
+  .log{background:#0a0f1a;border:1px solid #1e293b;border-radius:8px;padding:14px;height:220px;overflow-y:auto;font-size:11px;font-family:monospace;color:#94a3b8}
+  .log .ok{color:#22c55e}
+  .log .err{color:#ef4444}
+  .log .info{color:#5D87FF}
+  #startBtn{background:linear-gradient(135deg,#5D87FF,#4570EA);color:white;border:none;border-radius:8px;padding:14px 40px;font-size:15px;font-weight:600;cursor:pointer;transition:all .2s;margin-bottom:28px;box-shadow:0 4px 14px rgba(93,135,255,.4)}
+  #startBtn:hover{transform:translateY(-1px);box-shadow:0 6px 20px rgba(93,135,255,.5)}
+  #startBtn:disabled{background:#334155;box-shadow:none;cursor:not-allowed;transform:none}
+  .progress-bar{height:4px;background:#1e293b;border-radius:4px;overflow:hidden;margin-bottom:28px;width:100%;max-width:720px}
+  .progress-fill{height:100%;background:linear-gradient(90deg,#5D87FF,#22c55e);border-radius:4px;transition:width .3s ease;width:0%}
+  .summary{display:none;background:#0d2416;border:1px solid #22c55e;border-radius:12px;padding:20px;width:100%;max-width:720px;text-align:center}
+  .summary h3{color:#22c55e;font-size:18px;margin-bottom:8px}
+  .summary p{color:#94a3b8;font-size:13px}
+  .summary a{display:inline-block;margin-top:16px;background:#22c55e;color:#0a0f1a;padding:10px 28px;border-radius:8px;text-decoration:none;font-weight:700;font-size:14px}
+</style>
+</head>
+<body>
+<h1>🌱 Humi HRM – Seed Data</h1>
+<p class="sub">Xoá dữ liệu cũ và nạp dữ liệu mới toàn diện vào Supabase + localStorage</p>
+<button id="startBtn" onclick="runSeed()">▶ Bắt đầu Seed</button>
+<div class="progress-bar"><div class="progress-fill" id="progressFill"></div></div>
+<div class="card">
+  <h2>Tiến trình</h2>
+  <div class="steps" id="stepList"></div>
+</div>
+<div class="card">
+  <h2>Log chi tiết</h2>
+  <div class="log" id="logBox"></div>
+</div>
+<div class="summary" id="summary">
+  <h3>✅ Seed hoàn thành!</h3>
+  <p>Dữ liệu đã được nạp đầy đủ vào Supabase và localStorage.</p>
+  <a href="index.html">→ Về trang chủ</a>
+</div>
+
+<script>
+const SUPABASE_URL = 'https://vbxyzblhcdiuaijshkls.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_s7_7ezmwir0sQW7uLiZ_Jw_KS8eXyXB';
+const sb = supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+
+// ── UI helpers ─────────────────────────────────────────────────
+const STEPS = [
+  'Xoá dữ liệu cũ',
+  'Nhân viên (15)',
+  'Tài khoản (15)',
+  'Ca làm việc (5)',
+  'Phân ca (Apr–Jun)',
+  'Chấm công (Feb–Apr)',
+  'Phiếu nghỉ (14)',
+  'Yêu cầu (10)',
+  'Lương (39 kỳ)',
+  'Thông báo (5)',
+  'Tin nhắn (14)',
+  'localStorage sync',
+];
+let stepEls = [];
+function initUI() {
+  const list = document.getElementById('stepList');
+  list.innerHTML = '';
+  stepEls = STEPS.map((label, i) => {
+    const el = document.createElement('div');
+    el.className = 'step-item';
+    el.innerHTML = `<div class="step-dot"></div><span class="step-label">${label}</span><span class="step-count" id="cnt${i}"></span>`;
+    list.appendChild(el);
+    return el;
+  });
+}
+function stepRun(i) { stepEls[i].className = 'step-item running'; }
+function stepDone(i, count) {
+  stepEls[i].className = 'step-item done';
+  if (count !== undefined) document.getElementById('cnt'+i).textContent = count + ' bản ghi';
+  setProgress(Math.round((i+1)/STEPS.length*100));
+}
+function stepErr(i, msg) { stepEls[i].className = 'step-item error'; log('err','STEP '+i+': '+msg); }
+function setProgress(pct) { document.getElementById('progressFill').style.width = pct+'%'; }
+function log(cls, msg) {
+  const box = document.getElementById('logBox');
+  const line = document.createElement('div');
+  line.className = cls;
+  line.textContent = new Date().toLocaleTimeString('vi-VN') + ' ' + msg;
+  box.appendChild(line);
+  box.scrollTop = box.scrollHeight;
+}
+
+// ── Delete all ─────────────────────────────────────────────────
+async function deleteAll() {
+  const dels = [
+    ['attendance',      'employee_id'],
+    ['shift_assignments','employee_id'],
+    ['leave_requests',  'employee_id'],
+    ['requests',        'employee_id'],
+    ['salary',          'employee_id'],
+    ['messages',        'id'],
+    ['announcements',   'id'],
+    ['work_shifts',     'employee_id'],
+    ['accounts',        'employee_id'],
+    ['employees',       'id'],
+    ['shifts',          'id'],
+  ];
+  for (const [tbl, col] of dels) {
+    const { error } = await sb.from(tbl).delete().neq(col, '__none__');
+    if (error) log('err', `Xoá ${tbl}: ${error.message}`);
+    else log('ok', `Đã xoá ${tbl}`);
+  }
+}
+
+// ── Data definitions ───────────────────────────────────────────
+const employees = [
+  { id:'NV000001', code:'NV000001', name:'Nguyễn Văn An',   avatar:'',unit:'CH613 Âu Cơ',       position:'Nhân viên bán hàng',  role_id:'employee', status:'active',   gender:'Nam', phone:'0901234567', email:'an.nv@humi.vn',      dob:'1998-03-15', start_date:'2023-01-10', contract_status:'Đã có hợp đồng', contract_type:'Hợp đồng dài hạn',   work_mode:'Toàn thời gian', manager_name:'Tiểu Nhi',    manager_id:'NV000011', leave_balance:{annual:10,sick:28,maternity:180,unpaid:99}, id_card:'012345678901' },
+  { id:'NV000002', code:'NV000002', name:'Trần Thị Bích',   avatar:'', unit:'CH613 Âu Cơ',       position:'Nhân viên bán hàng',  role_id:'employee', status:'active',   gender:'Nữ',  phone:'0912345678', email:'bich.tt@humi.vn',    dob:'1999-07-22', start_date:'2023-03-01', contract_status:'Đã có hợp đồng', contract_type:'Hợp đồng dài hạn',   work_mode:'Toàn thời gian', manager_name:'Tiểu Nhi',    manager_id:'NV000011', leave_balance:{annual:10,sick:30,maternity:180,unpaid:99}, id_card:'012345678902' },
+  { id:'NV000003', code:'NV000003', name:'Lê Minh Quân',    avatar:'', unit:'CH614 Lê Văn Sỹ',   position:'Nhân viên bán hàng',  role_id:'employee', status:'active',   gender:'Nam', phone:'0923456789', email:'quan.lm@humi.vn',    dob:'1997-11-05', start_date:'2022-06-15', contract_status:'Đã có hợp đồng', contract_type:'Hợp đồng dài hạn',   work_mode:'Toàn thời gian', manager_name:'Minh Quang',  manager_id:'NV000012', leave_balance:{annual:12,sick:30,maternity:180,unpaid:99}, id_card:'012345678903' },
+  { id:'NV000004', code:'NV000004', name:'Phạm Thị Thu',    avatar:'', unit:'CH614 Lê Văn Sỹ',   position:'Nhân viên bán hàng',  role_id:'employee', status:'active',   gender:'Nữ',  phone:'0934567890', email:'thu.pt@humi.vn',     dob:'2000-02-28', start_date:'2023-08-01', contract_status:'Đã có hợp đồng', contract_type:'Hợp đồng thử việc', work_mode:'Toàn thời gian', manager_name:'Minh Quang',  manager_id:'NV000012', leave_balance:{annual:8, sick:30,maternity:180,unpaid:99}, id_card:'012345678904' },
+  { id:'NV000005', code:'NV000005', name:'Hoàng Anh Tuấn',  avatar:'', unit:'CH615 Nguyễn Trãi', position:'Nhân viên bán hàng',  role_id:'employee', status:'active',   gender:'Nam', phone:'0945678901', email:'tuan.ha@humi.vn',    dob:'1996-08-19', start_date:'2021-11-20', contract_status:'Đã có hợp đồng', contract_type:'Hợp đồng dài hạn',   work_mode:'Toàn thời gian', manager_name:'Thanh Hương', manager_id:'NV000013', leave_balance:{annual:12,sick:27,maternity:180,unpaid:99}, id_card:'012345678905' },
+  { id:'NV000006', code:'NV000006', name:'Đặng Thị Lan',    avatar:'', unit:'CH615 Nguyễn Trãi', position:'Nhân viên bán hàng',  role_id:'employee', status:'active',   gender:'Nữ',  phone:'0956789012', email:'lan.dt@humi.vn',     dob:'2001-04-12', start_date:'2024-02-01', contract_status:'Đã có hợp đồng', contract_type:'Hợp đồng thử việc', work_mode:'Bán thời gian',  manager_name:'Thanh Hương', manager_id:'NV000013', leave_balance:{annual:6, sick:30,maternity:180,unpaid:99}, id_card:'012345678906' },
+  { id:'NV000007', code:'NV000007', name:'Bùi Văn Cường',   avatar:'', unit:'CH613 Âu Cơ',       position:'Nhân viên kho',       role_id:'employee', status:'active',   gender:'Nam', phone:'0967890123', email:'cuong.bv@humi.vn',   dob:'1995-09-30', start_date:'2020-05-15', contract_status:'Đã có hợp đồng', contract_type:'Hợp đồng dài hạn',   work_mode:'Toàn thời gian', manager_name:'Tiểu Nhi',    manager_id:'NV000011', leave_balance:{annual:12,sick:30,maternity:180,unpaid:99}, id_card:'012345678907' },
+  { id:'NV000008', code:'NV000008', name:'Nguyễn Thị Hoa',  avatar:'', unit:'CH614 Lê Văn Sỹ',   position:'Thu ngân',            role_id:'employee', status:'active',   gender:'Nữ',  phone:'0978901234', email:'hoa.nt@humi.vn',     dob:'1999-12-25', start_date:'2023-04-10', contract_status:'Đã có hợp đồng', contract_type:'Hợp đồng dài hạn',   work_mode:'Toàn thời gian', manager_name:'Minh Quang',  manager_id:'NV000012', leave_balance:{annual:11,sick:30,maternity:180,unpaid:99}, id_card:'012345678908' },
+  { id:'NV000009', code:'NV000009', name:'Trương Văn Đức',  avatar:'', unit:'CH615 Nguyễn Trãi', position:'Nhân viên kho',       role_id:'employee', status:'active',   gender:'Nam', phone:'0989012345', email:'duc.tv@humi.vn',     dob:'1997-06-14', start_date:'2022-09-01', contract_status:'Đã có hợp đồng', contract_type:'Hợp đồng dài hạn',   work_mode:'Toàn thời gian', manager_name:'Thanh Hương', manager_id:'NV000013', leave_balance:{annual:12,sick:30,maternity:180,unpaid:99}, id_card:'012345678909' },
+  { id:'NV000010', code:'NV000010', name:'Lý Thị Mỹ',       avatar:'', unit:'CH613 Âu Cơ',       position:'Thu ngân',            role_id:'employee', status:'active',   gender:'Nữ',  phone:'0990123456', email:'my.lt@humi.vn',      dob:'2000-10-08', start_date:'2024-01-15', contract_status:'Đã có hợp đồng', contract_type:'Hợp đồng thử việc', work_mode:'Toàn thời gian', manager_name:'Tiểu Nhi',    manager_id:'NV000011', leave_balance:{annual:5, sick:30,maternity:180,unpaid:99}, id_card:'012345678910' },
+  { id:'NV000011', code:'NV000011', name:'Tiểu Nhi',         avatar:'', unit:'CH613 Âu Cơ',       position:'Quản lý chi nhánh',   role_id:'manager',  status:'active',   gender:'Nữ',  phone:'0901111111', email:'nhi.t@humi.vn',      dob:'1992-05-20', start_date:'2019-03-01', contract_status:'Đã có hợp đồng', contract_type:'Hợp đồng dài hạn',   work_mode:'Toàn thời gian', manager_name:'—',           manager_id:null,         leave_balance:{annual:15,sick:30,maternity:180,unpaid:99}, id_card:'012345678911' },
+  { id:'NV000012', code:'NV000012', name:'Minh Quang',        avatar:'', unit:'CH614 Lê Văn Sỹ',   position:'Quản lý chi nhánh',   role_id:'manager',  status:'active',   gender:'Nam', phone:'0902222222', email:'quang.m@humi.vn',    dob:'1990-01-10', start_date:'2018-07-15', contract_status:'Đã có hợp đồng', contract_type:'Hợp đồng dài hạn',   work_mode:'Toàn thời gian', manager_name:'—',           manager_id:null,         leave_balance:{annual:15,sick:30,maternity:180,unpaid:99}, id_card:'012345678912' },
+  { id:'NV000013', code:'NV000013', name:'Thanh Hương',       avatar:'', unit:'CH615 Nguyễn Trãi', position:'Quản lý chi nhánh',   role_id:'manager',  status:'active',   gender:'Nữ',  phone:'0903333333', email:'huong.t@humi.vn',    dob:'1991-08-30', start_date:'2019-01-20', contract_status:'Đã có hợp đồng', contract_type:'Hợp đồng dài hạn',   work_mode:'Toàn thời gian', manager_name:'—',           manager_id:null,         leave_balance:{annual:15,sick:30,maternity:180,unpaid:99}, id_card:'012345678913' },
+  { id:'NV000014', code:'NV000014', name:'Admin',              avatar:'', unit:'Công ty TNHH Humi', position:'Quản trị hệ thống',   role_id:'admin',    status:'active',   gender:'Nam', phone:'0904444444', email:'0856754315a@gmail.com', dob:'1985-12-01', start_date:'2015-01-01', contract_status:'Đã có hợp đồng', contract_type:'Hợp đồng dài hạn',   work_mode:'Toàn thời gian', manager_name:'—',           manager_id:null,         leave_balance:{annual:20,sick:30,maternity:180,unpaid:99}, id_card:'012345678914' },
+  { id:'NV000015', code:'NV000015', name:'Ngô Văn Long',      avatar:'', unit:'CH614 Lê Văn Sỹ',   position:'Nhân viên bán hàng',  role_id:'employee', status:'inactive', gender:'Nam', phone:'0905555555', email:'long.nv@humi.vn',    dob:'1993-07-17', start_date:'2021-04-01', contract_status:'Đã có hợp đồng', contract_type:'Hợp đồng dài hạn',   work_mode:'Toàn thời gian', manager_name:'Minh Quang',  manager_id:'NV000012', leave_balance:{annual:0, sick:0, maternity:0,  unpaid:0},  id_card:'012345678915' },
+];
+
+const accounts = employees.map(e => ({ employee_id: e.id, password: '123456' }));
+
+const shifts = [
+  { id:'SH001', name:'Ca sáng',       code:'CS',  start_time:'08:00', end_time:'17:00', break_minutes:60, work_hours:8, quota:5, active:true, color:'#5D87FF', apply_days:[1,2,3,4,5,6] },
+  { id:'SH002', name:'Ca chiều',      code:'CC',  start_time:'13:00', end_time:'22:00', break_minutes:60, work_hours:8, quota:4, active:true, color:'#22c55e', apply_days:[1,2,3,4,5,6] },
+  { id:'SH003', name:'Ca tối',        code:'CT',  start_time:'18:00', end_time:'23:00', break_minutes:30, work_hours:5, quota:3, active:true, color:'#a855f7', apply_days:[5,6,0] },
+  { id:'SH004', name:'Ca ngắn sáng',  code:'CNS', start_time:'08:00', end_time:'13:00', break_minutes:0,  work_hours:5, quota:3, active:true, color:'#f59e0b', apply_days:[1,2,3,4,5,6] },
+  { id:'SH005', name:'Ca ngắn chiều', code:'CNC', start_time:'15:00', end_time:'22:00', break_minutes:30, work_hours:7, quota:3, active:true, color:'#ea580c', apply_days:[1,2,3,4,5,6] },
+];
+
+// ── Shift per employee ──────────────────────────────────────────
+const EMP_SHIFT = {
+  NV000001:'SH001', NV000002:'SH002', NV000003:'SH002', NV000004:'SH001',
+  NV000005:'SH001', NV000006:'SH005', NV000007:'SH001',
+  NV000009:'SH002', NV000010:'SH004',
+  NV000011:'SH001', NV000012:'SH001', NV000013:'SH001', NV000014:'SH001',
+};
+const SHIFT_TIMES = {
+  SH001:{in:'08:00',out:'17:00'}, SH002:{in:'13:00',out:'22:00'},
+  SH004:{in:'08:00',out:'13:00'}, SH005:{in:'15:00',out:'22:00'},
+  SH001_LATE:{in:'08:12',out:'17:12'}, SH002_LATE:{in:'13:15',out:'22:15'},
+  SH004_LATE:{in:'08:10',out:'13:10'}, SH005_LATE:{in:'15:08',out:'22:08'},
+};
+
+// ── Leave days to skip attendance ──────────────────────────────
+const LEAVE_SKIP = new Set([
+  'NV000001:2026-03-10','NV000001:2026-03-11',
+  'NV000002:2026-03-15',
+  'NV000003:2026-02-10','NV000003:2026-02-11',
+  'NV000004:2026-03-20','NV000004:2026-03-21',
+  'NV000007:2026-03-25','NV000007:2026-03-26',
+  'NV000009:2026-03-05','NV000009:2026-03-06',
+  'NV000012:2026-03-02','NV000012:2026-03-03','NV000012:2026-03-04',
+  'NV000013:2026-03-18',
+]);
+
+// ── Generate attendance ────────────────────────────────────────
+function buildAttendance() {
+  const records = [];
+  const activeEmps = Object.keys(EMP_SHIFT); // excludes NV000008, NV000015
+
+  // date range: 2026-02-01 to 2026-04-26
+  const start = new Date('2026-02-01');
+  const end   = new Date('2026-04-26');
+
+  for (let d = new Date(start); d <= end; d.setDate(d.getDate()+1)) {
+    const dow = d.getDay(); // 0=Sun
+    if (dow === 0) continue; // skip Sunday
+
+    const yr  = d.getFullYear();
+    const mo  = String(d.getMonth()+1).padStart(2,'0');
+    const day = String(d.getDate()).padStart(2,'0');
+    const dateStr = `${yr}-${mo}-${day}`;
+
+    // approvalStatus logic
+    let approvalStatus;
+    if (yr === 2026 && d.getMonth()+1 <= 2) approvalStatus = 'approved';
+    else if (yr === 2026 && d.getMonth()+1 === 3 && d.getDate() <= 25) approvalStatus = 'approved';
+    else approvalStatus = 'pending';
+
+    for (const empId of activeEmps) {
+      if (LEAVE_SKIP.has(`${empId}:${dateStr}`)) continue;
+
+      // pseudo-random scenario
+      const hash = empId.charCodeAt(5) * 31 + d.getDate() * 17 + (d.getMonth()+1) * 7;
+      const scenario = hash % 20;
+
+      if (scenario === 0) continue; // absent (~5%)
+
+      const shiftId = EMP_SHIFT[empId];
+      const times   = SHIFT_TIMES[shiftId];
+      let checkIn, checkOut, status, note = '';
+
+      if (scenario === 1 || scenario === 2) {
+        // Late
+        const lateMap = {SH001:'08:14',SH002:'13:18',SH004:'08:12',SH005:'15:11'};
+        checkIn  = lateMap[shiftId] || times.in;
+        checkOut = times.out;
+        status   = 'late';
+        note     = 'Vào muộn';
+      } else if (scenario === 3) {
+        // Early leave
+        const earlyMap = {SH001:'16:45',SH002:'21:42',SH004:'12:50',SH005:'21:40'};
+        checkIn  = times.in;
+        checkOut = earlyMap[shiftId] || times.out;
+        status   = 'early_leave';
+        note     = 'Ra sớm';
+      } else if (scenario === 4) {
+        // Missing check-out
+        checkIn  = times.in;
+        checkOut = null;
+        status   = 'missing_checkout';
+        note     = 'Quên chấm ra';
+      } else {
+        // Normal
+        checkIn  = times.in;
+        checkOut = times.out;
+        status   = 'present';
+      }
+
+      // Overtime: scenario 5 on Saturdays for some employees
+      if (dow === 6 && scenario === 5 && (empId === 'NV000001' || empId === 'NV000005' || empId === 'NV000007')) {
+        checkOut = shiftId === 'SH001' ? '19:00' : '00:00';
+        note = 'Tăng ca';
+      }
+
+      records.push({
+        id:              `att_${empId}_${dateStr}`,
+        employee_id:     empId,
+        shift_id:        shiftId,
+        date:            dateStr,
+        check_in:        checkIn,
+        check_out:       checkOut,
+        status:          status,
+        approval_status: approvalStatus,
+        note:            note,
+        face_image_in:   null,
+        face_image_out:  null,
+        approver_id:     approvalStatus === 'approved' ? (empId.startsWith('NV0000') && parseInt(empId.slice(6)) <= 7 ? 'NV000011' : (parseInt(empId.slice(6)) <= 10 ? 'NV000012' : 'NV000013')) : null,
+        approved_at:     approvalStatus === 'approved' ? new Date(d.getTime() + 86400000).toISOString() : null,
+        approved_check_in:  null,
+        approved_check_out: null,
+        approver_note:   null,
+      });
+    }
+  }
+  return records;
+}
+
+// ── Shift assignments ──────────────────────────────────────────
+function buildShiftAssignments() {
+  const records = [];
+  const activeEmps = Object.keys(EMP_SHIFT);
+  const start = new Date('2026-02-01');  // khớp với lịch chấm công
+  const end   = new Date('2026-06-30');
+
+  for (let d = new Date(start); d <= end; d.setDate(d.getDate()+1)) {
+    const dow = d.getDay();
+    if (dow === 0) continue;
+    const dateStr = `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+    for (const empId of activeEmps) {
+      records.push({ id:`sa_${empId}_${dateStr}`, employee_id:empId, shift_id:EMP_SHIFT[empId], date:dateStr });
+    }
+  }
+  return records;
+}
+
+// ── Leave requests ─────────────────────────────────────────────
+const leaveRequests = [
+  { id:'LV001', employee_id:'NV000001', leave_type:'annual',    leave_type_name:'Nghỉ phép năm',    start_date:'2026-03-10', end_date:'2026-03-11', total_days:2,   status:'approved', reason:'Việc gia đình riêng',       approver_id:'NV000011', approved_at:'2026-03-07T08:00:00Z', rejected_at:null, reject_reason:null, created_at:'2026-03-05T09:30:00Z' },
+  { id:'LV002', employee_id:'NV000002', leave_type:'sick',      leave_type_name:'Nghỉ ốm',          start_date:'2026-03-15', end_date:'2026-03-15', total_days:1,   status:'approved', reason:'Sốt cao, có giấy bác sĩ',   approver_id:'NV000011', approved_at:'2026-03-15T07:00:00Z', rejected_at:null, reject_reason:null, created_at:'2026-03-14T20:15:00Z' },
+  { id:'LV003', employee_id:'NV000003', leave_type:'annual',    leave_type_name:'Nghỉ phép năm',    start_date:'2026-04-07', end_date:'2026-04-07', total_days:1,   status:'pending',  reason:'Việc cá nhân',              approver_id:null,       approved_at:null,                   rejected_at:null, reject_reason:null, created_at:'2026-03-31T14:00:00Z' },
+  { id:'LV004', employee_id:'NV000004', leave_type:'sick',      leave_type_name:'Nghỉ ốm',          start_date:'2026-03-20', end_date:'2026-03-21', total_days:2,   status:'rejected', reason:'Ốm đột ngột',               approver_id:'NV000012', approved_at:null,                   rejected_at:'2026-03-20T10:00:00Z', reject_reason:'Thiếu giấy xác nhận của bác sĩ', created_at:'2026-03-19T21:00:00Z' },
+  { id:'LV005', employee_id:'NV000005', leave_type:'annual',    leave_type_name:'Nghỉ phép năm',    start_date:'2026-04-10', end_date:'2026-04-12', total_days:3,   status:'pending',  reason:'Du lịch cùng gia đình',     approver_id:null,       approved_at:null,                   rejected_at:null, reject_reason:null, created_at:'2026-04-01T10:00:00Z' },
+  { id:'LV006', employee_id:'NV000006', leave_type:'sick',      leave_type_name:'Nghỉ ốm',          start_date:'2026-04-14', end_date:'2026-04-14', total_days:1,   status:'pending',  reason:'Đau bụng, không thể đi làm',approver_id:null,       approved_at:null,                   rejected_at:null, reject_reason:null, created_at:'2026-04-13T22:00:00Z' },
+  { id:'LV007', employee_id:'NV000007', leave_type:'unpaid',    leave_type_name:'Nghỉ không lương', start_date:'2026-03-25', end_date:'2026-03-26', total_days:2,   status:'approved', reason:'Về quê giỗ ông bà',         approver_id:'NV000011', approved_at:'2026-03-22T09:00:00Z', rejected_at:null, reject_reason:null, created_at:'2026-03-20T11:00:00Z' },
+  { id:'LV008', employee_id:'NV000008', leave_type:'maternity', leave_type_name:'Nghỉ thai sản',    start_date:'2026-02-01', end_date:'2026-07-31', total_days:180, status:'approved', reason:'Sinh con đầu lòng',         approver_id:'NV000012', approved_at:'2026-01-28T08:00:00Z', rejected_at:null, reject_reason:null, created_at:'2026-01-25T09:00:00Z' },
+  { id:'LV009', employee_id:'NV000009', leave_type:'annual',    leave_type_name:'Nghỉ phép năm',    start_date:'2026-03-05', end_date:'2026-03-06', total_days:2,   status:'approved', reason:'Thăm gia đình ở quê',       approver_id:'NV000013', approved_at:'2026-03-03T10:00:00Z', rejected_at:null, reject_reason:null, created_at:'2026-03-01T08:00:00Z' },
+  { id:'LV010', employee_id:'NV000010', leave_type:'sick',      leave_type_name:'Nghỉ ốm',          start_date:'2026-04-20', end_date:'2026-04-20', total_days:1,   status:'pending',  reason:'Khám định kỳ',              approver_id:null,       approved_at:null,                   rejected_at:null, reject_reason:null, created_at:'2026-04-18T16:00:00Z' },
+  { id:'LV011', employee_id:'NV000011', leave_type:'annual',    leave_type_name:'Nghỉ phép năm',    start_date:'2026-04-21', end_date:'2026-04-23', total_days:3,   status:'pending',  reason:'Nghỉ dưỡng sau kỳ Q1',     approver_id:null,       approved_at:null,                   rejected_at:null, reject_reason:null, created_at:'2026-04-10T09:00:00Z' },
+  { id:'LV012', employee_id:'NV000012', leave_type:'annual',    leave_type_name:'Nghỉ phép năm',    start_date:'2026-03-02', end_date:'2026-03-04', total_days:3,   status:'approved', reason:'Việc gia đình',             approver_id:'NV000014', approved_at:'2026-02-28T10:00:00Z', rejected_at:null, reject_reason:null, created_at:'2026-02-26T14:00:00Z' },
+  { id:'LV013', employee_id:'NV000013', leave_type:'sick',      leave_type_name:'Nghỉ ốm',          start_date:'2026-03-18', end_date:'2026-03-18', total_days:1,   status:'approved', reason:'Ốm, có giấy bác sĩ',       approver_id:'NV000014', approved_at:'2026-03-18T07:30:00Z', rejected_at:null, reject_reason:null, created_at:'2026-03-17T21:00:00Z' },
+  { id:'LV014', employee_id:'NV000003', leave_type:'sick',      leave_type_name:'Nghỉ ốm',          start_date:'2026-02-10', end_date:'2026-02-11', total_days:2,   status:'rejected', reason:'Ốm cúm',                    approver_id:'NV000012', approved_at:null,                   rejected_at:'2026-02-10T09:00:00Z', reject_reason:'Không có giấy xác nhận y tế', created_at:'2026-02-09T20:30:00Z' },
+];
+
+// ── Requests ───────────────────────────────────────────────────
+const requests = [
+  { id:'REQ001', employee_id:'NV000002', request_type:'shift_change', type_label:'Đổi ca',         content:'Xin đổi ca ngày 05/05 từ ca chiều sang ca sáng do có việc gia đình',        status:'pending',  approver_id:null,       created_at:'2026-04-25T10:00:00Z' },
+  { id:'REQ002', employee_id:'NV000005', request_type:'overtime',     type_label:'Tăng ca',         content:'Xin đăng ký tăng ca thứ 7 ngày 19/04, thêm 3 tiếng buổi tối',             status:'approved', approver_id:'NV000013', created_at:'2026-04-17T09:00:00Z' },
+  { id:'REQ003', employee_id:'NV000001', request_type:'attendance',   type_label:'Điều chỉnh công', content:'Xin điều chỉnh giờ vào ngày 07/04 từ 08:15 về 08:00 do lỗi máy chấm công',status:'pending',  approver_id:null,       created_at:'2026-04-08T11:00:00Z' },
+  { id:'REQ004', employee_id:'NV000003', request_type:'shift_change', type_label:'Đổi ca',         content:'Xin đổi ca ngày 22/03 từ ca chiều sang ca sáng',                           status:'rejected', approver_id:'NV000012', created_at:'2026-03-20T14:00:00Z' },
+  { id:'REQ005', employee_id:'NV000007', request_type:'overtime',     type_label:'Tăng ca',         content:'Xin tăng ca chủ nhật 05/04, làm kho từ 8h đến 12h',                       status:'approved', approver_id:'NV000011', created_at:'2026-04-03T16:00:00Z' },
+  { id:'REQ006', employee_id:'NV000009', request_type:'shift_change', type_label:'Đổi ca',         content:'Xin đổi ca ngày 28/04 do cần đưa con đi khám bệnh buổi chiều',             status:'pending',  approver_id:null,       created_at:'2026-04-24T08:30:00Z' },
+  { id:'REQ007', employee_id:'NV000010', request_type:'attendance',   type_label:'Điều chỉnh công', content:'Quên chấm công ra ngày 15/04, thực tế làm việc đến 13:00',                status:'pending',  approver_id:null,       created_at:'2026-04-16T09:00:00Z' },
+  { id:'REQ008', employee_id:'NV000004', request_type:'shift_change', type_label:'Đổi ca',         content:'Xin đổi ca ngày 02/04 với đồng nghiệp',                                   status:'rejected', approver_id:'NV000012', created_at:'2026-03-29T15:00:00Z' },
+  { id:'REQ009', employee_id:'NV000006', request_type:'overtime',     type_label:'Tăng ca',         content:'Xin tăng ca thứ 6 ngày 18/04, làm thêm 2 tiếng buổi tối',                status:'approved', approver_id:'NV000013', created_at:'2026-04-15T11:00:00Z' },
+  { id:'REQ010', employee_id:'NV000011', request_type:'shift_change', type_label:'Đổi ca',         content:'Xin hoán đổi ca quản lý ngày 30/04 với quản lý chi nhánh khác',           status:'pending',  approver_id:null,       created_at:'2026-04-26T10:00:00Z' },
+];
+
+// ── Salary ─────────────────────────────────────────────────────
+function buildSalary() {
+  const records = [];
+  const BASE = { manager:15000000, employee:7500000, part_time:4500000, probation:6375000 };
+  const MEAL = 730000, TRANSPORT = 500000, PHONE_MGR = 300000;
+
+  const periods = ['2026-01','2026-02','2026-03'];
+  const empList = employees.filter(e => e.role_id !== 'admin' && e.status !== 'inactive');
+
+  for (const emp of empList) {
+    let base;
+    if (emp.role_id === 'manager') base = BASE.manager;
+    else if (emp.work_mode === 'Bán thời gian') base = BASE.part_time;
+    else if (emp.contract_type === 'Hợp đồng thử việc') base = BASE.probation;
+    else base = BASE.employee;
+
+    const allow = emp.role_id === 'manager'
+      ? { meal:MEAL, transport:TRANSPORT, dien_thoai:PHONE_MGR }
+      : { meal:MEAL, transport:TRANSPORT };
+    const totalAllow = Object.values(allow).reduce((a,b)=>a+b,0);
+
+    for (const period of periods) {
+      const isMgr = emp.role_id === 'manager';
+      const bhxh  = Math.round(base * 0.08);
+      const bhyt  = Math.round(base * 0.015);
+      const bhtn  = Math.round(base * 0.01);
+      const tax   = isMgr ? Math.round((base + totalAllow - 11000000) * 0.05) : 0;
+      const totalDeduct = bhxh + bhyt + bhtn + (tax > 0 ? tax : 0);
+
+      // Jan: Tết bonus for non-probation employees with > 1 year tenure
+      const startYear = parseInt((emp.start_date||'2099-01-01').split('-')[0]);
+      const tetBonus = period === '2026-01' && startYear <= 2024 && emp.contract_type !== 'Hợp đồng thử việc'
+        ? (isMgr ? 4000000 : 2500000) : 0;
+
+      // Mar: overtime for some employees
+      const ot = period === '2026-03' && (emp.id==='NV000001'||emp.id==='NV000005'||emp.id==='NV000007') ? 350000 : 0;
+
+      // NV000008 (thai sản): Feb and Mar receive 75% of base from BHXH fund
+      const isMaternity = emp.id === 'NV000008' && (period === '2026-02' || period === '2026-03');
+      const effectiveBase = isMaternity ? Math.round(base * 0.75) : base;
+      const gross = effectiveBase + totalAllow + tetBonus + ot;
+      const net   = gross - totalDeduct;
+
+      const workDays = period === '2026-01' ? 26 : period === '2026-02' ? 24 : 26;
+      let actualWorkDays;
+      if (isMaternity)          actualWorkDays = 0;
+      else if (emp.id==='NV000003' && period==='2026-02') actualWorkDays = 22; // rejected sick leave, was absent
+      else                      actualWorkDays = workDays - (period === '2026-03' && emp.id==='NV000012' ? 3 : 0);
+
+      records.push({
+        id:               `SAL_${emp.id}_${period}`,
+        employee_id:      emp.id,
+        period:           period,
+        base_salary:      effectiveBase,
+        gross_salary:     gross,
+        net_salary:       net < 0 ? 0 : net,
+        work_days:        workDays,
+        actual_work_days: actualWorkDays,
+        allowances:       allow,
+        deductions:       { bhxh, bhyt, bhtn, ...(tax>0?{thue_tncn:tax}:{}) },
+        bonus:            tetBonus,
+        overtime_pay:     ot,
+      });
+    }
+  }
+  return records;
+}
+
+// ── Announcements ───────────────────────────────────────────────
+const announcements = [
+  {
+    id:'ANN001', title:'Thông báo điều chỉnh quy định giờ làm việc từ tháng 5/2026',
+    body:'<p>Kể từ ngày <strong>01/05/2026</strong>, công ty áp dụng quy định mới về giờ làm việc...</p><p>Nhân viên đến trễ quá <strong>10 phút</strong> sẽ bị trừ 30 phút lương theo ca đó.</p><p>Mọi thắc mắc vui lòng liên hệ phòng nhân sự.</p>',
+    preview:'Kể từ 01/05/2026 áp dụng quy định mới: đến trễ quá 10 phút trừ 30 phút lương theo ca.',
+    department:'', creator:'NV000014', approver:'NV000014',
+    status:'active', start_date:'2026-04-15', end_date:'2026-06-30'
+  },
+  {
+    id:'ANN002', title:'Lịch nghỉ Tết Nguyên Đán Bính Ngọ 2026',
+    body:'<p>Công ty thông báo lịch nghỉ Tết Nguyên Đán 2026:<br>- Nghỉ từ <strong>25/01/2026</strong> (27 tháng Chạp) đến hết <strong>02/02/2026</strong> (mùng 5 Tết).<br>- Đi làm lại vào <strong>03/02/2026</strong>.</p><p>Chúc toàn thể cán bộ nhân viên năm mới an khang thịnh vượng!</p>',
+    preview:'Nghỉ Tết từ 25/01 đến 02/02/2026. Đi làm lại 03/02. Chúc mừng năm mới!',
+    department:'', creator:'NV000014', approver:'NV000014',
+    status:'expired', start_date:'2026-01-20', end_date:'2026-02-03'
+  },
+  {
+    id:'ANN003', title:'Tuyển dụng thêm nhân viên bán hàng – Chi nhánh CH613 Âu Cơ',
+    body:'<p>Chi nhánh <strong>CH613 Âu Cơ</strong> cần tuyển thêm <strong>2 nhân viên bán hàng</strong>.</p><ul><li>Lương cơ bản: 7.500.000đ + phụ cấp</li><li>Thời gian: Toàn thời gian, Ca sáng hoặc Ca chiều</li><li>Yêu cầu: Tốt nghiệp THPT, nhiệt tình, chịu khó</li></ul><p>Nhân viên có thể giới thiệu người thân ứng tuyển và nhận thưởng giới thiệu 500.000đ.</p>',
+    preview:'CH613 tuyển 2 nhân viên bán hàng. Lương 7.5tr + phụ cấp. Có thưởng giới thiệu 500k.',
+    department:'CH613 Âu Cơ', creator:'NV000014', approver:'NV000014',
+    status:'active', start_date:'2026-04-10', end_date:'2026-05-10'
+  },
+  {
+    id:'ANN004', title:'Chính sách điều chỉnh lương và phụ cấp năm 2026',
+    body:'<p>Công ty trân trọng thông báo chính sách điều chỉnh lương năm 2026:</p><ul><li>Tăng lương cơ bản <strong>8%</strong> áp dụng từ 01/07/2026 cho nhân viên có hiệu suất tốt</li><li>Phụ cấp ăn trưa tăng từ 730.000đ lên <strong>800.000đ</strong></li><li>Bổ sung phụ cấp xăng xe <strong>200.000đ/tháng</strong> cho nhân viên đi xe máy</li></ul>',
+    preview:'Tăng lương 8% từ 07/2026 cho NV hiệu suất tốt. Phụ cấp ăn trưa tăng lên 800k.',
+    department:'', creator:'NV000014', approver:'NV000014',
+    status:'active', start_date:'2026-03-15', end_date:'2026-07-01'
+  },
+  {
+    id:'ANN005', title:'Bảo trì hệ thống chấm công ngày 21/02/2026',
+    body:'<p>Hệ thống chấm công sẽ <strong>bảo trì</strong> từ 22:00 ngày 20/02 đến 06:00 ngày 21/02/2026.</p><p>Trong thời gian này, nhân viên vui lòng ghi chép giờ làm việc thủ công và báo lại quản lý để nhập bổ sung.</p>',
+    preview:'Bảo trì hệ thống chấm công 22h ngày 20/02 đến 6h ngày 21/02. Chấm công thủ công.',
+    department:'', creator:'NV000014', approver:'NV000014',
+    status:'expired', start_date:'2026-02-20', end_date:'2026-02-21'
+  },
+];
+
+// ── Messages ────────────────────────────────────────────────────
+const messages = [
+  { id:'MSG001', to_id:'NV000011', from_id:'SYSTEM', from_name:'Hệ thống Humi', subject:'Lương tháng 3/2026 đã được xử lý', body:'<p>Bảng lương tháng <strong>3/2026</strong> của toàn bộ nhân sự chi nhánh CH613 đã được phê duyệt và chuyển khoản.</p><p>Vui lòng kiểm tra bảng lương trong mục <em>Lương</em>.</p>', tags:['salary'],  is_read:true,  important:false, deleted:false, timestamp:'2026-04-02T08:00:00Z' },
+  { id:'MSG002', to_id:'NV000001', from_id:'SYSTEM', from_name:'Hệ thống Humi', subject:'Đơn nghỉ phép đã được phê duyệt', body:'<p>Đơn xin nghỉ phép năm của bạn từ ngày <strong>10/03 – 11/03/2026</strong> đã được quản lý <strong>Tiểu Nhi</strong> phê duyệt.</p><p>Chúc bạn nghỉ ngơi vui vẻ!</p>', tags:['leave'],    is_read:true,  important:false, deleted:false, timestamp:'2026-03-07T08:05:00Z' },
+  { id:'MSG003', to_id:'NV000002', from_id:'SYSTEM', from_name:'Hệ thống Humi', subject:'Lịch ca làm việc tháng 5/2026', body:'<p>Lịch ca làm việc tháng <strong>5/2026</strong> đã được xếp.<br>Ca của bạn: <strong>Ca chiều (13:00–22:00)</strong> – Thứ 2 đến Thứ 7.</p><p>Vui lòng kiểm tra chi tiết trong mục <em>Lịch làm việc</em>.</p>', tags:['shift'],    is_read:false, important:false, deleted:false, timestamp:'2026-04-26T09:00:00Z' },
+  { id:'MSG004', to_id:'NV000001', from_id:'NV000011', from_name:'Tiểu Nhi',    subject:'Nhắc nhở: Chấm công đúng giờ', body:'<p>Chào bạn An,</p><p>Quản lý nhận thấy trong tháng 3 bạn có <strong>3 lần vào muộn</strong>. Đề nghị chú ý chấm công đúng giờ theo quy định.</p><p>Nếu có khó khăn trong việc đi lại, hãy trao đổi với quản lý để được hỗ trợ.</p>', tags:['attendance'],is_read:false, important:true,  deleted:false, timestamp:'2026-04-05T10:00:00Z' },
+  { id:'MSG005', to_id:'NV000003', from_id:'NV000012', from_name:'Minh Quang',  subject:'Phân công kiểm kê hàng tháng 4', body:'<p>Anh Quân,</p><p>Tháng 4 này anh phụ trách kiểm kê hàng hóa khu vực <strong>A và B</strong> cùng với chị Thu.</p><p>Deadline: <strong>28/04/2026</strong>. Báo cáo nộp qua hệ thống.</p>', tags:['general'],  is_read:true,  important:false, deleted:false, timestamp:'2026-04-01T08:30:00Z' },
+  { id:'MSG006', to_id:'NV000004', from_id:'SYSTEM', from_name:'Hệ thống Humi', subject:'Đơn nghỉ ốm bị từ chối', body:'<p>Đơn xin nghỉ ốm ngày <strong>20–21/03/2026</strong> của bạn đã bị <strong>từ chối</strong>.</p><p>Lý do: Thiếu giấy xác nhận của bác sĩ.</p><p>Vui lòng nộp bổ sung giấy tờ nếu muốn xem xét lại.</p>', tags:['leave'],    is_read:true,  important:false, deleted:false, timestamp:'2026-03-20T10:05:00Z' },
+  { id:'MSG007', to_id:'NV000005', from_id:'SYSTEM', from_name:'Hệ thống Humi', subject:'Xác nhận đăng ký tăng ca', body:'<p>Yêu cầu tăng ca của bạn vào thứ 7 <strong>19/04/2026</strong> đã được duyệt.</p><p>Thời gian tăng ca: <strong>17:00 – 20:00</strong>. Phụ cấp tăng ca sẽ được tính vào lương tháng 4.</p>', tags:['attendance'],is_read:false, important:false, deleted:false, timestamp:'2026-04-17T09:05:00Z' },
+  { id:'MSG008', to_id:'NV000007', from_id:'NV000011', from_name:'Tiểu Nhi',    subject:'Khen ngợi về hiệu quả công việc', body:'<p>Chào anh Cường,</p><p>Quản lý ghi nhận anh đã hoàn thành tốt công tác sắp xếp kho trong tháng 3, đặc biệt trong đợt kiểm kê cuối tháng.</p><p>Tiếp tục phát huy nhé!</p>', tags:['general'],  is_read:true,  important:false, deleted:false, timestamp:'2026-04-03T14:00:00Z' },
+  { id:'MSG009', to_id:'NV000008', from_id:'SYSTEM', from_name:'Hệ thống Humi', subject:'Xác nhận chế độ nghỉ thai sản', body:'<p>Chị Hoa thân mến,</p><p>Chúc mừng chị đã được phê duyệt chế độ <strong>nghỉ thai sản 180 ngày</strong> từ 01/02/2026 đến 31/07/2026.</p><p>Trong thời gian nghỉ, chị vẫn nhận 75% lương từ quỹ BHXH. Chúc chị và bé khỏe mạnh!</p>', tags:['system'],   is_read:true,  important:true,  deleted:false, timestamp:'2026-01-28T08:10:00Z' },
+  { id:'MSG010', to_id:'NV000009', from_id:'NV000013', from_name:'Thanh Hương', subject:'Lịch kiểm tra kho tháng 4', body:'<p>Anh Đức,</p><p>Tháng 4 sẽ có đoàn kiểm tra kho của công ty vào ngày <strong>25/04/2026</strong>. Anh chuẩn bị hồ sơ xuất nhập kho từ đầu tháng đến nay.</p><p>Liên hệ mình nếu cần hỗ trợ.</p>', tags:['general'],  is_read:false, important:true,  deleted:false, timestamp:'2026-04-20T09:00:00Z' },
+  { id:'MSG011', to_id:'NV000010', from_id:'SYSTEM', from_name:'Hệ thống Humi', subject:'Nhắc nhở: Chưa chấm công ra ngày 15/04', body:'<p>Hệ thống ghi nhận bạn <strong>chưa chấm công ra</strong> vào ngày 15/04/2026.</p><p>Vui lòng gửi yêu cầu điều chỉnh công trong mục <em>Yêu cầu</em> và mô tả lý do.</p>', tags:['attendance'],is_read:false, important:false, deleted:false, timestamp:'2026-04-16T08:00:00Z' },
+  { id:'MSG012', to_id:'NV000011', from_id:'NV000014', from_name:'Admin',        subject:'Báo cáo doanh số CH613 tháng 3/2026', body:'<p>Chị Nhi,</p><p>Nhờ chị tổng hợp và gửi báo cáo doanh số chi nhánh CH613 tháng 3 trước <strong>05/04/2026</strong>.</p><p>Mẫu báo cáo đính kèm trong thư mục chung.</p>', tags:['report'],   is_read:true,  important:true,  deleted:false, timestamp:'2026-04-01T07:30:00Z' },
+  { id:'MSG013', to_id:'NV000012', from_id:'NV000014', from_name:'Admin',        subject:'Yêu cầu rà soát nhân sự CH614', body:'<p>Anh Quang,</p><p>Ban giám đốc yêu cầu rà soát tình trạng nhân sự CH614, đặc biệt các trường hợp nhân viên thử việc và nhân viên có hiệu suất thấp.</p><p>Báo cáo cần trước ngày <strong>10/04/2026</strong>.</p>', tags:['report'],   is_read:true,  important:true,  deleted:false, timestamp:'2026-04-02T08:00:00Z' },
+  { id:'MSG014', to_id:'NV000014', from_id:'SYSTEM', from_name:'Hệ thống Humi', subject:'Thông báo: Hệ thống hoạt động ổn định', body:'<p>Hệ thống Humi HRM đã hoàn tất cập nhật phiên bản mới nhất.</p><p>Các tính năng cải tiến: chấm công bằng khuôn mặt, phân quyền chi nhánh, báo cáo lương chi tiết.</p><p>Liên hệ support nếu gặp sự cố.</p>', tags:['system'],   is_read:true,  important:false, deleted:false, timestamp:'2026-04-27T06:00:00Z' },
+];
+
+// ── Batch upsert ───────────────────────────────────────────────
+async function batchUpsert(table, rows, batchSize = 100) {
+  let count = 0;
+  for (let i = 0; i < rows.length; i += batchSize) {
+    const chunk = rows.slice(i, i + batchSize);
+    const { error } = await sb.from(table).upsert(chunk);
+    if (error) { log('err', `${table} batch ${i/batchSize+1}: ${error.message}`); }
+    else { count += chunk.length; }
+  }
+  return count;
+}
+
+// ── Main seed ──────────────────────────────────────────────────
+async function runSeed() {
+  document.getElementById('startBtn').disabled = true;
+  document.getElementById('startBtn').textContent = '⏳ Đang chạy...';
+  initUI();
+
+  try {
+    // STEP 0 – Delete all
+    stepRun(0);
+    await deleteAll();
+    stepDone(0);
+
+    // STEP 1 – Employees
+    stepRun(1);
+    const c1 = await batchUpsert('employees', employees);
+    stepDone(1, c1);
+
+    // STEP 2 – Accounts
+    stepRun(2);
+    const c2 = await batchUpsert('accounts', accounts);
+    stepDone(2, c2);
+
+    // STEP 3 – Shifts
+    stepRun(3);
+    const c3 = await batchUpsert('shifts', shifts);
+    stepDone(3, c3);
+
+    // STEP 4 – Shift assignments
+    stepRun(4);
+    const sa = buildShiftAssignments();
+    log('info', `Phân ca: ${sa.length} bản ghi (Feb 1 – Jun 30)`);
+    const c4 = await batchUpsert('shift_assignments', sa, 200);
+    stepDone(4, c4);
+
+    // STEP 5 – Attendance
+    stepRun(5);
+    const att = buildAttendance();
+    log('info', `Chấm công: ${att.length} bản ghi (Feb–Apr 26)`);
+    const c5 = await batchUpsert('attendance', att, 200);
+    stepDone(5, c5);
+
+    // STEP 6 – Leave requests
+    stepRun(6);
+    const c6 = await batchUpsert('leave_requests', leaveRequests);
+    stepDone(6, c6);
+
+    // STEP 7 – Requests
+    stepRun(7);
+    const c7 = await batchUpsert('requests', requests);
+    stepDone(7, c7);
+
+    // STEP 8 – Salary
+    stepRun(8);
+    const sal = buildSalary();
+    log('info', `Lương: ${sal.length} kỳ lương`);
+    const c8 = await batchUpsert('salary', sal);
+    stepDone(8, c8);
+
+    // STEP 9 – Announcements
+    stepRun(9);
+    const c9 = await batchUpsert('announcements', announcements);
+    stepDone(9, c9);
+
+    // STEP 10 – Messages
+    stepRun(10);
+    const c10 = await batchUpsert('messages', messages);
+    stepDone(10, c10);
+
+    // STEP 11 – localStorage sync
+    stepRun(11);
+    // Accounts (không sync từ Supabase → set trực tiếp)
+    const localAccounts = accounts.map(a => ({ employeeId: a.employee_id, password: a.password }));
+    localStorage.setItem('humi_accounts', JSON.stringify(localAccounts));
+
+    // Employees
+    const localEmps = employees.map(e => ({
+      id:e.id, code:e.code, name:e.name, avatar:e.avatar, unit:e.unit,
+      position:e.position, roleId:e.role_id, status:e.status, gender:e.gender,
+      phone:e.phone, email:e.email, dob:e.dob, startDate:e.start_date,
+      contractStatus:e.contract_status, contractType:e.contract_type,
+      workMode:e.work_mode, managerName:e.manager_name, managerId:e.manager_id,
+      leaveBalance:e.leave_balance, idCard:e.id_card,
+      faceImage:null, faceDescriptor:null
+    }));
+    localStorage.setItem('humi_employees', JSON.stringify(localEmps));
+
+    // Shifts
+    const localShifts = shifts.map(s => ({
+      id:s.id, name:s.name, code:s.code, startTime:s.start_time, endTime:s.end_time,
+      breakMinutes:s.break_minutes, workHours:s.work_hours, quota:s.quota,
+      active:s.active, color:s.color, applyDays:s.apply_days
+    }));
+    localStorage.setItem('humi_shifts', JSON.stringify(localShifts));
+
+    // Leave requests
+    const localLR = leaveRequests.map(r => ({
+      id:r.id, employeeId:r.employee_id, leaveType:r.leave_type, leaveTypeName:r.leave_type_name,
+      startDate:r.start_date, endDate:r.end_date, totalDays:r.total_days, status:r.status,
+      reason:r.reason, approverId:r.approver_id, approvedAt:r.approved_at,
+      rejectedAt:r.rejected_at, rejectReason:r.reject_reason, createdAt:r.created_at
+    }));
+    localStorage.setItem('humi_leave_requests', JSON.stringify(localLR));
+
+    // Requests
+    const localReq = requests.map(r => ({
+      id:r.id, employeeId:r.employee_id, type:r.request_type, typeLabel:r.type_label,
+      content:r.content, status:r.status, approverId:r.approver_id, createdAt:r.created_at
+    }));
+    localStorage.setItem('humi_requests', JSON.stringify(localReq));
+
+    // Salary
+    const sal2 = buildSalary();
+    const localSal = sal2.map(s => ({
+      id:s.id, employeeId:s.employee_id, period:s.period,
+      baseSalary:s.base_salary, grossSalary:s.gross_salary, netSalary:s.net_salary,
+      workDays:s.work_days, actualWorkDays:s.actual_work_days,
+      allowances:s.allowances, deductions:s.deductions,
+      bonus:s.bonus, overtimePay:s.overtime_pay
+    }));
+    localStorage.setItem('humi_salary', JSON.stringify(localSal));
+
+    // Announcements
+    const localAnn = announcements.map(a => ({
+      id:a.id, department:a.department, title:a.title, preview:a.preview,
+      creator:a.creator, approver:a.approver, status:a.status,
+      startDate:a.start_date, endDate:a.end_date
+    }));
+    localStorage.setItem('humi_announcements', JSON.stringify(localAnn));
+
+    // Messages
+    const tagMap = { attendance:'Duyệt công', leave:'Nghỉ phép', salary:'Lương', shift:'Đổi ca', report:'Báo cáo', system:'Hệ thống', general:'Chung' };
+    const clsMap = { attendance:'tag-orange', leave:'tag-blue', salary:'tag-green', shift:'tag-purple', report:'tag-green', system:'tag-gray', general:'tag-purple' };
+    const localMsg = messages.map(m => {
+      const rawTag = m.tags[0] || '';
+      return {
+        id:m.id, toId:m.to_id, fromId:m.from_id, sender:m.from_name,
+        avatar:'', subject:m.subject,
+        preview:m.body.replace(/<[^>]*>/g,' ').replace(/\s+/g,' ').trim().slice(0,120),
+        body:m.body, actions:[], tag:tagMap[rawTag]||rawTag,
+        tagClass:clsMap[rawTag]||'tag-purple', isRead:m.is_read,
+        important:m.important, deleted:m.deleted, timestamp:m.timestamp
+      };
+    });
+    localStorage.setItem('humi_messages', JSON.stringify(localMsg));
+
+    // Attendance & shift_assignments (large – skip localStorage, let syncFromSupabase handle)
+    localStorage.removeItem('humi_attendance');
+    localStorage.removeItem('humi_shift_assignments');
+
+    // Xóa avatar khỏi user_settings của tất cả nhân viên
+    employees.forEach(function(e) {
+      var sk = 'humi_user_settings_' + e.id;
+      try {
+        var st = JSON.parse(localStorage.getItem(sk) || '{}');
+        delete st.avatar;
+        localStorage.setItem(sk, JSON.stringify(st));
+      } catch(_) {}
+    });
+
+    // Xóa avatar khỏi session hiện tại nếu có
+    try {
+      var sess = JSON.parse(localStorage.getItem('humi_session') || 'null');
+      if (sess && sess.user) { sess.user.avatar = ''; localStorage.setItem('humi_session', JSON.stringify(sess)); }
+    } catch(_) {}
+
+    // Mark seeded
+    localStorage.setItem('humi_seeded_v6', '1');
+
+    log('ok', 'localStorage đã được cập nhật đầy đủ');
+    stepDone(11);
+
+    setProgress(100);
+    document.getElementById('summary').style.display = 'block';
+    log('ok', '=== SEED HOÀN THÀNH ===');
+
+  } catch (err) {
+    log('err', 'Lỗi nghiêm trọng: ' + err.message);
+    document.getElementById('startBtn').disabled = false;
+    document.getElementById('startBtn').textContent = '▶ Thử lại';
+  }
+}
+
+initUI();
+</script>
+</body>
+</html>
