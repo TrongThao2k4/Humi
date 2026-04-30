@@ -8,19 +8,18 @@
   var emp = (DB.employees.getAll()||[]).find(function(e){ return e.id === currentUser.id; });
   var name   = (emp && emp.name)     || currentUser.name     || '—';
   var role   = (emp && emp.position) || currentUser.position || '—';
-  // Ưu tiên avatar từ settings (cập nhật real-time từ trang Cài đặt)
-  var _sk = 'humi_user_settings_' + currentUser.id;
-  var _st = {}; try { _st = JSON.parse(localStorage.getItem(_sk)) || {}; } catch(e) {}
-  var avatar = _st.avatar || (emp && emp.avatar) || '';
-  var sid = document.getElementById('sidebarAvatar'); if(sid) sid.src = avatar || sid.src;
-  var tid = document.getElementById('topbarAvatar');  if(tid) tid.src = avatar || tid.src;
+  // Ưu tiên avatar mặc định (user muốn ảnh mặc định trên mọi trang)
+  var DEFAULT_AVATAR_ID = 47;
+  function defaultAv(sz) { return 'https://i.pravatar.cc/' + (sz||32) + '?img=' + DEFAULT_AVATAR_ID; }
+  var sid = document.getElementById('sidebarAvatar'); if(sid) sid.src = defaultAv(32);
+  var tid = document.getElementById('topbarAvatar');  if(tid) tid.src = defaultAv(32);
   var sn  = document.getElementById('sidebarName');   if(sn)  sn.textContent  = name;
   var sr  = document.getElementById('sidebarRole');   if(sr)  sr.textContent  = role;
   var tn  = document.getElementById('topbarName');    if(tn)  tn.textContent  = name;
   var tr  = document.getElementById('topbarRole');    if(tr)  tr.textContent  = role;
   var dn  = document.getElementById('dropdownName');   if(dn)  dn.textContent  = name;
   var dr  = document.getElementById('dropdownRole');   if(dr)  dr.textContent  = role;
-  var da  = document.getElementById('dropdownAvatar'); if(da)  da.src = avatar || da.src;
+  var da  = document.getElementById('dropdownAvatar'); if(da)  da.src = defaultAv(36);
 })();
 
 
@@ -424,6 +423,15 @@ function renderDayCell(day, isSunday, empId) {
     approvalStatus: day.approvalStatus || 'pending', status: day.status
   }];
 
+  // Ensure each record has a stable id (use synthetic id when missing)
+  records.forEach(function(r) {
+    if (!r.id) r.id = 'att_' + (empId || '') + '_' + (day.date || '');
+    if (!r.shiftId) r.shiftId = r.shiftId || '';
+    r.checkIn = r.checkIn || '';
+    r.checkOut = r.checkOut || '';
+    r.approvalStatus = r.approvalStatus || 'pending';
+  });
+
   const pills = records.map(makePill).join('');
   return `<td style="${tdStyle}">
     <div style="display:flex;align-items:center;justify-content:center;gap:5px;height:100%;">
@@ -517,7 +525,8 @@ function openDetail(pill, td, tr) {
 
   renderAllFaceImages();
 
-  document.getElementById('det-avatar').src = emp.avatar;
+  // use default avatar for detail panel
+  document.getElementById('det-avatar').src = defaultAv(80);
   document.getElementById('det-name').textContent = emp.name;
   document.getElementById('det-date').textContent = dateStr;
   updateDetailStatus(emp.days[dayIdx].approvalStatus);
@@ -620,6 +629,80 @@ function recalcWorked(emp) {
   emp.worked = Math.round(total / 60);
 }
 
+// Rebuild employees array from latest localStorage data (essential for realtime updates)
+function refreshEmployeeData() {
+  try {
+    employees = buildEmployees(_baseMonday);
+    return true;
+  } catch (e) {
+    console.error('refreshEmployeeData error:', e);
+    return false;
+  }
+}
+
+// Update pill DOM for a specific record/shift immediately (no full reload needed)
+function updatePillApproval(recId, shiftId, approvalStatus) {
+  try {
+    document.querySelectorAll('.att-pill-click').forEach(function(p) {
+      var rid = p.getAttribute('data-recid') || '';
+      var sid = p.getAttribute('data-shiftid') || '';
+      if ((recId && String(rid) === String(recId)) || (shiftId && String(sid) === String(shiftId))) {
+        p.setAttribute('data-approval', approvalStatus);
+        if (approvalStatus === 'approved') {
+          p.style.background = '#16a34a'; p.style.color = 'white'; p.style.border = 'none';
+        } else if (approvalStatus === 'rejected') {
+          p.style.background = '#dc2626'; p.style.color = 'white'; p.style.border = 'none';
+        } else {
+          p.style.background = 'white'; p.style.color = '#ea580c'; p.style.border = '1.5px dashed #ea580c';
+        }
+      }
+    });
+  } catch (e) {
+    console.error('updatePillApproval error', e);
+  }
+}
+
+// Ensure attendance record exists in localStorage when approve() can't find it
+function upsertLocalAttendance(attId, empId, date, checkIn, checkOut, approvalStatus, note) {
+  try {
+    var key = 'humi_attendance';
+    var list = JSON.parse(localStorage.getItem(key) || '[]');
+    var idx = list.findIndex(function(r){ return String(r.id) === String(attId); });
+    var nowIso = new Date().toISOString();
+    if (idx === -1) {
+      var rec = {
+        id: attId,
+        employeeId: empId,
+        date: date,
+        checkIn: checkIn || null,
+        checkOut: checkOut || null,
+        status: 'present',
+        approvalStatus: approvalStatus || 'approved',
+        note: note || '',
+        approverId: currentUser.id,
+        approvedAt: nowIso
+      };
+      list.push(rec);
+    } else {
+      list[idx] = Object.assign({}, list[idx], {
+        checkIn: checkIn || list[idx].checkIn,
+        checkOut: checkOut || list[idx].checkOut,
+        approvalStatus: approvalStatus || list[idx].approvalStatus,
+        approverId: currentUser.id,
+        approvedAt: nowIso,
+        approverNote: note || list[idx].approverNote || ''
+      });
+    }
+    localStorage.setItem(key, JSON.stringify(list));
+    // Try to push to Supabase (best-effort)
+    try { SB.upsert && SB.upsert('attendance', { id: attId, employee_id: empId, date: date, check_in: checkIn || null, check_out: checkOut || null, approval_status: approvalStatus || 'approved', note: note || '' }); } catch(e){}
+    return true;
+  } catch (e) {
+    console.error('upsertLocalAttendance error', e);
+    return false;
+  }
+}
+
 function applyHalfShift(half) {
   if (!_detailCtx) return;
   const { empIdx, dayIdx, recId: ctxRecId } = _detailCtx;
@@ -661,9 +744,11 @@ function applyHalfShift(half) {
 
   // Lưu DB
   var attId = (ctxRecId) || ('att_' + emp.id + '_' + day.date);
-  DB.attendance.approve(attId, currentUser.id, { checkIn: newIn, checkOut: newOut });
+  var ok = false; try { ok = DB.attendance.approve(attId, currentUser.id, { checkIn: newIn, checkOut: newOut }); } catch(e){}
+  if (!ok) upsertLocalAttendance(attId, emp.id, day.date, newIn, newOut, 'approved');
+  try { updatePillApproval(attId, (_detailCtx && _detailCtx.shiftId) || null, 'approved'); } catch(e){}
 
-  recalcWorked(emp);
+  refreshEmployeeData();
   reRender();
   closeDetail();
 
@@ -703,12 +788,16 @@ function applyApproval(approvalStatus, label) {
   targetRecs.forEach(function(rec) {
     var attId = rec.id || ('att_' + emp.id + '_' + day.date);
     if (approvalStatus === 'approved') {
-      DB.attendance.approve(attId, currentUser.id, note ? { approverNote: note } : null);
+      var ok = false; try { ok = DB.attendance.approve(attId, currentUser.id, note ? { approverNote: note } : null); } catch(e){}
+      if (!ok) upsertLocalAttendance(attId, emp.id, day.date, rec.checkIn || day.checkIn, rec.checkOut || day.checkOut, 'approved', note);
+      try { updatePillApproval(attId, rec.shiftId || (_detailCtx && _detailCtx.shiftId), 'approved'); } catch(e){}
     } else {
-      DB.attendance.reject(attId, currentUser.id, note);
+      var ok2 = false; try { ok2 = DB.attendance.reject(attId, currentUser.id, note); } catch(e){}
+      if (!ok2) upsertLocalAttendance(attId, emp.id, day.date, rec.checkIn || day.checkIn, rec.checkOut || day.checkOut, 'rejected', note);
+      try { updatePillApproval(attId, rec.shiftId || (_detailCtx && _detailCtx.shiftId), 'rejected'); } catch(e){}
     }
   });
-  recalcWorked(emp);
+  refreshEmployeeData();
   reRender();
   closeDetail();
   showToast(label);
@@ -831,15 +920,13 @@ function confirmChiTiet() {
   const targetRecs = day.records && day.records.length ? day.records.filter(_isTarget) : [{ id: null }];
   targetRecs.forEach(function(rec) {
     var attId = rec.id || ('att_' + emp.id + '_' + day.date);
-    DB.attendance.approve(attId, currentUser.id, {
-      checkIn:      day.approvedCheckIn,
-      checkOut:     day.approvedCheckOut,
-      approverNote: note
-    });
+    var ok = false; try { ok = DB.attendance.approve(attId, currentUser.id, { checkIn: day.approvedCheckIn, checkOut: day.approvedCheckOut, approverNote: note }); } catch(e){}
+    if (!ok) upsertLocalAttendance(attId, emp.id, day.date, day.approvedCheckIn, day.approvedCheckOut, 'approved', note);
+    try { updatePillApproval(attId, rec.shiftId || (_detailCtx && _detailCtx.shiftId), 'approved'); } catch(e){}
   });
-  recalcWorked(emp);
-  closeChiTiet();
+  refreshEmployeeData();
   reRender();
+  closeChiTiet();
   closeDetail();
   showToast(`✓ Đã duyệt: ${day.approvedCheckIn} – ${day.approvedCheckOut}${note ? ' · ' + note : ''}`);
   // Gửi thông báo điều chỉnh giờ cho nhân viên
@@ -1203,7 +1290,9 @@ function _doBulkApprove(targets, note) {
     var day = target.day;
     var rec = target.rec;
     var attId = rec.id || ('att_' + emp.id + '_' + day.date);
-    DB.attendance.approve(attId, currentUser.id, note ? { approverNote: note } : null);
+    var ok = false; try { ok = DB.attendance.approve(attId, currentUser.id, note ? { approverNote: note } : null); } catch(e){}
+    if (!ok) upsertLocalAttendance(attId, emp.id, day.date, rec.checkIn || day.checkIn, rec.checkOut || day.checkOut, 'approved', note);
+    try { updatePillApproval(attId, rec.shiftId || null, 'approved'); } catch(e){}
     if (day.records) {
       day.records.forEach(function(item) {
         if (!item) return;
@@ -1236,6 +1325,7 @@ function _doBulkApprove(targets, note) {
   });
 
   closeConditionModal();
+  refreshEmployeeData();
   reRender();
   DB.utils.showToast('Đã duyệt ' + targets.length + ' ca theo điều kiện');
 }

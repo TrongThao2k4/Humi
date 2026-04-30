@@ -48,29 +48,40 @@
     var name = (emp && emp.name)     || currentUser.name     || '—';
     var role = (emp && emp.position) || currentUser.position || '—';
 
-    // Avatar: ưu tiên từ settings (đồng bộ với trang Cài đặt)
-    var _sk = 'humi_user_settings_' + currentUser.id;
-    var _st = {}; try { _st = JSON.parse(localStorage.getItem(_sk)) || {}; } catch(e) {}
-    var avatar = _st.avatar || (emp && emp.avatar) || '';
+    // Avatar: force default avatar across pages (user requested)
+      const DEFAULT_AVATAR_ID = 47;
+      function defaultAv(sz) { return 'https://i.pravatar.cc/' + (sz||32) + '?img=' + DEFAULT_AVATAR_ID; }
 
-    var el = function(id) { return document.getElementById(id); };
-    var _makeAv = function(sz) {
-      if (avatar) return avatar;
-      var ini = name.trim().split(/\s+/).slice(-2).map(function(w){return w[0]||'';}).join('').toUpperCase()||'?';
-      var svg = '<svg xmlns="http://www.w3.org/2000/svg" width="'+sz+'" height="'+sz+'"><circle cx="'+(sz/2)+'" cy="'+(sz/2)+'" r="'+(sz/2)+'" fill="#ECF2FF"/><text x="50%" y="50%" text-anchor="middle" dominant-baseline="central" fill="#5D87FF" font-size="'+Math.round(sz*0.38)+'" font-family="Plus Jakarta Sans,sans-serif" font-weight="700">'+ini+'</text></svg>';
-      return 'data:image/svg+xml;charset=utf-8,'+encodeURIComponent(svg);
-    };
-    if (el('sidebarAvatar'))   el('sidebarAvatar').src       = _makeAv(32);
-    if (el('topbarAvatar'))    el('topbarAvatar').src        = _makeAv(32);
-    if (el('sidebarUserName')) el('sidebarUserName').textContent = name;
-    if (el('sidebarUserRole')) el('sidebarUserRole').textContent = role;
-    if (el('topbarUserName'))  el('topbarUserName').textContent  = name;
-    if (el('topbarUserRole'))  el('topbarUserRole').textContent  = role;
-    if (el('dropdownAvatar'))  el('dropdownAvatar').src          = _makeAv(36);
-    if (el('dropdownName'))    el('dropdownName').textContent    = name;
-    if (el('dropdownRole'))    el('dropdownRole').textContent    = role;
-    if (el('modalUnitName'))   el('modalUnitName').textContent   = (emp && emp.unit) || currentUser.unit || '—';
-    if (el('cardUnitName'))    el('cardUnitName').textContent    = (emp && emp.unit) || currentUser.unit || '—';
+      var el = function(id) { return document.getElementById(id); };
+      // Always use default avatar image; this enforces a consistent placeholder everywhere
+      if (el('sidebarAvatar'))   el('sidebarAvatar').src       = defaultAv(32);
+      if (el('topbarAvatar'))    el('topbarAvatar').src        = defaultAv(32);
+      if (el('sidebarUserName')) el('sidebarUserName').textContent = name;
+      if (el('sidebarUserRole')) el('sidebarUserRole').textContent = role;
+      if (el('topbarUserName'))  el('topbarUserName').textContent  = name;
+      if (el('topbarUserRole'))  el('topbarUserRole').textContent  = role;
+      if (el('dropdownAvatar'))  el('dropdownAvatar').src          = defaultAv(36);
+      if (el('dropdownName'))    el('dropdownName').textContent    = name;
+      if (el('dropdownRole'))    el('dropdownRole').textContent    = role;
+      if (el('modalUnitName'))   el('modalUnitName').textContent   = (emp && emp.unit) || currentUser.unit || '—';
+      if (el('cardUnitName'))    el('cardUnitName').textContent    = (emp && emp.unit) || currentUser.unit || '—';
+
+      // Replace other avatar-like images (circle avatars) with default image
+      function enforceDefaultAvatars() {
+        try {
+          document.querySelectorAll('img').forEach(function(img) {
+            var st = (img.getAttribute('style')||'').replace(/\s/g,'');
+            var isRound = st.indexOf('border-radius:50%') !== -1 || img.classList.contains('avatar');
+            var isKnownId = ['sidebarAvatar','topbarAvatar','dropdownAvatar','drawerAvatar','det-avatar','drawerAvatar'].indexOf(img.id) !== -1;
+            if (isRound || isKnownId) {
+              var size = img.width || parseInt((img.getAttribute('style')||'').match(/width:?(\d+)px/)?.[1]) || 36;
+              img.src = defaultAv(Math.max(24, Math.min(80, size)));
+            }
+          });
+        } catch(e) {}
+      }
+      enforceDefaultAvatars();
+      window.addEventListener('humi_synced', enforceDefaultAvatars);
   })();
 
   // ==================== NOTIFICATION BELL ====================
@@ -830,7 +841,7 @@
       if (_verifyCache && cacheAge < 8000) {
         // Dùng kết quả đã có sẵn → tức thì
         if (!_verifyCache.verified) {
-          showToast(`Khuôn mặt không khớp (${_verifyCache.pct}% giống) — từ chối!`, 'error');
+          showToast(`Xác thực khuôn mặt thất bại (Độ khớp: ${_verifyCache.pct}%). Vui lòng thử lại.`, 'error');
           setLoadingBtn(false); return;
         }
       } else {
@@ -847,7 +858,7 @@
           const distance = faceapi.euclideanDistance(storedDesc, det.descriptor);
           const pct = Math.round((1 - Math.min(distance, 1)) * 100);
           _verifyCache = { verified: distance <= 0.5, pct, distance, ts: Date.now() };
-          if (distance > 0.5) { showToast(`Khuôn mặt không khớp (${pct}% giống) — từ chối!`, 'error'); setLoadingBtn(false); return; }
+          if (distance > 0.5) { showToast(`Xác thực khuôn mặt thất bại (Độ khớp: ${_verifyCache.pct}%). Vui lòng thử lại.`, 'error'); setLoadingBtn(false); return; }
         } catch(e) { console.warn('verify error, skip:', e); }
       }
     }
@@ -869,7 +880,7 @@
         res = DB.attendance.checkOut(currentUser.id, shiftId, payload.image);
       }
       if (res.ok) {
-        const msg = !status.checkedIn ? 'Chấm công vào thành công! ✓' : 'Kết thúc ca thành công! ✓';
+        const msg = !status.checkedIn ? 'Chấm công vào thành công!' : 'Kết thúc ca thành công!';
         setLoadingBtn(false);
         showToast(msg, 'success');
         closeAttendanceModal();
