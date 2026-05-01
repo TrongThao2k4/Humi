@@ -47,20 +47,57 @@ window.genAvatar = function(name, size) {
   // Hide manager-only sidebar links for regular employees
   // ─────────────────────────────────────────────
   var MGR_HREF_PATTERNS = ['duyet-cong', 'danh-sach-phieu-nghi', 'danh-sach-nhan-vien'];
+  var ADMIN_HREF_PATTERNS = ['quan-tri-he-thong'];
 
   function applyRoleSidebar() {
     var sess = null;
     try { sess = JSON.parse(localStorage.getItem('humi_session')); } catch (e) {}
     if (!sess || !sess.user) return;
     var roleId = sess.user.roleId;
-    if (roleId === 'manager' || roleId === 'admin') return;
+    if (roleId === 'admin') return;
+
+    if (roleId !== 'admin') {
+      document.querySelectorAll('nav a.sidebar-item, nav a[href]').forEach(function (el) {
+        var href = (el.getAttribute('href') || '').toLowerCase();
+        if (ADMIN_HREF_PATTERNS.some(function (p) { return href.indexOf(p) !== -1; })) {
+          el.style.display = 'none';
+        }
+      });
+    }
 
     document.querySelectorAll('nav a.sidebar-item, nav a[href]').forEach(function (el) {
       var href = (el.getAttribute('href') || '').toLowerCase();
       if (MGR_HREF_PATTERNS.some(function (p) { return href.indexOf(p) !== -1; })) {
+        if (roleId !== 'manager' && roleId !== 'admin') {
+          el.style.display = 'none';
+        }
+      }
+      if (ADMIN_HREF_PATTERNS.some(function (p) { return href.indexOf(p) !== -1; })) {
         el.style.display = 'none';
       }
     });
+  }
+
+  function injectAdminLink() {
+    var sess = null;
+    try { sess = JSON.parse(localStorage.getItem('humi_session')); } catch (e) {}
+    if (!sess || !sess.user || sess.user.roleId !== 'admin') return;
+    var navs = document.querySelectorAll('nav');
+    if (!navs.length) return;
+    if (document.querySelector('a[href="quan-tri-he-thong.html"], a[href="pages/quan-tri-he-thong.html"]')) return;
+    var nav = navs[0];
+    var link = document.createElement('a');
+    var isInPages = window.location.pathname.indexOf('/pages/') !== -1;
+    link.href = isInPages ? 'quan-tri-he-thong.html' : 'pages/quan-tri-he-thong.html';
+    link.className = 'sidebar-item';
+    link.style.marginTop = '2px';
+    link.innerHTML = '<svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-4 0v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83-2.83l.06-.06A1.65 1.65 0 004.68 15a1.65 1.65 0 00-1.51-1H3a2 2 0 010-4h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 012.83-2.83l.06.06A1.65 1.65 0 009 4.68a1.65 1.65 0 001-1.51V3a2 2 0 014 0v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 2.83l-.06.06A1.65 1.65 0 0019.4 9a1.65 1.65 0 001.51 1H21a2 2 0 010 4h-.09a1.65 1.65 0 00-1.51 1z"/></svg>Quản trị hệ thống';
+    var insertionTarget = nav.querySelector('a[href*="cai-dat.html"]');
+    if (insertionTarget && insertionTarget.parentNode) {
+      insertionTarget.parentNode.insertBefore(link, insertionTarget.nextSibling);
+      return;
+    }
+    nav.appendChild(link);
   }
 
   // ─────────────────────────────────────────────
@@ -287,6 +324,7 @@ window.genAvatar = function(name, size) {
         { k: 'thu nhập', icon: '💰', title: 'Xem thu nhập', href: (isInPages ? '' : 'pages/') + 'xem-thu-nhap.html' },
         { k: 'hộp thư', icon: '✉️', title: 'Hộp thư', href: (isInPages ? '' : 'pages/') + 'hop-thu.html' },
         { k: 'cài đặt', icon: '⚙️', title: 'Cài đặt', href: (isInPages ? '' : 'pages/') + 'cai-dat.html' },
+        { k: 'quản trị', icon: '🛠️', title: 'Quản trị hệ thống', href: (isInPages ? '' : 'pages/') + 'quan-tri-he-thong.html' },
       ];
       pages.forEach(function(p) { if (p.k.indexOf(ql) !== -1) items.push({ icon: p.icon, color: '#F2F6FA', title: p.title, sub: 'Trang', href: p.href, hint: 'Trang' }); });
     }
@@ -376,6 +414,7 @@ window.genAvatar = function(name, size) {
   document.addEventListener('DOMContentLoaded', function () {
     _buildConfirmDialog();
     applyRoleSidebar();
+    injectAdminLink();
     initMobileSidebar();
     initGlobalSearch();
     initManagerStats();

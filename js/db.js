@@ -101,13 +101,15 @@ function syncFromSupabase() {
       }
     },
     { remote:'attendance',    local:'humi_attendance',    map: function(r){ return { id:r.id, employeeId:r.employee_id, shiftId:r.shift_id||null, date:r.date, checkIn:r.check_in, checkOut:r.check_out, status:r.status, approvalStatus:r.approval_status, note:r.note, faceImageIn:r.face_image_in||null, faceImageOut:r.face_image_out||null, approverId:r.approver_id||null, approvedAt:r.approved_at||null, approvedCheckIn:r.approved_check_in||null, approvedCheckOut:r.approved_check_out||null, approverNote:r.approver_note||null }; } },
-    // accounts KHÔNG sync từ Supabase — giữ local seed (password='123456') để login hoạt động
+    { remote:'accounts',      local:'humi_accounts',      map: function(r){ return { employeeId:r.employee_id, password:r.password, createdAt:r.created_at || null }; } },
     { remote:'shift_assignments', local:'humi_shift_assignments', map: function(r){ return { id:r.id, employeeId:r.employee_id, shiftId:r.shift_id, date:r.date }; } },
   ];
   var promises = tables.map(function(t) {
     return SB.select(t.remote).then(function(rows) {
+      if (t.remote === 'accounts') console.log('🔄 [SYNC] Fetched', t.remote + ':', rows ? rows.length : 0, 'rows from Supabase');
       if (rows && rows.length > 0) {
         var remoteData = rows.map(t.map);
+        if (t.remote === 'accounts') console.log('🔄 [SYNC] Mapped', t.remote + ':', remoteData.length, 'records for localStorage');
         // Với messages: merge để không mất tin nhắn mới gửi chưa lên Supabase
         if (t.remote === 'messages') {
           try {
@@ -117,6 +119,17 @@ function syncFromSupabase() {
             // Giữ lại tin nhắn local chưa có trên Supabase (vừa gửi, chưa sync)
             var localOnly = localMsgs.filter(function(r){ return !remoteIds[r.id]; });
             if (localOnly.length > 0) remoteData = remoteData.concat(localOnly);
+          } catch(e) {}
+        }
+        // Với accounts: lấy password từ Supabase nhưng giữ locked local vì schema hiện chưa có cột locked
+        if (t.remote === 'accounts') {
+          try {
+            var localAccounts = JSON.parse(localStorage.getItem(t.local) || '[]');
+            var lockedMap = {};
+            localAccounts.forEach(function(r){ lockedMap[r.employeeId] = !!r.locked; });
+            remoteData = remoteData.map(function(r) {
+              return { employeeId: r.employeeId, password: r.password, locked: lockedMap.hasOwnProperty(r.employeeId) ? lockedMap[r.employeeId] : false };
+            });
           } catch(e) {}
         }
         // Với attendance: merge thông minh để không mất face image và record pending
@@ -146,7 +159,10 @@ function syncFromSupabase() {
         var oldData = localStorage.getItem(t.local);
         if (newData !== oldData) {
           localStorage.setItem(t.local, newData);
+          if (t.remote === 'accounts') console.log('✅ [SYNC] Updated localStorage[' + t.local + ']:', remoteData.length, 'accounts saved');
           return true;
+        } else {
+          if (t.remote === 'accounts') console.log('ℹ️ [SYNC] No changes for', t.remote + ' (already in sync)');
         }
       }
       return false;
@@ -155,6 +171,8 @@ function syncFromSupabase() {
 
   Promise.all(promises).then(function(results) {
     var hasUpdates = results.some(function(changed) { return changed; });
+    var localAccounts = JSON.parse(localStorage.getItem('humi_accounts') || '[]');
+    console.log('🎉 [SYNC] Completed! Final accounts in localStorage:', localAccounts.length);
     // Dispatch event để các trang tự refresh UI mà không cần reload
     window.dispatchEvent(new CustomEvent('humi_synced', { detail: { updated: hasUpdates } }));
   });
@@ -178,6 +196,7 @@ function syncFromSupabase() {
     messages:         'humi_messages',
     workShifts:       'humi_work_shifts',
     settings:         'humi_settings',
+    auditLogs:        'humi_audit_logs',
     announcements:    'humi_announcements',
   };
 
@@ -196,7 +215,7 @@ function syncFromSupabase() {
   };
 
   var REMOTE_MAPS = {
-    humi_accounts: function(r) { return { employeeId: r.employee_id, password: r.password }; },
+    humi_accounts: function(r) { return { employeeId: r.employee_id, password: r.password, createdAt: r.created_at || null }; },
     humi_employees: function(r) { return { id:r.id, code:r.code, name:r.name, avatar:r.avatar, unit:r.unit, position:r.position, roleId:r.role_id, status:r.status, gender:r.gender, phone:r.phone, email:r.email, dob:r.dob, startDate:r.start_date, contractStatus:r.contract_status, contractType:r.contract_type, workMode:r.work_mode, managerName:r.manager_name, managerId:r.manager_id||null, leaveBalance:r.leave_balance||{annual:12,sick:30,maternity:180,unpaid:99}, idCard:r.id_card, faceImage:r.face_image||null, faceDescriptor:r.face_descriptor||null }; },
     humi_shifts: function(r) { return { id:r.id, name:r.name, code:r.code, startTime:r.start_time, endTime:r.end_time, breakMinutes:r.break_minutes, workHours:r.work_hours, quota:r.quota, active:r.active, color:r.color, applyDays:r.apply_days }; },
     humi_leave_requests: function(r) { return { id:r.id, employeeId:r.employee_id, leaveType:r.leave_type, leaveTypeName:r.leave_type_name, startDate:r.start_date, endDate:r.end_date, totalDays:r.total_days, status:r.status, reason:r.reason, approverId:r.approver_id, approvedAt:r.approved_at||null, rejectedAt:r.rejected_at||null, rejectReason:r.reject_reason||null, createdAt:r.created_at }; },
@@ -269,12 +288,45 @@ function syncFromSupabase() {
     return aStart < bEnd && aEnd > bStart;
   }
 
+  function getCurrentActor() {
+    try {
+      var s = DB && DB.auth ? DB.auth.getSession() : null;
+      return s && s.user ? s.user : null;
+    } catch (e) {
+      return null;
+    }
+  }
+
+  function writeAuditLog(entry) {
+    var list = load(K.auditLogs);
+    var actor = getCurrentActor();
+    var now = new Date().toISOString();
+    var item = {
+      id: 'log_' + uid(),
+      timestamp: entry.timestamp || now,
+      actorId: entry.actorId || (actor && actor.id) || 'SYSTEM',
+      actorName: entry.actorName || (actor && actor.name) || 'Hệ thống',
+      actorRole: entry.actorRole || (actor && actor.roleId) || 'system',
+      action: entry.action || 'unknown',
+      module: entry.module || 'system',
+      targetId: entry.targetId || '',
+      targetName: entry.targetName || '',
+      detail: entry.detail || '',
+      severity: entry.severity || 'info'
+    };
+    list.unshift(item);
+    save(K.auditLogs, list.slice(0, 500));
+    return item;
+  }
+
   // ==================== SEED ====================
   function seed() {
-    // Chỉ seed local khi không có Supabase.
-    // Khi Supabase sẵn sàng, frontend đọc trực tiếp từ remote.
-    if (SUPABASE_READY) return;
-    if (localStorage.getItem(SEED_KEY)) return;
+    // Luôn seed local data để bootstrap app (sau đó Supabase sẽ ghi đè khi sync)
+    if (localStorage.getItem(SEED_KEY)) {
+      console.log('Seed: already seeded, skipping');
+      return;
+    }
+    console.log('Seed: starting...');
 
     var employees = [
       { id:'NV000001', code:'NV000001', name:'Nguyễn Văn An',   avatar:'https://i.pravatar.cc/80?img=11', unit:'CH613 Âu Cơ',        position:'Nhân viên bán hàng', roleId:'employee', status:'active', gender:'Nam', phone:'0901234567', email:'an.nv@humi.vn',     dob:'1998-03-15', startDate:'2023-01-10', contractStatus:'Đã có hợp đồng', contractType:'Hợp đồng dài hạn',   workMode:'Toàn thời gian', managerName:'Tiểu Nhi',   leaveBalance:{annual:10,sick:28,maternity:180,unpaid:99}, idCard:'012345678901' },
@@ -294,7 +346,7 @@ function syncFromSupabase() {
     ];
 
     var accounts = employees.map(function(e) {
-      return { employeeId: e.id, password: '123456' };
+      return { employeeId: e.id, password: '123456', locked: false };
     });
 
     var shifts = [
@@ -496,6 +548,7 @@ function syncFromSupabase() {
     save(K.salary,           salary);
     save(K.messages,         messages);
     save(K.settings,         {});
+    save(K.auditLogs,        []);
     var announcements = [
       { id:'ann_001', department:'Phòng hành chính nhân sự', title:'THÔNG BÁO NGHỈ TẾT ÂM LỊCH NĂM 2026', preview:'Phòng Hành chính Nhân sự trân trọng thông báo lịch nghỉ Tết Âm Lịch 2026 tới toàn thể CBNV như sau:', creator:'Nguyễn Hoàng Kim Phụng', approver:'Cao Thị Hà Như', status:'active', startDate:'2026-02-05', endDate:'2026-02-25' },
       { id:'ann_002', department:'Phòng hành chính nhân sự', title:'THÔNG BÁO TỔ CHỨC TIỆC TẤT NIÊN (YEAR END PARTY) 2025', preview:'Ban Tổ chức trân trọng kính mời toàn thể CBNV tham dự buổi tiệc tất niên năm 2025...', creator:'Nguyễn Hoàng Kim Phụng', approver:'Võ Lê Hoàng Văn', status:'expired', startDate:'2026-01-01', endDate:'2026-01-31' },
@@ -545,16 +598,24 @@ function syncFromSupabase() {
         if (!s) { var _inPages = window.location.pathname.indexOf('/pages/') !== -1; window.location.href = (_inPages ? '../' : '') + 'login.html'; return null; }
         return s;
       },
-      verifyCredentials: function(empId, pwd) {
+      verifyCredentials: function(loginId, pwd) {
+        var employees = load(K.employees);
+        var searchStr = String(loginId).toLowerCase();
+        var emp = employees.find(function(e) {
+          return (e.id && e.id.toLowerCase() === searchStr) || 
+                 (e.email && e.email.toLowerCase() === searchStr);
+        });
+        if (!emp) return { ok:false, error:'Tài khoản hoặc mật khẩu không đúng' };
+
         var accounts = load(K.accounts);
-        var acc = accounts.find(function(a){ return a.employeeId === empId && a.password === pwd; });
-        if (!acc) return { ok:false, error:'Mã nhân viên hoặc mật khẩu không đúng' };
-        var emp = load(K.employees).find(function(e){ return e.id === empId; });
-        if (!emp || emp.status !== 'active') return { ok:false, error:'Tài khoản không hoạt động' };
+        var acc = accounts.find(function(a){ return a.employeeId === emp.id && a.password === pwd; });
+        if (!acc) return { ok:false, error:'Tài khoản hoặc mật khẩu không đúng' };
+        if (acc.locked) return { ok:false, error:'Tài khoản đang bị khóa' };
+        if (emp.status !== 'active') return { ok:false, error:'Tài khoản không hoạt động' };
         return { ok:true, user:emp };
       },
-      login: function(empId, pwd) {
-        var res = this.verifyCredentials(empId, pwd);
+      login: function(loginId, pwd) {
+        var res = this.verifyCredentials(loginId, pwd);
         if (!res.ok) return res;
         var session = { user: res.user, loginAt: new Date().toISOString() };
         save(K.session, session);
@@ -571,6 +632,54 @@ function syncFromSupabase() {
         save(K.accounts, accounts);
         // Đồng bộ mật khẩu mới lên Supabase
         SB.update('accounts', { employee_id: s.user.id }, { password: newPwd });
+        writeAuditLog({ module:'auth', action:'change_password', targetId:s.user.id, targetName:s.user.name, detail:'Người dùng tự đổi mật khẩu' });
+        return { ok:true };
+      }
+    },
+
+    accounts: {
+      getAll: function() {
+        var accounts = load(K.accounts);
+        // Auto-seed if empty
+        if (!accounts.length) {
+          var employees = load(K.employees) || [];
+          accounts = employees.map(function(e) {
+            return { employeeId: e.id, password: '123456', locked: false };
+          });
+          if (accounts.length) save(K.accounts, accounts);
+        }
+        return accounts.map(function(a) {
+          var emp = DB.employees.getById(a.employeeId) || {};
+          return {
+            employeeId: a.employeeId,
+            employee: emp,
+            password: a.password,
+            locked: !!a.locked
+          };
+        });
+      },
+      getByEmployeeId: function(employeeId) {
+        return load(K.accounts).find(function(a) { return a.employeeId === employeeId; }) || null;
+      },
+      setPassword: function(employeeId, newPassword) {
+        var list = load(K.accounts);
+        var idx = list.findIndex(function(a) { return a.employeeId === employeeId; });
+        if (idx === -1) return { ok:false, error:'Không tìm thấy tài khoản' };
+        list[idx].password = newPassword;
+        save(K.accounts, list);
+        SB.update('accounts', { employee_id: employeeId }, { password: newPassword });
+        var emp = DB.employees.getById(employeeId) || {};
+        writeAuditLog({ module:'accounts', action:'reset_password', targetId:employeeId, targetName:emp.name || employeeId, detail:'Đặt lại mật khẩu tài khoản' });
+        return { ok:true };
+      },
+      setLocked: function(employeeId, locked) {
+        var list = load(K.accounts);
+        var idx = list.findIndex(function(a) { return a.employeeId === employeeId; });
+        if (idx === -1) return { ok:false, error:'Không tìm thấy tài khoản' };
+        list[idx].locked = !!locked;
+        save(K.accounts, list);
+        var emp = DB.employees.getById(employeeId) || {};
+        writeAuditLog({ module:'accounts', action: locked ? 'lock_account' : 'unlock_account', targetId:employeeId, targetName:emp.name || employeeId, detail: locked ? 'Khóa tài khoản' : 'Mở khóa tài khoản' });
         return { ok:true };
       }
     },
@@ -582,6 +691,7 @@ function syncFromSupabase() {
         var list = this.getAll();
         var idx = list.findIndex(function(e){ return e.id === id; });
         if (idx === -1) return;
+        var before = Object.assign({}, list[idx]);
         list[idx] = Object.assign({}, list[idx], data);
         save(K.employees, list);
         // Sync session if same user
@@ -597,11 +707,24 @@ function syncFromSupabase() {
         if (data.avatar !== undefined)   sbData.avatar = data.avatar;
         if (data.unit !== undefined)     sbData.unit = data.unit;
         if (data.position !== undefined) sbData.position = data.position;
+        if (data.status !== undefined)   sbData.status = data.status;
+        if (data.startDate !== undefined) sbData.start_date = data.startDate;
+        if (data.contractStatus !== undefined) sbData.contract_status = data.contractStatus;
+        if (data.contractType !== undefined) sbData.contract_type = data.contractType;
+        if (data.workMode !== undefined) sbData.work_mode = data.workMode;
+        if (data.managerName !== undefined) sbData.manager_name = data.managerName;
         if (data.dob !== undefined)      sbData.dob = data.dob;
         if (data.leaveBalance !== undefined) sbData.leave_balance = data.leaveBalance;
         if (data.faceImage      !== undefined) sbData.face_image      = data.faceImage;
         if (data.faceDescriptor !== undefined) sbData.face_descriptor = data.faceDescriptor;
         if (Object.keys(sbData).length > 0) SB.update('employees', { id: id }, sbData);
+        writeAuditLog({
+          module: 'employees',
+          action: 'update_employee',
+          targetId: id,
+          targetName: list[idx].name || id,
+          detail: 'Cập nhật hồ sơ nhân viên: ' + Object.keys(data).join(', ')
+        });
       },
       create: function(data) {
         var list = this.getAll();
@@ -611,8 +734,35 @@ function syncFromSupabase() {
         list.push(emp);
         save(K.employees, list);
         var accounts = load(K.accounts);
-        accounts.push({ employeeId:newId, password:'123456' });
+        accounts.push({ employeeId:newId, password:'123456', locked:false });
         save(K.accounts, accounts);
+        try {
+          SB.upsert('employees', {
+            id: emp.id,
+            code: emp.code,
+            name: emp.name,
+            avatar: emp.avatar || null,
+            unit: emp.unit || null,
+            position: emp.position || null,
+            role_id: emp.roleId || 'employee',
+            status: emp.status || 'active',
+            gender: emp.gender || null,
+            phone: emp.phone || null,
+            email: emp.email || null,
+            dob: emp.dob || null,
+            start_date: emp.startDate || null,
+            contract_status: emp.contractStatus || null,
+            contract_type: emp.contractType || null,
+            work_mode: emp.workMode || null,
+            manager_name: emp.managerName || null,
+            leave_balance: emp.leaveBalance || { annual: 12, sick: 30, maternity: 180, unpaid: 99 },
+            id_card: emp.idCard || null
+          });
+          SB.upsert('accounts', { employee_id: newId, password: '123456' });
+        } catch (e) {
+          console.error('Supabase sync for new employee failed:', e);
+        }
+        writeAuditLog({ module:'employees', action:'create_employee', targetId:newId, targetName:emp.name || newId, detail:'Tạo mới nhân viên và tài khoản mặc định' });
         return emp;
       }
     },
@@ -687,6 +837,8 @@ function syncFromSupabase() {
         if (overrides && overrides.checkIn)  sbData.check_in  = overrides.checkIn;
         if (overrides && overrides.checkOut) sbData.check_out = overrides.checkOut;
         SB.update('attendance', { id: id }, sbData);
+        var emp = DB.employees.getById(list[idx].employeeId) || {};
+        writeAuditLog({ module:'attendance', action:'approve_attendance', targetId:id, targetName:(emp.name || list[idx].employeeId), detail:'Phê duyệt chấm công ngày ' + list[idx].date });
         return true;
       },
       // Từ chối công
@@ -701,6 +853,8 @@ function syncFromSupabase() {
         if (note) list[idx].approverNote = note;
         save(K.attendance, list);
         SB.update('attendance', { id: id }, { approval_status: 'rejected' });
+        var emp2 = DB.employees.getById(list[idx].employeeId) || {};
+        writeAuditLog({ module:'attendance', action:'reject_attendance', targetId:id, targetName:(emp2.name || list[idx].employeeId), detail:'Từ chối chấm công ngày ' + list[idx].date + (note ? ' · ' + note : '') });
         return true;
       }
     },
@@ -746,6 +900,8 @@ function syncFromSupabase() {
           SB.update('employees', { id: l.employeeId }, { leave_balance: emps[eidx].leaveBalance });
         }
         SB.update('leave_requests', { id:id }, { status:'approved', approver_id:approverId, approved_at:now });
+        var emp = DB.employees.getById(l.employeeId) || {};
+        writeAuditLog({ module:'leave', action:'approve_leave', targetId:id, targetName:(emp.name || l.employeeId), detail:'Phê duyệt đơn nghỉ ' + (l.leaveTypeName || l.leaveType || '') });
       },
       reject: function(id, rejecterId, reason) {
         var list = this.getAll();
@@ -756,6 +912,8 @@ function syncFromSupabase() {
         list[idx].rejectedAt = now; list[idx].rejectReason = reason || null;
         save(K.leaveRequests, list);
         SB.update('leave_requests', { id:id }, { status:'rejected', approver_id:rejecterId, rejected_at:now, reject_reason:reason||null });
+        var emp2 = DB.employees.getById(list[idx].employeeId) || {};
+        writeAuditLog({ module:'leave', action:'reject_leave', targetId:id, targetName:(emp2.name || list[idx].employeeId), detail:'Từ chối đơn nghỉ ' + (list[idx].leaveTypeName || list[idx].leaveType || '') + (reason ? ' · ' + reason : '') });
       }
     },
 
@@ -768,6 +926,7 @@ function syncFromSupabase() {
         var sh = Object.assign({ id:newId }, data);
         list.push(sh);
         save(K.shifts, list);
+        writeAuditLog({ module:'shifts', action:'create_shift', targetId:newId, targetName:sh.name || newId, detail:'Tạo ca làm việc mới' });
         return sh;
       },
       update: function(id, data) {
@@ -776,12 +935,14 @@ function syncFromSupabase() {
         if (idx === -1) return;
         list[idx] = Object.assign({}, list[idx], data);
         save(K.shifts, list);
+        writeAuditLog({ module:'shifts', action:'update_shift', targetId:id, targetName:list[idx].name || id, detail:'Cập nhật ca làm việc' });
       },
       delete: function(id) {
         var list = this.getAll();
         var filtered = list.filter(function(s){ return s.id !== id; });
         save(K.shifts, filtered);
         SB.delete('shifts', { id: id });
+        writeAuditLog({ module:'shifts', action:'delete_shift', targetId:id, targetName:id, detail:'Xóa ca làm việc' });
       },
       assign: function(data) {
         var list = load(K.shiftAssignments);
@@ -789,6 +950,9 @@ function syncFromSupabase() {
         list.push(newItem);
         save(K.shiftAssignments, list);
         SB.upsert('shift_assignments', { id: newItem.id, employee_id: newItem.employeeId, shift_id: newItem.shiftId, date: newItem.date });
+        var emp3 = DB.employees.getById(newItem.employeeId) || {};
+        var sh3 = DB.shifts.getById(newItem.shiftId) || {};
+        writeAuditLog({ module:'shifts', action:'assign_shift', targetId:newItem.id, targetName:(emp3.name || newItem.employeeId), detail:'Gán ' + (sh3.name || newItem.shiftId || '') + ' cho ngày ' + newItem.date });
       }
     },
 
@@ -989,6 +1153,8 @@ function syncFromSupabase() {
         list[idx].status = 'approved'; list[idx].approverId = approverId;
         save(K.requests, list);
         SB.update('requests', { id: id }, { status: 'approved', approver_id: approverId });
+        var emp4 = DB.employees.getById(list[idx].employeeId) || {};
+        writeAuditLog({ module:'requests', action:'approve_request', targetId:id, targetName:(emp4.name || list[idx].employeeId), detail:'Duyệt yêu cầu ' + (list[idx].typeLabel || list[idx].type || '') });
       },
       reject: function(id, rejecterId) {
         var list = this.getAll();
@@ -997,6 +1163,8 @@ function syncFromSupabase() {
         list[idx].status = 'rejected'; list[idx].approverId = rejecterId;
         save(K.requests, list);
         SB.update('requests', { id: id }, { status: 'rejected', approver_id: rejecterId });
+        var emp5 = DB.employees.getById(list[idx].employeeId) || {};
+        writeAuditLog({ module:'requests', action:'reject_request', targetId:id, targetName:(emp5.name || list[idx].employeeId), detail:'Từ chối yêu cầu ' + (list[idx].typeLabel || list[idx].type || '') });
       }
     },
 
@@ -1064,6 +1232,27 @@ function syncFromSupabase() {
       set: function(userId, data) { localStorage.setItem('humi_user_settings_'+userId, JSON.stringify(data)); }
     },
 
+    systemSettings: {
+      get: function() { try { return JSON.parse(localStorage.getItem(K.settings) || '{}'); } catch(e) { return {}; } },
+      save: function(patch) {
+        var current = this.get();
+        var next = Object.assign({}, current, patch || {});
+        localStorage.setItem(K.settings, JSON.stringify(next));
+        writeAuditLog({ module:'settings', action:'update_system_settings', targetId:'global', targetName:'Cấu hình hệ thống', detail:'Cập nhật cấu hình quản trị' });
+        return next;
+      },
+      reset: function() {
+        localStorage.setItem(K.settings, JSON.stringify({}));
+        writeAuditLog({ module:'settings', action:'reset_system_settings', targetId:'global', targetName:'Cấu hình hệ thống', detail:'Đặt lại cấu hình hệ thống' });
+      }
+    },
+
+    audit: {
+      getAll: function() { return load(K.auditLogs); },
+      add: function(entry) { return writeAuditLog(entry || {}); },
+      clear: function() { save(K.auditLogs, []); }
+    },
+
     announcements: {
       getAll: function() { return load(K.announcements); }
     },
@@ -1126,6 +1315,17 @@ function syncFromSupabase() {
 
 // Sync từ Supabase sau khi IIFE chạy xong (không block trang)
 setTimeout(syncFromSupabase, 500);
+
+// Ensure accounts are seeded
+if (!localStorage.getItem('humi_accounts') || JSON.parse(localStorage.getItem('humi_accounts') || '[]').length === 0) {
+  var employees = JSON.parse(localStorage.getItem('humi_employees') || '[]');
+  if (employees.length) {
+    var accounts = employees.map(function(e) {
+      return { employeeId: e.id, password: '123456', locked: false };
+    });
+    localStorage.setItem('humi_accounts', JSON.stringify(accounts));
+  }
+}
 
 // Đăng xuất toàn cục — dùng được từ mọi trang
 function doLogout() {

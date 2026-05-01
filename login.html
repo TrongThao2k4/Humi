@@ -39,8 +39,8 @@
       <p class="sub">Đăng nhập để tiếp tục quản lý nhân sự</p>
       <form id="loginForm" onsubmit="doLogin(event)">
         <div class="form-group">
-          <label for="empId">Mã nhân viên</label>
-          <input id="empId" type="text" placeholder="Nhập mã nhân viên" autocomplete="username"/>
+          <label for="empId">Mã nhân viên hoặc Email</label>
+          <input id="empId" type="text" placeholder="Nhập mã nhân viên hoặc email" autocomplete="username"/>
         </div>
         <div class="form-group">
           <label for="pwd">Mật khẩu</label>
@@ -100,10 +100,10 @@
     <!-- ── BƯỚC 3: Quên mật khẩu – nhập mã NV ── -->
     <div id="stepForgot" class="step">
       <h2>Quên mật khẩu</h2>
-      <p class="sub">Nhập mã nhân viên để nhận OTP đặt lại mật khẩu</p>
+      <p class="sub">Nhập mã nhân viên hoặc email để nhận OTP đặt lại mật khẩu</p>
       <div class="form-group">
-        <label for="forgotEmpId">Mã nhân viên</label>
-        <input id="forgotEmpId" type="text" placeholder="Nhập mã nhân viên"/>
+        <label for="forgotEmpId">Tài khoản</label>
+        <input id="forgotEmpId" type="text" placeholder="Nhập mã nhân viên hoặc email"/>
         <p class="error-msg" id="errForgot"></p>
       </div>
       <button class="btn" id="forgotBtn" onclick="doForgotSend()">Gửi mã OTP</button>

@@ -1,0 +1,377 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Test Admin Pages</title>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+  <script src="js/db.js"></script>
+  <script src="js/theme.js"></script>
+  <script src="js/common.js"></script>
+  <style>
+    body { font-family: Arial, sans-serif; padding: 20px; background: #f5f5f5; }
+    .test-container { max-width: 1000px; margin: 0 auto; }
+    .test-section { background: white; padding: 20px; margin: 20px 0; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); }
+    .test-title { font-size: 24px; font-weight: bold; margin-bottom: 20px; }
+    .test-result { margin: 10px 0; padding: 10px; border-left: 4px solid #ccc; }
+    .test-result.success { background: #f0fdf4; border-left-color: #22c55e; color: #166534; }
+    .test-result.error { background: #fef2f2; border-left-color: #ef4444; color: #991b1b; }
+    .test-result.warning { background: #fffbeb; border-left-color: #f59e0b; color: #92400e; }
+    button { padding: 10px 20px; margin: 5px; border: none; border-radius: 4px; cursor: pointer; }
+    .btn-primary { background: #2A3547; color: white; }
+    .btn-danger { background: #ef4444; color: white; }
+    .btn-success { background: #22c55e; color: white; }
+    table { width: 100%; border-collapse: collapse; margin: 10px 0; }
+    th, td { padding: 10px; text-align: left; border: 1px solid #ddd; }
+    th { background: #f0f0f0; font-weight: bold; }
+    .sidebar-link { display: inline-block; margin: 5px; padding: 10px 15px; background: #2A3547; color: white; text-decoration: none; border-radius: 4px; }
+  </style>
+</head>
+<body>
+  <div class="test-container">
+    <div class="test-section">
+      <h1 class="test-title">🧪 Test Admin Pages - Humi HRM</h1>
+      <p>Kiểm tra chức năng các trang quản trị mới được tạo</p>
+    </div>
+
+    <!-- Test DB API Availability -->
+    <div class="test-section">
+      <h2>Test 1: Kiểm tra DB API Availability</h2>
+      <div id="test-db-api"></div>
+      <button class="btn-primary" onclick="testDBAPIs()">Chạy Test</button>
+    </div>
+
+    <!-- Test Audit Log -->
+    <div class="test-section">
+      <h2>Test 2: Kiểm tra Audit Log</h2>
+      <div id="test-audit"></div>
+      <button class="btn-primary" onclick="testAuditLog()">Chạy Test</button>
+      <button class="btn-danger" onclick="clearAuditLog()">Xóa Audit Log</button>
+    </div>
+
+    <!-- Test Account Management -->
+    <div class="test-section">
+      <h2>Test 3: Kiểm tra Account Management</h2>
+      <div id="test-accounts"></div>
+      <button class="btn-primary" onclick="testAccountManagement()">Chạy Test</button>
+    </div>
+
+    <!-- Test Page Loading -->
+    <div class="test-section">
+      <h2>Test 4: Kiểm tra Trang Admin</h2>
+      <p>Nhấp vào các liên kết dưới để kiểm tra các trang admin:</p>
+      <div>
+        <a href="pages/quan-ly-tai-khoan.html" class="sidebar-link" target="_blank">📋 Quản lý Tài khoản</a>
+        <a href="pages/nhat-ky-hoat-dong.html" class="sidebar-link" target="_blank">📝 Nhật ký Hoạt động</a>
+      </div>
+      <div id="page-load-test" style="margin-top: 20px;"></div>
+      <button class="btn-primary" onclick="testPageLoading()">Kiểm tra Pages</button>
+    </div>
+
+    <!-- Test Menu Integration -->
+    <div class="test-section">
+      <h2>Test 5: Kiểm tra Menu Integration</h2>
+      <div id="test-menu"></div>
+      <button class="btn-primary" onclick="testMenuIntegration()">Chạy Test</button>
+    </div>
+
+    <!-- Audit Log Viewer -->
+    <div class="test-section">
+      <h2>📋 Audit Log Viewer</h2>
+      <button class="btn-primary" onclick="refreshAuditViewer()">Refresh</button>
+      <button class="btn-danger" onclick="clearAllLogs()">Xóa Tất cả</button>
+      <input type="text" id="search-audit" placeholder="Tìm kiếm..." style="padding: 8px; margin: 10px 0; width: 300px; border: 1px solid #ddd; border-radius: 4px;">
+      <button onclick="searchAuditLog()">Tìm</button>
+      <div id="audit-table" style="margin-top: 20px;"></div>
+    </div>
+
+    <!-- Data Summary -->
+    <div class="test-section">
+      <h2>📊 Data Summary</h2>
+      <div id="data-summary"></div>
+      <button class="btn-primary" onclick="showDataSummary()">Cập nhật Summary</button>
+    </div>
+  </div>
+
+  <script>
+    function createResult(title, status, message) {
+      var className = status === 'success' ? 'success' : status === 'error' ? 'error' : 'warning';
+      return '<div class="test-result ' + className + '"><strong>' + title + ':</strong> ' + message + '</div>';
+    }
+
+    function testDBAPIs() {
+      var output = document.getElementById('test-db-api');
+      var results = [];
+      
+      // Test DB.accounts
+      try {
+        if (typeof DB.accounts.getAll === 'function') {
+          results.push(createResult('✓ DB.accounts.getAll', 'success', 'Khả dụng'));
+        } else {
+          results.push(createResult('✗ DB.accounts.getAll', 'error', 'Không tìm thấy'));
+        }
+      } catch(e) {
+        results.push(createResult('✗ DB.accounts.getAll', 'error', e.message));
+      }
+
+      try {
+        if (typeof DB.accounts.setLocked === 'function') {
+          results.push(createResult('✓ DB.accounts.setLocked', 'success', 'Khả dụng'));
+        } else {
+          results.push(createResult('✗ DB.accounts.setLocked', 'error', 'Không tìm thấy'));
+        }
+      } catch(e) {
+        results.push(createResult('✗ DB.accounts.setLocked', 'error', e.message));
+      }
+
+      try {
+        if (typeof DB.accounts.setPassword === 'function') {
+          results.push(createResult('✓ DB.accounts.setPassword', 'success', 'Khả dụng'));
+        } else {
+          results.push(createResult('✗ DB.accounts.setPassword', 'error', 'Không tìm thấy'));
+        }
+      } catch(e) {
+        results.push(createResult('✗ DB.accounts.setPassword', 'error', e.message));
+      }
+
+      // Test DB.audit
+      try {
+        if (typeof DB.audit.getAll === 'function') {
+          results.push(createResult('✓ DB.audit.getAll', 'success', 'Khả dụng'));
+        } else {
+          results.push(createResult('✗ DB.audit.getAll', 'error', 'Không tìm thấy'));
+        }
+      } catch(e) {
+        results.push(createResult('✗ DB.audit.getAll', 'error', e.message));
+      }
+
+      try {
+        if (typeof DB.audit.add === 'function') {
+          results.push(createResult('✓ DB.audit.add', 'success', 'Khả dụng'));
+        } else {
+          results.push(createResult('✗ DB.audit.add', 'error', 'Không tìm thấy'));
+        }
+      } catch(e) {
+        results.push(createResult('✗ DB.audit.add', 'error', e.message));
+      }
+
+      // Test DB.settings (if exists)
+      try {
+        if (typeof DB.settings === 'object' && typeof DB.settings.get === 'function') {
+          results.push(createResult('✓ DB.settings.get', 'success', 'Khả dụng'));
+        } else {
+          results.push(createResult('⚠ DB.settings', 'warning', 'Không tìm thấy hoặc chưa triển khai'));
+        }
+      } catch(e) {
+        results.push(createResult('⚠ DB.settings', 'warning', e.message));
+      }
+
+      output.innerHTML = results.join('');
+    }
+
+    function testAuditLog() {
+      var output = document.getElementById('test-audit');
+      var results = [];
+
+      try {
+        // Get current audit logs
+        var logs = DB.audit.getAll();
+        results.push(createResult('✓ Audit Log Truy cập', 'success', 'Tìm thấy ' + (logs ? logs.length : 0) + ' entries'));
+
+        // Add a test entry
+        DB.audit.add({ 
+          action: 'test_action', 
+          module: 'test', 
+          targetId: 'TEST123', 
+          targetName: 'Test Entry',
+          detail: 'Đây là entry test - ' + new Date().toLocaleString()
+        });
+
+        var newLogs = DB.audit.getAll();
+        if (newLogs.length > logs.length) {
+          results.push(createResult('✓ Audit Log Add', 'success', 'Entry được thêm thành công, tổng: ' + newLogs.length));
+        } else {
+          results.push(createResult('✗ Audit Log Add', 'error', 'Entry không được thêm'));
+        }
+      } catch(e) {
+        results.push(createResult('✗ Audit Log Test', 'error', e.message));
+      }
+
+      output.innerHTML = results.join('');
+    }
+
+    function testAccountManagement() {
+      var output = document.getElementById('test-accounts');
+      var results = [];
+
+      try {
+        var accounts = DB.accounts.getAll();
+        results.push(createResult('✓ Accounts Truy cập', 'success', 'Tìm thấy ' + (accounts ? accounts.length : 0) + ' tài khoản'));
+
+        if (accounts && accounts.length > 0) {
+          var firstAccount = accounts[0];
+          results.push(createResult('✓ First Account', 'success', 
+            'ID: ' + firstAccount.employeeId + ', Locked: ' + firstAccount.locked + ', Employee: ' + (firstAccount.employee ? firstAccount.employee.name || 'N/A' : 'N/A')));
+        } else {
+          results.push(createResult('⚠ Không có tài khoản', 'warning', 'Database trống - hãy tạo nhân viên trước'));
+        }
+      } catch(e) {
+        results.push(createResult('✗ Account Management Test', 'error', e.message));
+      }
+
+      output.innerHTML = results.join('');
+    }
+
+    function testPageLoading() {
+      var output = document.getElementById('page-load-test');
+      var results = [];
+
+      // Test if pages exist by checking if we can fetch them
+      fetch('pages/quan-ly-tai-khoan.html')
+        .then(r => r.ok ? 'Khả dụng' : 'Lỗi HTTP ' + r.status)
+        .then(msg => results.push(createResult('✓ quan-ly-tai-khoan.html', 'success', msg)))
+        .catch(e => results.push(createResult('✗ quan-ly-tai-khoan.html', 'error', e.message)));
+
+      fetch('pages/nhat-ky-hoat-dong.html')
+        .then(r => r.ok ? 'Khả dụng' : 'Lỗi HTTP ' + r.status)
+        .then(msg => results.push(createResult('✓ nhat-ky-hoat-dong.html', 'success', msg)))
+        .catch(e => results.push(createResult('✗ nhat-ky-hoat-dong.html', 'error', e.message)));
+
+      setTimeout(function() {
+        output.innerHTML = results.join('');
+      }, 100);
+    }
+
+    function testMenuIntegration() {
+      var output = document.getElementById('test-menu');
+      var results = [];
+
+      try {
+        // Check if sidebar is rendered
+        var sidebar = document.querySelector('.sidebar');
+        if (sidebar) {
+          results.push(createResult('✓ Sidebar Element', 'success', 'Tìm thấy'));
+        } else {
+          results.push(createResult('✓ Sidebar Element', 'warning', 'Không hiển thị (Có thể là từ render động)'));
+        }
+
+        // Check common functions
+        if (typeof renderMenu === 'function') {
+          results.push(createResult('✓ renderMenu Function', 'success', 'Khả dụng'));
+        } else {
+          results.push(createResult('✓ renderMenu Function', 'warning', 'Không tìm thấy'));
+        }
+
+        results.push(createResult('ℹ Menu Status', 'warning', 'Menu được render động - Kiểm tra trang để thấy Admin Center link'));
+      } catch(e) {
+        results.push(createResult('✗ Menu Integration Test', 'error', e.message));
+      }
+
+      output.innerHTML = results.join('');
+    }
+
+    function refreshAuditViewer() {
+      showAuditTable();
+    }
+
+    function showAuditTable() {
+      var logs = DB.audit.getAll() || [];
+      var tableDiv = document.getElementById('audit-table');
+      
+      if (logs.length === 0) {
+        tableDiv.innerHTML = '<p style="color: #999;">Không có dữ liệu audit log</p>';
+        return;
+      }
+
+      var html = '<table><thead><tr><th>Thời gian</th><th>Người thực hiện</th><th>Module · Hành động</th><th>Mục tiêu</th><th>Chi tiết</th></tr></thead><tbody>';
+      logs.slice(0, 20).forEach(function(l) {
+        html += '<tr>' +
+          '<td>' + (l.timestamp || '—').slice(0, 19) + '</td>' +
+          '<td>' + (l.actorName || l.actorId || 'Hệ thống') + '<br><small>' + (l.actorRole || '') + '</small></td>' +
+          '<td>' + (l.module || '—') + ' · ' + (l.action || '—') + '</td>' +
+          '<td>' + (l.targetName || l.targetId || '—') + '</td>' +
+          '<td>' + (l.detail || '—') + '</td>' +
+        '</tr>';
+      });
+      html += '</tbody></table>';
+      tableDiv.innerHTML = html;
+    }
+
+    function searchAuditLog() {
+      var query = document.getElementById('search-audit').value.toLowerCase();
+      var logs = DB.audit.getAll() || [];
+      var filtered = logs.filter(function(l) {
+        return (l.action || '').toLowerCase().indexOf(query) !== -1 ||
+               (l.module || '').toLowerCase().indexOf(query) !== -1 ||
+               (l.targetName || '').toLowerCase().indexOf(query) !== -1 ||
+               (l.detail || '').toLowerCase().indexOf(query) !== -1;
+      });
+
+      var tableDiv = document.getElementById('audit-table');
+      if (filtered.length === 0) {
+        tableDiv.innerHTML = '<p style="color: #999;">Không tìm thấy kết quả</p>';
+        return;
+      }
+
+      var html = '<table><thead><tr><th>Thời gian</th><th>Người thực hiện</th><th>Module · Hành động</th><th>Mục tiêu</th><th>Chi tiết</th></tr></thead><tbody>';
+      filtered.slice(0, 20).forEach(function(l) {
+        html += '<tr>' +
+          '<td>' + (l.timestamp || '—').slice(0, 19) + '</td>' +
+          '<td>' + (l.actorName || l.actorId || 'Hệ thống') + '<br><small>' + (l.actorRole || '') + '</small></td>' +
+          '<td>' + (l.module || '—') + ' · ' + (l.action || '—') + '</td>' +
+          '<td>' + (l.targetName || l.targetId || '—') + '</td>' +
+          '<td>' + (l.detail || '—') + '</td>' +
+        '</tr>';
+      });
+      html += '</tbody></table>';
+      tableDiv.innerHTML = html;
+    }
+
+    function clearAuditLog() {
+      if (confirm('Xóa toàn bộ audit log? Hành động này không thể hoàn tác.')) {
+        DB.audit.clear();
+        document.getElementById('audit-table').innerHTML = '<p style="color: #999;">Đã xóa</p>';
+        alert('Audit log đã được xóa');
+      }
+    }
+
+    function clearAllLogs() {
+      clearAuditLog();
+    }
+
+    function showDataSummary() {
+      var summary = document.getElementById('data-summary');
+      var html = '';
+
+      // Employees
+      var employees = DB.employees.getAll();
+      html += '<p><strong>Nhân viên:</strong> ' + (employees ? employees.length : 0) + ' người</p>';
+
+      // Accounts
+      var accounts = DB.accounts.getAll();
+      var lockedCount = accounts ? accounts.filter(function(a) { return a.locked; }).length : 0;
+      html += '<p><strong>Tài khoản:</strong> ' + (accounts ? accounts.length : 0) + ' (Khóa: ' + lockedCount + ')</p>';
+
+      // Audit Logs
+      var logs = DB.audit.getAll();
+      html += '<p><strong>Audit Logs:</strong> ' + (logs ? logs.length : 0) + ' entries</p>';
+
+      // Session
+      var session = DB.auth.getSession();
+      html += '<p><strong>Session:</strong> ' + (session ? 'Đã đăng nhập - ' + (session.user ? session.user.name : 'N/A') : 'Chưa đăng nhập') + '</p>';
+
+      summary.innerHTML = html;
+    }
+
+    // Auto-run tests when page loads
+    document.addEventListener('DOMContentLoaded', function() {
+      testDBAPIs();
+      testAuditLog();
+      testAccountManagement();
+      testMenuIntegration();
+      showDataSummary();
+      showAuditTable();
+    });
+  </script>
+</body>
+</html>

@@ -1,6 +1,6 @@
 // Auth guard
-  const _s = DB.auth.requireAuth(); if(!_s) throw 0;
-  const currentUser = _s.user;
+  var _s = DB.auth.requireAuth(); if(!_s) throw 0;
+  var currentUser = _s.user;
   if (currentUser.roleId === 'employee') { window.location.href = '../index.html'; throw 0; }
 
 // ===== LOAD USER INFO (sidebar + topbar) =====
@@ -24,7 +24,7 @@
 
 
   // ===== DATA from DB =====
-const ROLE_MAP = { manager:'Quản lý', employee:'Nhân viên', admin:'Quản trị' };
+var ROLE_MAP = { manager:'Quản lý', employee:'Nhân viên', admin:'Quản trị' };
 
 function getApprovedLeave(employeeId, dateStr) {
   return DB.leaves.getAll().find(l =>
@@ -134,9 +134,10 @@ function buildEmployees(weekMondayDate) {
   });
 }
 
-let _baseMonday = getBaseMonday();
-let employees = buildEmployees(_baseMonday);
-let filterState = {
+// Global state
+var _baseMonday = getBaseMonday();
+var employees = buildEmployees(_baseMonday);
+var filterState = {
   units: [],
   search: ''
 };
@@ -497,10 +498,10 @@ function updateDetailStatus(status) {
 }
 
 // ===== DETAIL PANEL =====
-const WEEK_DAYS_VN = ['Chủ nhật','Thứ 2','Thứ 3','Thứ 4','Thứ 5','Thứ 6','Thứ 7'];
-const MONTHS_VN = ['tháng 01','tháng 02','tháng 03','tháng 04','tháng 05','tháng 06','tháng 07','tháng 08','tháng 09','tháng 10','tháng 11','tháng 12'];
+var WEEK_DAYS_VN = ['Chủ nhật','Thứ 2','Thứ 3','Thứ 4','Thứ 5','Thứ 6','Thứ 7'];
+var MONTHS_VN = ['tháng 01','tháng 02','tháng 03','tháng 04','tháng 05','tháng 06','tháng 07','tháng 08','tháng 09','tháng 10','tháng 11','tháng 12'];
 
-let _detailCtx = null; // { empIdx, dayIdx }
+var _detailCtx = null; // { empIdx, dayIdx }
 
 function openDetail(pill, td, tr) {
   const empId = tr.dataset.empid;
@@ -1378,10 +1379,10 @@ function initRowHover() {
 }
 
 // ===== WEEK NAVIGATOR =====
-const WEEK_DAYS = ['CN','Thứ 2','Thứ 3','Thứ 4','Thứ 5','Thứ 6','Thứ 7'];
+var WEEK_DAYS = ['CN','Thứ 2','Thứ 3','Thứ 4','Thứ 5','Thứ 6','Thứ 7'];
 
 // Base week: Mon 09/03/2026
-let currentWeekOffset = 0; // offset in weeks from base
+var currentWeekOffset = 0; // offset in weeks from base
 
 function getWeekDates(offset) {
   const base = getBaseMonday();
@@ -1561,3 +1562,5 @@ function topbarSearchHandle(q) {
   var el = document.getElementById('empSearch');
   if (el) { el.value = q; applyFilter(); }
 }
+
+

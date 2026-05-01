@@ -171,18 +171,18 @@ function shakeBoxes(containerId) {
 function doLogin(e) {
   e.preventDefault();
   var btn   = document.getElementById('loginBtn');
-  var empId = document.getElementById('empId').value.trim().toUpperCase();
+  var loginId = document.getElementById('empId').value.trim();
   var pwd   = document.getElementById('pwd').value;
 
   hideErr('errMsg');
-  if (!empId) { showErr('errMsg', 'Vui lòng nhập mã nhân viên'); return; }
+  if (!loginId) { showErr('errMsg', 'Vui lòng nhập mã nhân viên hoặc email'); return; }
   if (!pwd)   { showErr('errMsg', 'Vui lòng nhập mật khẩu'); return; }
 
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner"></span>Đang xác thực...';
 
   setTimeout(function() {
-    var res = DB.auth.verifyCredentials(empId, pwd);
+    var res = DB.auth.verifyCredentials(loginId, pwd);
     if (!res.ok) {
       showErr('errMsg', res.error);
       btn.disabled = false; btn.textContent = 'Đăng nhập';
@@ -191,18 +191,18 @@ function doLogin(e) {
 
     // Kiểm tra xem người dùng có bật xác thực email không
     var settings = {};
-    try { settings = JSON.parse(localStorage.getItem('humi_user_settings_' + empId)) || {}; } catch(ex) {}
+    try { settings = JSON.parse(localStorage.getItem('humi_user_settings_' + res.user.id)) || {}; } catch(ex) {}
     var emailAuthOn = settings.emailAuth === true;
 
     if (!emailAuthOn) {
       // Đăng nhập thẳng
-      DB.auth.login(empId, pwd);
+      DB.auth.login(res.user.id, pwd);
       location.href = 'index.html';
       return;
     }
 
     // Bật 2FA email → gửi OTP
-    _pendingEmpId = empId;
+    _pendingEmpId = res.user.id;
     _pendingPwd   = pwd;
     _pendingUser  = res.user;
 
@@ -268,23 +268,27 @@ function goForgot() {
   showStep('stepForgot');
   hideErr('errForgot');
   var typed = document.getElementById('empId').value.trim();
-  document.getElementById('forgotEmpId').value = typed ? typed.toUpperCase() : '';
+  document.getElementById('forgotEmpId').value = typed;
 }
 
 function doForgotSend() {
-  var empId = document.getElementById('forgotEmpId').value.trim().toUpperCase();
+  var loginId = document.getElementById('forgotEmpId').value.trim();
   hideErr('errForgot');
-  if (!empId) { showErr('errForgot', 'Vui lòng nhập mã nhân viên'); return; }
+  if (!loginId) { showErr('errForgot', 'Vui lòng nhập mã nhân viên hoặc email'); return; }
 
-  var emp = DB.employees.getAll().find(function(e) { return e.id === empId; });
-  if (!emp) { showErr('errForgot', 'Không tìm thấy nhân viên với mã này'); return; }
+  var searchStr = loginId.toLowerCase();
+  var emp = DB.employees.getAll().find(function(e) { 
+    return (e.id && e.id.toLowerCase() === searchStr) || 
+           (e.email && e.email.toLowerCase() === searchStr); 
+  });
+  if (!emp) { showErr('errForgot', 'Không tìm thấy nhân viên với thông tin này'); return; }
   if (!emp.email) { showErr('errForgot', 'Tài khoản này chưa có email đăng ký'); return; }
 
   var btn = document.getElementById('forgotBtn');
   btn.disabled = true;
   btn.innerHTML = '<span class="spinner"></span>Đang gửi OTP...';
 
-  _resetOtp.empId  = empId;
+  _resetOtp.empId  = emp.id;
   _resetOtp.user   = emp;
   _resetOtp.code   = generateOTP();
   _resetOtp.expiry = Date.now() + 5 * 60 * 1000;
