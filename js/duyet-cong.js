@@ -3,14 +3,15 @@
   var currentUser = _s.user;
   if (currentUser.roleId === 'employee') { window.location.href = '../index.html'; throw 0; }
 
+// Avatar helper (global scope for use throughout)
+var DEFAULT_AVATAR_ID = 47;
+function defaultAv(sz) { return 'https://i.pravatar.cc/' + (sz||32) + '?img=' + DEFAULT_AVATAR_ID; }
+
 // ===== LOAD USER INFO (sidebar + topbar) =====
 (function loadUserInfo() {
   var emp = (DB.employees.getAll()||[]).find(function(e){ return e.id === currentUser.id; });
   var name   = (emp && emp.name)     || currentUser.name     || '—';
   var role   = (emp && emp.position) || currentUser.position || '—';
-  // Ưu tiên avatar mặc định (user muốn ảnh mặc định trên mọi trang)
-  var DEFAULT_AVATAR_ID = 47;
-  function defaultAv(sz) { return 'https://i.pravatar.cc/' + (sz||32) + '?img=' + DEFAULT_AVATAR_ID; }
   var sid = document.getElementById('sidebarAvatar'); if(sid) sid.src = defaultAv(32);
   var tid = document.getElementById('topbarAvatar');  if(tid) tid.src = defaultAv(32);
   var sn  = document.getElementById('sidebarName');   if(sn)  sn.textContent  = name;
@@ -479,6 +480,7 @@ function renderTable() {
     </tr>`;
   }).join('');
   updateFilterSummary();
+  initPillClick();
 }
 
 function updateDetailStatus(status) {
@@ -628,6 +630,162 @@ function recalcWorked(emp) {
     if (mins > 0) total += mins;
   });
   emp.worked = Math.round(total / 60);
+}
+
+// ===== SALARY CALCULATION & UPDATE =====
+/**
+ * Tính lại lương dựa trên công được duyệt trong kỳ
+ * Bao gồm: actualWorkDays, overtimeHours, overtimePay, grossSalary, netSalary
+ * Nếu chưa có salary record tháng đó, tự động tạo mới từ employee base info
+ */
+function calculateSalaryForPeriod(empId, period) {
+  try {
+    var emp = DB.employees.getById(empId);
+    if (!emp) return null;
+
+    var oldSalary = DB.salary.getRecord(empId, period);
+    
+    // Nếu chưa có salary record tháng này, tạo mới từ employee base info
+    var baseSalary, allowances, workDays, deductions, bonus;
+    var salaryId;
+    
+    if (!oldSalary) {
+      // Tạo salary record mới
+      salaryId = 'SAL_' + empId + '_' + period;
+      baseSalary = emp.baseSalary || (emp.roleId === 'manager' ? 12000000 : 6500000);
+      allowances = { 
+        meal: 730000,     // Phụ cấp ăn trưa
+        transport: 500000 // Phụ cấp đi lại
+      };
+      workDays = 26;  // Mặc định 26 ngày công/tháng
+      deductions = { thueTNCN: emp.roleId === 'manager' ? 500000 : 0 };
+      bonus = 0;
+    } else {
+      // Cập nhật từ record cũ
+      salaryId = oldSalary.id;
+      baseSalary = oldSalary.baseSalary;
+      allowances = oldSalary.allowances || {};
+      workDays = oldSalary.workDays || 26;
+      deductions = oldSalary.deductions || {};
+      bonus = oldSalary.bonus || 0;
+    }
+
+    // 1. Tính actualWorkDays: đếm ngày có approved check-in + check-out
+    var approvedAtts = DB.attendance.getAll({ employeeId: empId })
+      .filter(function(a) {
+        return a.date && a.date.startsWith(period) 
+               && a.approvalStatus === 'approved' 
+               && a.checkIn && a.checkOut;
+      });
+    var actualWorkDays = approvedAtts.length;
+
+    // 2. Tính overtimeHours: giờ vượt quá shift end time
+    var overtimeMinutes = 0;
+    approvedAtts.forEach(function(a) {
+      var shift = a.shiftId ? DB.shifts.getById(a.shiftId) : null;
+      var endTime = (shift && shift.endTime) ? shift.endTime : '17:00';
+      var checkOut = a.checkOut;
+      if (!checkOut) return;
+      
+      var coH = parseInt(checkOut.split(':')[0]);
+      var coM = parseInt(checkOut.split(':')[1] || 0);
+      var endH = parseInt(endTime.split(':')[0]);
+      var endM = parseInt(endTime.split(':')[1] || 0);
+      
+      var otMin = (coH * 60 + coM) - (endH * 60 + endM);
+      if (otMin > 0) overtimeMinutes += otMin;
+    });
+    var overtimeHours = Math.round(overtimeMinutes / 60 * 10) / 10;
+
+    // 3. Tính overtimePay: OT hours * hourly rate
+    // Hourly rate = baseSalary / 160 (160 giờ/tháng chuẩn)
+    var hourlyRate = baseSalary / 160;
+    var overtimePay = Math.round(overtimeHours * hourlyRate * 1.5); // 1.5x cho tăng ca
+
+    // 4. Tính grossSalary & netSalary
+    var allowanceTotal = Object.values(allowances).reduce((a, b) => a + b, 0);
+    var grossSalary = baseSalary + allowanceTotal + overtimePay + bonus;
+    
+    // Tính khấu trừ
+    var deductionTotal = Object.values(deductions).reduce((a, b) => a + b, 0);
+    var netSalary = grossSalary - deductionTotal;
+
+    // 5. Trả về salary record mới
+    return {
+      id: salaryId,
+      employeeId: empId,
+      period: period,
+      baseSalary: baseSalary,
+      grossSalary: Math.round(grossSalary),
+      netSalary: Math.round(netSalary),
+      workDays: workDays,
+      actualWorkDays: actualWorkDays,
+      allowances: allowances,
+      deductions: deductions,
+      bonus: bonus,
+      overtimePay: overtimePay,
+      overtimeHours: overtimeHours
+    };
+  } catch (e) {
+    console.error('calculateSalaryForPeriod error:', e);
+    return null;
+  }
+}
+
+/**
+ * Cập nhật salary record sau khi duyệt công
+ */
+function updateSalaryAfterApproval(empId, attendanceDate) {
+  try {
+    // Lấy period từ ngày chấm công (YYYY-MM-DD -> YYYY-MM)
+    var period = attendanceDate.substring(0, 7);
+    
+    // Tính lại salary
+    var newSalary = calculateSalaryForPeriod(empId, period);
+    if (!newSalary) return false;
+
+    // Cập nhật vào localStorage
+    var key = 'humi_salary';
+    var list = JSON.parse(localStorage.getItem(key) || '[]');
+    var idx = list.findIndex(function(r) {
+      return r.employee_id === empId && r.period === period;
+    });
+
+    var salaryRecord = {
+      id: newSalary.id,
+      employee_id: empId,
+      period: period,
+      base_salary: newSalary.baseSalary,
+      gross_salary: newSalary.grossSalary,
+      net_salary: newSalary.netSalary,
+      work_days: newSalary.workDays,
+      actual_work_days: newSalary.actualWorkDays,
+      allowances: newSalary.allowances,
+      deductions: newSalary.deductions,
+      bonus: newSalary.bonus,
+      overtime_pay: newSalary.overtimePay
+    };
+
+    if (idx === -1) {
+      list.push(salaryRecord);
+    } else {
+      list[idx] = salaryRecord;
+    }
+    
+    localStorage.setItem(key, JSON.stringify(list));
+
+    // Đồng bộ lên Supabase
+    try {
+      DB.salary.update(newSalary.id, salaryRecord);
+    } catch (e) {
+      console.warn('Could not sync salary to Supabase:', e);
+    }
+
+    return true;
+  } catch (e) {
+    console.error('updateSalaryAfterApproval error:', e);
+    return false;
+  }
 }
 
 // Rebuild employees array from latest localStorage data (essential for realtime updates)
@@ -800,6 +958,13 @@ function applyApproval(approvalStatus, label) {
   });
   refreshEmployeeData();
   reRender();
+  
+  // ===== AUTO-RECALCULATE SALARY AFTER APPROVAL =====
+  if (approvalStatus === 'approved') {
+    var period = day.date.substring(0, 7);
+    updateSalaryAfterApproval(emp.id, day.date);
+  }
+  
   closeDetail();
   showToast(label);
   // Gửi thông báo cho nhân viên
@@ -1328,6 +1493,15 @@ function _doBulkApprove(targets, note) {
   closeConditionModal();
   refreshEmployeeData();
   reRender();
+  
+  // ===== AUTO-RECALCULATE SALARY FOR AFFECTED EMPLOYEES =====
+  touchedEmployees.forEach(function(empId) {
+    var targetDate = targets.find(function(t) { return String(t.emp.id) === String(empId); });
+    if (targetDate && targetDate.day && targetDate.day.date) {
+      updateSalaryAfterApproval(empId, targetDate.day.date);
+    }
+  });
+  
   DB.utils.showToast('Đã duyệt ' + targets.length + ' ca theo điều kiện');
 }
 

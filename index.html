@@ -853,5 +853,19 @@
 
 <script src="js/index.js"></script>
 <script src="js/notify.js"></script>
+<script>
+  document.addEventListener('DOMContentLoaded', function() {
+    try {
+      var session = JSON.parse(localStorage.getItem('humi_session'));
+      if (session && session.user && session.user.roleId === 'employee') {
+        document.querySelectorAll('.sidebar-item').forEach(function(item) {
+          if (item.getAttribute('href') && item.getAttribute('href').includes('chia-ca.html')) {
+            item.style.display = 'none';
+          }
+        });
+      }
+    } catch (e) {}
+  });
+</script>
 </body>
 </html>

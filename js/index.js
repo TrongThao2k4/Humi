@@ -43,46 +43,33 @@
   })();
 
   // Populate user info & shift from DB — đồng bộ với loadUserInfo() ở các trang khác
-  (function() {
+  function loadUserInfo() {
     var emp = (DB.employees.getAll()||[]).find(function(e){ return e.id === currentUser.id; });
     var name = (emp && emp.name)     || currentUser.name     || '—';
     var role = (emp && emp.position) || currentUser.position || '—';
 
-    // Avatar: force default avatar across pages (user requested)
-      const DEFAULT_AVATAR_ID = 47;
-      function defaultAv(sz) { return 'https://i.pravatar.cc/' + (sz||32) + '?img=' + DEFAULT_AVATAR_ID; }
+    var _sk = 'humi_user_settings_' + currentUser.id;
+    var _st = {}; try { _st = JSON.parse(localStorage.getItem(_sk)) || {}; } catch(e) {}
+    var avatar = _st.avatar || (emp && emp.avatar) || 'https://i.pravatar.cc/32?img=47';
 
-      var el = function(id) { return document.getElementById(id); };
-      // Always use default avatar image; this enforces a consistent placeholder everywhere
-      if (el('sidebarAvatar'))   el('sidebarAvatar').src       = defaultAv(32);
-      if (el('topbarAvatar'))    el('topbarAvatar').src        = defaultAv(32);
-      if (el('sidebarUserName')) el('sidebarUserName').textContent = name;
-      if (el('sidebarUserRole')) el('sidebarUserRole').textContent = role;
-      if (el('topbarUserName'))  el('topbarUserName').textContent  = name;
-      if (el('topbarUserRole'))  el('topbarUserRole').textContent  = role;
-      if (el('dropdownAvatar'))  el('dropdownAvatar').src          = defaultAv(36);
-      if (el('dropdownName'))    el('dropdownName').textContent    = name;
-      if (el('dropdownRole'))    el('dropdownRole').textContent    = role;
-      if (el('modalUnitName'))   el('modalUnitName').textContent   = (emp && emp.unit) || currentUser.unit || '—';
-      if (el('cardUnitName'))    el('cardUnitName').textContent    = (emp && emp.unit) || currentUser.unit || '—';
+    var el = function(id) { return document.getElementById(id); };
+    
+    if (el('sidebarAvatar'))   el('sidebarAvatar').src       = avatar;
+    if (el('topbarAvatar'))    el('topbarAvatar').src        = avatar;
+    if (el('dropdownAvatar'))  el('dropdownAvatar').src      = avatar;
 
-      // Replace other avatar-like images (circle avatars) with default image
-      function enforceDefaultAvatars() {
-        try {
-          document.querySelectorAll('img').forEach(function(img) {
-            var st = (img.getAttribute('style')||'').replace(/\s/g,'');
-            var isRound = st.indexOf('border-radius:50%') !== -1 || img.classList.contains('avatar');
-            var isKnownId = ['sidebarAvatar','topbarAvatar','dropdownAvatar','drawerAvatar','det-avatar','drawerAvatar'].indexOf(img.id) !== -1;
-            if (isRound || isKnownId) {
-              var size = img.width || parseInt((img.getAttribute('style')||'').match(/width:?(\d+)px/)?.[1]) || 36;
-              img.src = defaultAv(Math.max(24, Math.min(80, size)));
-            }
-          });
-        } catch(e) {}
-      }
-      enforceDefaultAvatars();
-      window.addEventListener('humi_synced', enforceDefaultAvatars);
-  })();
+    if (el('sidebarUserName')) el('sidebarUserName').textContent = name;
+    if (el('sidebarUserRole')) el('sidebarUserRole').textContent = role;
+    if (el('topbarUserName'))  el('topbarUserName').textContent  = name;
+    if (el('topbarUserRole'))  el('topbarUserRole').textContent  = role;
+    if (el('dropdownName'))    el('dropdownName').textContent    = name;
+    if (el('dropdownRole'))    el('dropdownRole').textContent    = role;
+    if (el('modalUnitName'))   el('modalUnitName').textContent   = (emp && emp.unit) || currentUser.unit || '—';
+    if (el('cardUnitName'))    el('cardUnitName').textContent    = (emp && emp.unit) || currentUser.unit || '—';
+  }
+  
+  loadUserInfo();
+  window.addEventListener('humi_synced', loadUserInfo);
 
   // ==================== NOTIFICATION BELL ====================
   (function initNotifPanel() {

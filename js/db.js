@@ -1175,6 +1175,108 @@ function syncFromSupabase() {
       },
       getRecord: function(employeeId, period) {
         return this.getAll().find(function(r){ return r.employeeId===employeeId && r.period===period; }) || null;
+      },
+      // Upsert a salary record (local + Supabase)
+      upsert: function(data) {
+        // Normalize keys (accept both snake_case from Supabase and camelCase from app)
+        var employeeId = data.employeeId || data.employee_id;
+        var period = data.period || data.period;
+        var id = data.id || ('SAL_' + employeeId + '_' + period);
+        var baseSalary = data.baseSalary || data.base_salary || 0;
+        var grossSalary = data.grossSalary || data.gross_salary || 0;
+        var netSalary = data.netSalary || data.net_salary || 0;
+        var workDays = data.workDays || data.work_days || 26;
+        var actualWorkDays = data.actualWorkDays || data.actual_work_days || 0;
+        var allowances = data.allowances || data.allowances || {};
+        var deductions = data.deductions || data.deductions || {};
+        var bonus = data.bonus || data.bonus || 0;
+        var overtimePay = data.overtimePay || data.overtime_pay || 0;
+
+        var list = this.getAll();
+        var idx = list.findIndex(function(r){ return r.employeeId === employeeId && r.period === period; });
+        var rec = {
+          id: id,
+          employeeId: employeeId,
+          period: period,
+          baseSalary: baseSalary,
+          grossSalary: grossSalary,
+          netSalary: netSalary,
+          workDays: workDays,
+          actualWorkDays: actualWorkDays,
+          allowances: allowances,
+          deductions: deductions,
+          bonus: bonus,
+          overtimePay: overtimePay
+        };
+        if (idx === -1) list.push(rec); else list[idx] = rec;
+        save(K.salary, list);
+
+        // Sync to Supabase (use upsert so it creates or updates)
+        try {
+          SB.upsert('salary', {
+            id: rec.id,
+            employee_id: rec.employeeId,
+            period: rec.period,
+            base_salary: rec.baseSalary,
+            gross_salary: rec.grossSalary,
+            net_salary: rec.netSalary,
+            work_days: rec.workDays,
+            actual_work_days: rec.actualWorkDays,
+            allowances: rec.allowances,
+            deductions: rec.deductions,
+            bonus: rec.bonus,
+            overtime_pay: rec.overtimePay
+          });
+        } catch (e) { console.error('DB.salary.upsert error:', e); }
+        return rec;
+      },
+      // Update by id (local + Supabase). If not exists, create via upsert.
+      update: function(id, patch) {
+        var list = this.getAll();
+        var idx = list.findIndex(function(r){ return r.id === id; });
+        if (idx === -1) {
+          // Try to build from patch (expecting employee_id and period)
+          var created = this.upsert(Object.assign({ id: id }, patch));
+          return created;
+        }
+        // Merge patch (accept snake_case)
+        var rec = list[idx];
+        if (patch.base_salary !== undefined) rec.baseSalary = patch.base_salary;
+        if (patch.gross_salary !== undefined) rec.grossSalary = patch.gross_salary;
+        if (patch.net_salary !== undefined) rec.netSalary = patch.net_salary;
+        if (patch.work_days !== undefined) rec.workDays = patch.work_days;
+        if (patch.actual_work_days !== undefined) rec.actualWorkDays = patch.actual_work_days;
+        if (patch.allowances !== undefined) rec.allowances = patch.allowances;
+        if (patch.deductions !== undefined) rec.deductions = patch.deductions;
+        if (patch.bonus !== undefined) rec.bonus = patch.bonus;
+        if (patch.overtime_pay !== undefined) rec.overtimePay = patch.overtime_pay;
+        // also allow camelCase keys
+        if (patch.baseSalary !== undefined) rec.baseSalary = patch.baseSalary;
+        if (patch.grossSalary !== undefined) rec.grossSalary = patch.grossSalary;
+        if (patch.netSalary !== undefined) rec.netSalary = patch.netSalary;
+        if (patch.workDays !== undefined) rec.workDays = patch.workDays;
+        if (patch.actualWorkDays !== undefined) rec.actualWorkDays = patch.actualWorkDays;
+        if (patch.allowances !== undefined) rec.allowances = patch.allowances;
+        if (patch.deductions !== undefined) rec.deductions = patch.deductions;
+        if (patch.bonus !== undefined) rec.bonus = patch.bonus;
+        if (patch.overtimePay !== undefined) rec.overtimePay = patch.overtimePay;
+
+        list[idx] = rec;
+        save(K.salary, list);
+        try {
+          SB.update('salary', { id: id }, {
+            base_salary: rec.baseSalary,
+            gross_salary: rec.grossSalary,
+            net_salary: rec.netSalary,
+            work_days: rec.workDays,
+            actual_work_days: rec.actualWorkDays,
+            allowances: rec.allowances,
+            deductions: rec.deductions,
+            bonus: rec.bonus,
+            overtime_pay: rec.overtimePay
+          });
+        } catch (e) { console.error('DB.salary.update error:', e); }
+        return rec;
       }
     },
 
