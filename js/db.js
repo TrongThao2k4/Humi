@@ -1191,6 +1191,7 @@ function syncFromSupabase() {
         var deductions = data.deductions || data.deductions || {};
         var bonus = data.bonus || data.bonus || 0;
         var overtimePay = data.overtimePay || data.overtime_pay || 0;
+        var timeSalary = data.timeSalary || data.time_salary || 0;
 
         var list = this.getAll();
         var idx = list.findIndex(function(r){ return r.employeeId === employeeId && r.period === period; });
@@ -1199,6 +1200,7 @@ function syncFromSupabase() {
           employeeId: employeeId,
           period: period,
           baseSalary: baseSalary,
+          timeSalary: timeSalary,
           grossSalary: grossSalary,
           netSalary: netSalary,
           workDays: workDays,
@@ -1250,6 +1252,7 @@ function syncFromSupabase() {
         if (patch.deductions !== undefined) rec.deductions = patch.deductions;
         if (patch.bonus !== undefined) rec.bonus = patch.bonus;
         if (patch.overtime_pay !== undefined) rec.overtimePay = patch.overtime_pay;
+        if (patch.time_salary !== undefined) rec.timeSalary = patch.time_salary;
         // also allow camelCase keys
         if (patch.baseSalary !== undefined) rec.baseSalary = patch.baseSalary;
         if (patch.grossSalary !== undefined) rec.grossSalary = patch.grossSalary;
@@ -1260,6 +1263,7 @@ function syncFromSupabase() {
         if (patch.deductions !== undefined) rec.deductions = patch.deductions;
         if (patch.bonus !== undefined) rec.bonus = patch.bonus;
         if (patch.overtimePay !== undefined) rec.overtimePay = patch.overtimePay;
+        if (patch.timeSalary !== undefined) rec.timeSalary = patch.timeSalary;
 
         list[idx] = rec;
         save(K.salary, list);

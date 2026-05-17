@@ -228,7 +228,7 @@
       <td>0</td><td>0</td>
       <td>${approvedLeaveDays}</td>
       <td>${unpaidLeaveDays}</td>
-      <td>${fmt(rec.baseSalary)}</td>
+      <td>${fmt(rec.timeSalary || rec.baseSalary)}</td>
       <td>${fmt(allow + (rec.bonus || 0) + (rec.overtimePay || 0))}</td>
       <td class="green">${fmt(rec.grossSalary)}</td>
       <td>${fmt((rec.deductions || {}).thueTNCN || 0)}</td>
@@ -239,7 +239,7 @@
     // Card 1 — Tổng thu nhập
     document.getElementById('cardIncome').innerHTML = `
       <div class="inc-row" style="margin-top:6px;"><span class="inc-label">+ 1. Ngày công thực tế</span><span class="inc-val">${rec.actualWorkDays || 0}</span></div>
-      <div class="inc-row"><span class="inc-label">+ 2. Lương theo thời gian</span><span class="inc-val">${fmt(rec.baseSalary)}</span></div>
+      <div class="inc-row"><span class="inc-label">+ 2. Lương theo thời gian</span><span class="inc-val">${fmt(rec.timeSalary || rec.baseSalary)}</span></div>
       <div class="inc-row"><span class="inc-label">+ 5. Các khoản bổ sung</span><span class="inc-val">${fmt(allow + (rec.bonus || 0) + (rec.overtimePay || 0))}</span></div>
       <div class="inc-row"><span class="inc-label">+ 7. Tổng TN trước thuế</span><span class="inc-val">${fmt(rec.grossSalary)}</span></div>
       <div class="inc-row"><span class="inc-label">− Bảo hiểm & khấu trừ</span><span class="inc-val" style="background:#f97316;">${fmt(deduct - ((rec.deductions || {}).thueTNCN || 0))}</span></div>

@@ -528,8 +528,11 @@ function openDetail(pill, td, tr) {
 
   renderAllFaceImages();
 
-  // use default avatar for detail panel
-  document.getElementById('det-avatar').src = defaultAv(80);
+  // show employee avatar if available, otherwise fallback to default
+  try {
+    var detAv = document.getElementById('det-avatar');
+    if (detAv) detAv.src = emp.avatar || defaultAv(80);
+  } catch (e) { console.warn('Could not set detail avatar', e); }
   document.getElementById('det-name').textContent = emp.name;
   document.getElementById('det-date').textContent = dateStr;
   updateDetailStatus(emp.days[dayIdx].approvalStatus);
@@ -679,6 +682,26 @@ function calculateSalaryForPeriod(empId, period) {
       });
     var actualWorkDays = approvedAtts.length;
 
+    // Tính actualHours từ giờ đã được duyệt (sử dụng approvedCheckIn/Out nếu có)
+    var actualMinutes = 0;
+    approvedAtts.forEach(function(a) {
+      var shift = a.shiftId ? DB.shifts.getById(a.shiftId) : null;
+      var ci = a.approvedCheckIn || a.checkIn;
+      var co = a.approvedCheckOut || a.checkOut;
+      if (!ci || !co) return;
+      try {
+        var ciH = parseInt(ci.split(':')[0]);
+        var ciM = parseInt(ci.split(':')[1] || 0);
+        var coH = parseInt(co.split(':')[0]);
+        var coM = parseInt(co.split(':')[1] || 0);
+        var mins = (coH * 60 + coM) - (ciH * 60 + ciM);
+        var breakM = (shift && shift.breakMinutes) ? Number(shift.breakMinutes) : 0;
+        mins = Math.max(0, mins - breakM);
+        actualMinutes += mins;
+      } catch (e) { /* ignore parse errors */ }
+    });
+    var actualHours = Math.round(actualMinutes / 60 * 10) / 10;
+
     // 2. Tính overtimeHours: giờ vượt quá shift end time
     var overtimeMinutes = 0;
     approvedAtts.forEach(function(a) {
@@ -698,13 +721,18 @@ function calculateSalaryForPeriod(empId, period) {
     var overtimeHours = Math.round(overtimeMinutes / 60 * 10) / 10;
 
     // 3. Tính overtimePay: OT hours * hourly rate
-    // Hourly rate = baseSalary / 160 (160 giờ/tháng chuẩn)
-    var hourlyRate = baseSalary / 160;
+    // Hourly rate = baseSalary / (workDays * 8)
+    var standardHoursPerMonth = (workDays || 26) * 8;
+    var hourlyRate = baseSalary / (standardHoursPerMonth || 160);
     var overtimePay = Math.round(overtimeHours * hourlyRate * 1.5); // 1.5x cho tăng ca
+
+    // Tính lương theo giờ công thực tế (prorate theo số giờ đã được duyệt)
+    var timeSalary = Math.round((hourlyRate * (actualHours || (actualWorkDays * 8))) || 0);
 
     // 4. Tính grossSalary & netSalary
     var allowanceTotal = Object.values(allowances).reduce((a, b) => a + b, 0);
-    var grossSalary = baseSalary + allowanceTotal + overtimePay + bonus;
+    // Sử dụng `timeSalary` (theo giờ công thực tế) thay vì full `baseSalary`
+    var grossSalary = timeSalary + allowanceTotal + overtimePay + bonus;
     
     // Tính khấu trừ
     var deductionTotal = Object.values(deductions).reduce((a, b) => a + b, 0);
@@ -724,7 +752,9 @@ function calculateSalaryForPeriod(empId, period) {
       deductions: deductions,
       bonus: bonus,
       overtimePay: overtimePay,
-      overtimeHours: overtimeHours
+      overtimeHours: overtimeHours,
+      timeSalary: timeSalary,
+      actualHours: actualHours
     };
   } catch (e) {
     console.error('calculateSalaryForPeriod error:', e);
@@ -744,41 +774,13 @@ function updateSalaryAfterApproval(empId, attendanceDate) {
     var newSalary = calculateSalaryForPeriod(empId, period);
     if (!newSalary) return false;
 
-    // Cập nhật vào localStorage
-    var key = 'humi_salary';
-    var list = JSON.parse(localStorage.getItem(key) || '[]');
-    var idx = list.findIndex(function(r) {
-      return r.employee_id === empId && r.period === period;
-    });
-
-    var salaryRecord = {
-      id: newSalary.id,
-      employee_id: empId,
-      period: period,
-      base_salary: newSalary.baseSalary,
-      gross_salary: newSalary.grossSalary,
-      net_salary: newSalary.netSalary,
-      work_days: newSalary.workDays,
-      actual_work_days: newSalary.actualWorkDays,
-      allowances: newSalary.allowances,
-      deductions: newSalary.deductions,
-      bonus: newSalary.bonus,
-      overtime_pay: newSalary.overtimePay
-    };
-
-    if (idx === -1) {
-      list.push(salaryRecord);
-    } else {
-      list[idx] = salaryRecord;
-    }
-    
-    localStorage.setItem(key, JSON.stringify(list));
-
-    // Đồng bộ lên Supabase
+    // Sử dụng API DB.salary.upsert để chuẩn hóa trường (camelCase) và
+    // đồng bộ localStorage + Supabase. Tránh ghi trực tiếp vào localStorage
+    // bằng snake_case vì các trang khác tìm theo `employeeId`.
     try {
-      DB.salary.update(newSalary.id, salaryRecord);
+      DB.salary.upsert(newSalary);
     } catch (e) {
-      console.warn('Could not sync salary to Supabase:', e);
+      console.warn('Could not upsert salary record:', e);
     }
 
     return true;
@@ -1448,7 +1450,7 @@ function bulkApproveByCondition() {
 }
 
 function _doBulkApprove(targets, note) {
-  var touchedEmployees = new Set();
+  var touchedEmployees = {}; // map empId -> Set of periods affected
   var sentMessages = new Set();
 
   targets.forEach(function(target) {
@@ -1468,7 +1470,10 @@ function _doBulkApprove(targets, note) {
     }
     day.approvalStatus = 'approved';
     day.type = undefined;
-    touchedEmployees.add(emp.id);
+    // record affected period for this employee
+    var pid = emp.id;
+    if (!touchedEmployees[pid]) touchedEmployees[pid] = new Set();
+    if (day && day.date) touchedEmployees[pid].add(day.date.substring(0,7));
 
     var messageKey = emp.id + '|' + day.date;
     if (!sentMessages.has(messageKey)) {
@@ -1485,7 +1490,7 @@ function _doBulkApprove(targets, note) {
     }
   });
 
-  touchedEmployees.forEach(function(empId) {
+  Object.keys(touchedEmployees).forEach(function(empId) {
     var emp = employees.find(function(item) { return String(item.id) === String(empId); });
     if (emp) recalcWorked(emp);
   });
@@ -1495,11 +1500,14 @@ function _doBulkApprove(targets, note) {
   reRender();
   
   // ===== AUTO-RECALCULATE SALARY FOR AFFECTED EMPLOYEES =====
-  touchedEmployees.forEach(function(empId) {
-    var targetDate = targets.find(function(t) { return String(t.emp.id) === String(empId); });
-    if (targetDate && targetDate.day && targetDate.day.date) {
-      updateSalaryAfterApproval(empId, targetDate.day.date);
-    }
+  // For each employee, recalc salary for every distinct period we touched
+  Object.keys(touchedEmployees).forEach(function(empId) {
+    var periods = Array.from(touchedEmployees[empId] || []);
+    periods.forEach(function(period) {
+      // pass a valid day string for the period (use first day of month)
+      var sampleDate = period + '-01';
+      try { updateSalaryAfterApproval(empId, sampleDate); } catch(e) { console.error('bulk salary update error', e); }
+    });
   });
   
   DB.utils.showToast('Đã duyệt ' + targets.length + ' ca theo điều kiện');
