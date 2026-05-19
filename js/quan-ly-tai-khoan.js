@@ -38,7 +38,7 @@ function doLogout() {
       var _sk = 'humi_user_settings_' + currentUser.id;
       var _st = {}; 
       try { _st = JSON.parse(localStorage.getItem(_sk)) || {}; } catch(e) {}
-      var avatar = (_st && _st.avatar) ? _st.avatar : ((emp && emp.avatar) ? emp.avatar : '');
+      var avatar = typeof genAvatar === 'function' ? genAvatar(emp && emp.name) : '';
       
       var el1 = document.getElementById('topbarAvatar'); if(el1) el1.src = avatar || 'https://i.pravatar.cc/32?img=47';
       var el2 = document.getElementById('topbarName'); if(el2) el2.textContent = name || 'Admin';

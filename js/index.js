@@ -50,7 +50,7 @@
 
     var _sk = 'humi_user_settings_' + currentUser.id;
     var _st = {}; try { _st = JSON.parse(localStorage.getItem(_sk)) || {}; } catch(e) {}
-    var avatar = _st.avatar || (emp && emp.avatar) || 'https://i.pravatar.cc/32?img=47';
+    var avatar = typeof genAvatar === 'function' ? genAvatar(emp && emp.name) : 'https://i.pravatar.cc/32?img=47';
 
     var el = function(id) { return document.getElementById(id); };
     
@@ -493,7 +493,7 @@
         if (modalShiftEl) modalShiftEl.textContent = 'Đã hoàn thành tất cả ca';
         actionArea.style.display = 'none';
         noShiftEl.style.display = 'block';
-        noShiftMsg.textContent = 'Ca làm việc hôm nay đã kết thúc';
+        noShiftMsg.textContent = 'Hôm nay không còn ca làm việc';
         return;
       }
 
@@ -548,7 +548,26 @@
     updateAttendanceCard();
   });
 
-  function openAttendanceModal() {
+  function openAttendanceModal(shiftId) {
+    // If called with a specific shiftId (e.g., from schedule page), use that shift
+    if (shiftId) {
+      var s = (DB.shifts && DB.shifts.getById) ? DB.shifts.getById(shiftId) : null;
+      if (s) {
+        _currentAttendanceShift = s;
+      } else {
+        // fallback: try to find among today's shifts
+        try {
+          getTodayShifts(currentUser.id, function(result) {
+            var found = (result.shifts || []).find(function(sh) { return String(sh.id) === String(shiftId); });
+            if (found) _currentAttendanceShift = found;
+            // update modal shift name if already open
+            var modalShiftEl = document.getElementById('modalShiftName');
+            if (modalShiftEl && _currentAttendanceShift) modalShiftEl.textContent = _shiftLabel(_currentAttendanceShift);
+          });
+        } catch(e) { /* ignore */ }
+      }
+    }
+
     document.getElementById('attendanceModal').classList.add('open');
     document.getElementById('cameraError').style.display = 'none';
     document.getElementById('cameraLoading').style.display = 'flex';
@@ -561,6 +580,11 @@
     isFaceDetected = false;
     resetCaptureBtn(); // reset text/opacity/spinner từ lần dùng trước
     startModalClock();
+    // If a shift was explicitly set, reflect it in the modal header
+    try {
+      var modalShiftEl = document.getElementById('modalShiftName');
+      if (modalShiftEl && _currentAttendanceShift) modalShiftEl.textContent = _shiftLabel(_currentAttendanceShift);
+    } catch(e) {}
     startCamera();
     fetchUserIP();
   }
@@ -871,7 +895,8 @@
         setLoadingBtn(false);
         showToast(msg, 'success');
         closeAttendanceModal();
-        updateAttendanceCard();
+        // Delay a bit to ensure DB/localStorage is updated, then refresh card
+        setTimeout(function() { updateAttendanceCard(); }, 250);
       } else {
         showToast(res.error || 'Chấm công thất bại', 'error');
         setLoadingBtn(false);

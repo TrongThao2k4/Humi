@@ -10,7 +10,7 @@
   // Ưu tiên avatar từ settings (cập nhật real-time từ trang Cài đặt)
   var _sk = 'humi_user_settings_' + currentUser.id;
   var _st = {}; try { _st = JSON.parse(localStorage.getItem(_sk)) || {}; } catch(e) {}
-  var avatar = _st.avatar || (emp && emp.avatar) || '';
+  var avatar = typeof genAvatar === 'function' ? genAvatar(emp && emp.name) : '';
   var sid = document.getElementById('sidebarAvatar'); if(sid) sid.src = avatar || sid.src;
   var tid = document.getElementById('topbarAvatar');  if(tid) tid.src = avatar || tid.src;
   var sn  = document.getElementById('sidebarName');   if(sn)  sn.textContent  = name;
@@ -209,7 +209,7 @@
     tr.innerHTML = `
       <td class="col-emp">
         <div style="display:flex;align-items:center;gap:10px;">
-          <img src="${emp.avatar || genAvatar(emp.name, 34)}" style="width:34px;height:34px;border-radius:50%;border:2px solid #bbf7d0;flex-shrink:0;" />
+          <img src="${genAvatar(emp.name, 34)}" style="width:34px;height:34px;border-radius:50%;border:2px solid #bbf7d0;flex-shrink:0;" />
           <div>
             <p style="font-size:12.5px;font-weight:700;color:#2A3547;margin:0;">${emp.name}</p>
             <p style="font-size:10.5px;color:#7C8FAC;margin:1px 0 0;">${emp.code} · ${emp.position || '—'}</p>

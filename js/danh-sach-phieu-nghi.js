@@ -9,7 +9,7 @@ const currentUser = _s.user;
   var role   = (emp && emp.position) || currentUser.position || '—';
   var _sk = 'humi_user_settings_' + currentUser.id;
   var _st = {}; try { _st = JSON.parse(localStorage.getItem(_sk)) || {}; } catch(e) {}
-  var avatar = _st.avatar || (emp && emp.avatar) || '';
+  var avatar = typeof genAvatar === 'function' ? genAvatar(emp && emp.name) : '';
   var sid = document.getElementById('sidebarAvatar'); if(sid) sid.src = avatar || sid.src;
   var tid = document.getElementById('topbarAvatar');  if(tid) tid.src = avatar || tid.src;
   var sn  = document.getElementById('sidebarName');   if(sn)  sn.textContent = name;
@@ -82,7 +82,7 @@ function loadData() {
       empCode:  emp.code   || l.employeeId,
       empUnit:  emp.unit   || '—',
       empRole:  emp.position || '—',
-      avatar:   emp.avatar || genAvatar(emp.name),
+      avatar:   genAvatar(emp.name),
       leaveType: l.leaveType,
       type:     l.leaveTypeName || TYPE_LABEL[l.leaveType] || l.leaveType,
       status:   l.status,

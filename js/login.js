@@ -5,8 +5,10 @@ var EMAILJS_SERVICE_ID  = 'service_ri6ho74';
 var EMAILJS_TEMPLATE_ID = 'template_9qlygld';
 var EMAILJS_PUBLIC_KEY  = '0dfSpIx0a7yiAJjIK';
 
-// Redirect nếu đã đăng nhập
-if (DB.auth.getSession()) location.href = 'index.html';
+// Redirect nếu đã đăng nhập — wait for initial DB sync so session is authoritative
+Promise.resolve(window.DB_SYNC_READY).then(function() {
+  try { if (DB.auth.getSession()) location.href = 'index.html'; } catch(e) {}
+}).catch(function() { try { if (DB.auth.getSession()) location.href = 'index.html'; } catch(e) {} });
 
 // Khởi tạo EmailJS
 try {
@@ -182,38 +184,44 @@ function doLogin(e) {
   btn.innerHTML = '<span class="spinner"></span>Đang xác thực...';
 
   setTimeout(function() {
-    var res = DB.auth.verifyCredentials(loginId, pwd);
-    if (!res.ok) {
-      showErr('errMsg', res.error);
-      btn.disabled = false; btn.textContent = 'Đăng nhập';
-      return;
-    }
+    Promise.resolve(DB.auth.verifyCredentials(loginId, pwd)).then(function(res) {
+        if (!res.ok) {
+          showErr('errMsg', res.error);
+          btn.disabled = false; btn.textContent = 'Đăng nhập';
+          return;
+        }
 
-    // Kiểm tra xem người dùng có bật xác thực email không
-    var settings = {};
-    try { settings = JSON.parse(localStorage.getItem('humi_user_settings_' + res.user.id)) || {}; } catch(ex) {}
-    var emailAuthOn = settings.emailAuth === true;
+        // Kiểm tra xem người dùng có bật xác thực email không
+        var settings = {};
+        try { settings = JSON.parse(localStorage.getItem('humi_user_settings_' + res.user.id)) || {}; } catch(ex) {}
+        var emailAuthOn = settings.emailAuth === true;
 
-    if (!emailAuthOn) {
-      // Đăng nhập thẳng
-      DB.auth.login(res.user.id, pwd);
-      location.href = 'index.html';
-      return;
-    }
+        if (!emailAuthOn) {
+          // Đăng nhập thẳng
+          Promise.resolve(DB.auth.login(res.user.id, pwd)).then(function() {
+            location.href = 'index.html';
+          });
+          return;
+        }
 
-    // Bật 2FA email → gửi OTP
-    _pendingEmpId = res.user.id;
-    _pendingPwd   = pwd;
-    _pendingUser  = res.user;
+        // Bật 2FA email → gửi OTP
+        _pendingEmpId = res.user.id;
+        _pendingPwd   = pwd;
+        _pendingUser  = res.user;
 
-    _otp.code   = generateOTP();
-    _otp.expiry = Date.now() + 5 * 60 * 1000;
+        _otp.code   = generateOTP();
+        _otp.expiry = Date.now() + 5 * 60 * 1000;
 
-    btn.innerHTML = '<span class="spinner"></span>Đang gửi OTP...';
-    sendOtpEmail(res.user.email, res.user.name, _otp.code).then(function() {
-      showOtpStep(res.user.email);
-      btn.disabled = false; btn.textContent = 'Đăng nhập';
-    });
+        btn.innerHTML = '<span class="spinner"></span>Đang gửi OTP...';
+        sendOtpEmail(res.user.email, res.user.name, _otp.code).then(function() {
+          showOtpStep(res.user.email);
+          btn.disabled = false; btn.textContent = 'Đăng nhập';
+        });
+      }).catch(function(err) {
+        console.error('Login verify failed:', err);
+        showErr('errMsg', 'Không thể xác thực tài khoản');
+        btn.disabled = false; btn.textContent = 'Đăng nhập';
+      });
   }, 500);
 }
 

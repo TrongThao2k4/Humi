@@ -39,6 +39,21 @@ var SB = {
         return r.data;
       });
   },
+  fetch: function(table) {
+    if (!_sbClient) return Promise.resolve({ ok:false, data:[], error:new Error('Supabase client not ready') });
+    return _sbClient.from(table).select('*')
+      .then(function(r) {
+        if (r.error) {
+          console.error('❌ [Supabase] FETCH', table, r.error.message);
+          return { ok:false, data:[], error:r.error };
+        }
+        return { ok:true, data:r.data || [] };
+      })
+      .catch(function(err) {
+        console.error('❌ [Supabase] FETCH', table, err && err.message ? err.message : err);
+        return { ok:false, data:[], error:err };
+      });
+  },
   upsert: function(table, data) {
     if (!_sbClient) return Promise.resolve();
     return _sbClient.from(table).upsert(Array.isArray(data) ? data : [data])
@@ -159,6 +174,18 @@ function syncFromSupabase() {
         var oldData = localStorage.getItem(t.local);
         if (newData !== oldData) {
           localStorage.setItem(t.local, newData);
+          if (t.remote === 'employees') {
+            try {
+              var s = JSON.parse(localStorage.getItem(K.session) || 'null');
+              if (s && s.user && s.user.id) {
+                var updatedUser = remoteData.find(function(emp) { return String(emp.id) === String(s.user.id); });
+                if (updatedUser) {
+                  s.user = updatedUser;
+                  localStorage.setItem(K.session, JSON.stringify(s));
+                }
+              }
+            } catch(e) {}
+          }
           if (t.remote === 'accounts') console.log('✅ [SYNC] Updated localStorage[' + t.local + ']:', remoteData.length, 'accounts saved');
           return true;
         } else {
@@ -169,12 +196,16 @@ function syncFromSupabase() {
     });
   });
 
-  Promise.all(promises).then(function(results) {
+  return Promise.all(promises).then(function(results) {
     var hasUpdates = results.some(function(changed) { return changed; });
     var localAccounts = JSON.parse(localStorage.getItem('humi_accounts') || '[]');
     console.log('🎉 [SYNC] Completed! Final accounts in localStorage:', localAccounts.length);
     // Dispatch event để các trang tự refresh UI mà không cần reload
     window.dispatchEvent(new CustomEvent('humi_synced', { detail: { updated: hasUpdates } }));
+    return { updated: hasUpdates };
+  }).catch(function(err) {
+    console.error('❌ [SYNC] Failed:', err);
+    return { updated: false, error: err };
   });
 }
 
@@ -598,24 +629,78 @@ function syncFromSupabase() {
         if (!s) { var _inPages = window.location.pathname.indexOf('/pages/') !== -1; window.location.href = (_inPages ? '../' : '') + 'login.html'; return null; }
         return s;
       },
-      verifyCredentials: function(loginId, pwd) {
-        var employees = load(K.employees);
+      verifyCredentials: async function(loginId, pwd) {
         var searchStr = String(loginId).toLowerCase();
-        var emp = employees.find(function(e) {
-          return (e.id && e.id.toLowerCase() === searchStr) || 
-                 (e.email && e.email.toLowerCase() === searchStr);
-        });
+        var _diag = { loginId: loginId, start: Date.now(), empLookupSource: null, empLookupTime: null, accLookupSource: null, accLookupTime: null };
+        // Try targeted Supabase queries first (small, fast), with short timeouts.
+        var emp = null;
+        if (typeof _sbClient !== 'undefined' && _sbClient) {
+          try {
+            var t0 = Date.now();
+            var r = await withTimeout(_sbClient.from('employees').select('*').eq('id', loginId).limit(1), 1500);
+            if (!r || r.error || !r.data || r.data.length === 0) {
+              r = await withTimeout(_sbClient.from('employees').select('*').eq('email', loginId).limit(1), 1500);
+            }
+            _diag.empLookupTime = Date.now() - t0;
+            if (r && !r.error && r.data && r.data.length) { emp = REMOTE_MAPS.humi_employees(r.data[0]); _diag.empLookupSource = 'remote-target'; }
+          } catch(e) {
+            _diag.empLookupTime = Date.now() - (_diag.start || Date.now());
+            _diag.empLookupSource = 'remote-target-failed';
+            console.warn('🔔 [AUTH] Supabase employees lookup failed/timeout:', e && e.message ? e.message : e);
+          }
+        }
+        // Fallback to cache if remote didn't return
+        if (!emp) {
+          var t1 = Date.now();
+          var remoteEmpResult = await SB.fetch('employees');
+          var employees = remoteEmpResult.ok && remoteEmpResult.data.length ? remoteEmpResult.data.map(function(r){ return REMOTE_MAPS.humi_employees(r); }) : load(K.employees);
+          emp = employees.find(function(e) {
+            return (e.id && String(e.id).toLowerCase() === searchStr) ||
+                   (e.email && String(e.email).toLowerCase() === searchStr);
+          });
+          _diag.empLookupTime = _diag.empLookupTime || (Date.now() - t1);
+          _diag.empLookupSource = _diag.empLookupSource || (remoteEmpResult.ok ? 'remote-fetch' : 'local-cache');
+        }
         if (!emp) return { ok:false, error:'Tài khoản hoặc mật khẩu không đúng' };
 
-        var accounts = load(K.accounts);
-        var acc = accounts.find(function(a){ return a.employeeId === emp.id && a.password === pwd; });
-        if (!acc) return { ok:false, error:'Tài khoản hoặc mật khẩu không đúng' };
+        // Lookup account for this employee (targeted); fallback to local if needed
+        var acc = null;
+        if (typeof _sbClient !== 'undefined' && _sbClient) {
+          try {
+            var t2 = Date.now();
+            var ar = await withTimeout(_sbClient.from('accounts').select('*').eq('employee_id', emp.id).limit(1), 1500);
+            _diag.accLookupTime = Date.now() - t2;
+            if (ar && !ar.error && ar.data && ar.data.length) { acc = REMOTE_MAPS.humi_accounts(ar.data[0]); _diag.accLookupSource = 'remote-target'; }
+          } catch(e) {
+            _diag.accLookupTime = Date.now() - (_diag.start || Date.now());
+            _diag.accLookupSource = 'remote-target-failed';
+            console.warn('🔔 [AUTH] Supabase accounts lookup failed/timeout:', e && e.message ? e.message : e);
+          }
+        }
+        if (!acc) {
+          var t3 = Date.now();
+          var remoteAccResult = await SB.fetch('accounts');
+          var accounts = remoteAccResult.ok && remoteAccResult.data.length ? remoteAccResult.data.map(function(r){ return REMOTE_MAPS.humi_accounts(r); }) : load(K.accounts);
+          acc = accounts.find(function(a){ return String(a.employeeId) === String(emp.id) && String(a.password) === String(pwd); });
+          _diag.accLookupTime = _diag.accLookupTime || (Date.now() - t3);
+          _diag.accLookupSource = _diag.accLookupSource || (remoteAccResult.ok ? 'remote-fetch' : 'local-cache');
+        } else {
+          // If account came from remote, verify password locally
+          if (String(acc.password) !== String(pwd)) acc = null;
+        }
+        if (!acc) {
+          _diag.totalTime = Date.now() - _diag.start;
+          console.log('🔍 [AUTH DIAG]', _diag);
+          return { ok:false, error:'Tài khoản hoặc mật khẩu không đúng' };
+        }
         if (acc.locked) return { ok:false, error:'Tài khoản đang bị khóa' };
         if (emp.status !== 'active') return { ok:false, error:'Tài khoản không hoạt động' };
+        _diag.totalTime = Date.now() - _diag.start;
+        console.log('🔍 [AUTH DIAG]', _diag);
         return { ok:true, user:emp };
       },
-      login: function(loginId, pwd) {
-        var res = this.verifyCredentials(loginId, pwd);
+      login: async function(loginId, pwd) {
+        var res = await this.verifyCredentials(loginId, pwd);
         if (!res.ok) return res;
         var session = { user: res.user, loginAt: new Date().toISOString() };
         save(K.session, session);
@@ -1419,8 +1504,9 @@ function syncFromSupabase() {
 
 })();
 
-// Sync từ Supabase sau khi IIFE chạy xong (không block trang)
-setTimeout(syncFromSupabase, 500);
+// Sync từ Supabase ngay khi DB.js nạp xong, rồi lặp lại định kỳ để giữ local cache luôn tươi
+window.DB_SYNC_READY = syncFromSupabase();
+setInterval(syncFromSupabase, 60000);
 
 // Ensure accounts are seeded
 if (!localStorage.getItem('humi_accounts') || JSON.parse(localStorage.getItem('humi_accounts') || '[]').length === 0) {

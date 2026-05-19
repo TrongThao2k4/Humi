@@ -25,9 +25,14 @@ window.genAvatar = function(name, size) {
   size = size || 36;
   if (!name) name = '?';
   var words = name.trim().split(/\s+/);
-  var initials = words.length >= 2
-    ? (words[0][0] + words[words.length - 1][0]).toUpperCase()
-    : words[0].slice(0, 2).toUpperCase();
+  var initials;
+  if (words.length >= 2) {
+    var secondLast = words[words.length - 2] || words[0];
+    var last = words[words.length - 1] || '';
+    initials = (String(secondLast[0] || '') + String(last[0] || '')).toUpperCase();
+  } else {
+    initials = words[0].slice(0, 2).toUpperCase();
+  }
   var palette = ['#5D87FF','#4570EA','#22c55e','#f97316','#a855f7','#0d9488','#ec4899','#6366f1','#ef4444','#14b8a6'];
   var color = palette[name.split('').reduce(function(s,c){ return s + c.charCodeAt(0); }, 0) % palette.length];
   var fs = Math.round(size * 0.38);
@@ -413,12 +418,22 @@ window.genAvatar = function(name, size) {
   // ─────────────────────────────────────────────
   document.addEventListener('DOMContentLoaded', function () {
     _buildConfirmDialog();
-    applyRoleSidebar();
-    injectAdminLink();
+    // UI that doesn't require up-to-date session/data
     initMobileSidebar();
     initGlobalSearch();
-    initManagerStats();
     initNotifPolling();
+
+    // Delay session-dependent initialization until Supabase sync completes
+    Promise.resolve(window.DB_SYNC_READY).then(function() {
+      try { applyRoleSidebar(); } catch(e) {}
+      try { injectAdminLink(); } catch(e) {}
+      try { initManagerStats(); } catch(e) {}
+    }).catch(function() {
+      // If sync fails, still attempt best-effort initialization
+      try { applyRoleSidebar(); } catch(e) {}
+      try { injectAdminLink(); } catch(e) {}
+      try { initManagerStats(); } catch(e) {}
+    });
   });
 
 })();

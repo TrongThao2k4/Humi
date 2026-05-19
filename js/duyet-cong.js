@@ -127,7 +127,7 @@ function buildEmployees(weekMondayDate) {
     return {
       id: emp.id, name: emp.name, code: emp.code,
       branch: emp.unit, role: ROLE_MAP[emp.roleId]||'Nhân viên',
-      avatar: emp.avatar || genAvatar(emp.name),
+      avatar: genAvatar(emp.name),
       faceImage: emp.faceImage || null,
       worked: workedHours, scheduled: scheduledHours,
       days
@@ -318,7 +318,7 @@ function buildEmployeesFromRows(employeeRows, attendanceRows) {
       code: emp.code,
       branch: emp.unit,
       role: ROLE_MAP[emp.roleId] || 'Nhân viên',
-      avatar: emp.avatar || genAvatar(emp.name),
+      avatar: genAvatar(emp.name),
       faceImage: emp.faceImage || null,
       worked: workedHours,
       scheduled: 40,
@@ -463,7 +463,7 @@ function renderTable() {
     return `<tr class="att-row" data-empid="${emp.id}" style="transition:background 0.12s;">
       <td class="col-employee" style="padding:0 12px 0 20px;vertical-align:middle;height:72px;border-bottom:1px solid #f5f5f8;">
         <div style="display:flex;align-items:center;gap:10px;">
-          <img src="${emp.avatar}" alt="" style="width:36px;height:36px;border-radius:50%;object-fit:cover;flex-shrink:0;" />
+          <img src="${genAvatar(emp.name)}" alt="" style="width:36px;height:36px;border-radius:50%;object-fit:cover;flex-shrink:0;" />
           <div>
             <p style="font-size:13px;font-weight:600;color:#2A3547;margin:0 0 2px;">${emp.name}</p>
             <p style="font-size:11px;color:#7C8FAC;margin:0 0 1px;">${emp.code}</p>
@@ -531,7 +531,7 @@ function openDetail(pill, td, tr) {
   // show employee avatar if available, otherwise fallback to default
   try {
     var detAv = document.getElementById('det-avatar');
-    if (detAv) detAv.src = emp.avatar || defaultAv(80);
+    if (detAv) detAv.src = typeof genAvatar === 'function' ? genAvatar(emp.name) : defaultAv(80);
   } catch (e) { console.warn('Could not set detail avatar', e); }
   document.getElementById('det-name').textContent = emp.name;
   document.getElementById('det-date').textContent = dateStr;

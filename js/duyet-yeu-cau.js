@@ -11,7 +11,7 @@ if (currentUser.roleId === 'employee') { window.location.href = '../index.html';
   // Ưu tiên avatar từ settings (cập nhật real-time từ trang Cài đặt)
   var _sk = 'humi_user_settings_' + currentUser.id;
   var _st = {}; try { _st = JSON.parse(localStorage.getItem(_sk)) || {}; } catch(e) {}
-  var avatar = _st.avatar || (emp && emp.avatar) || '';
+  var avatar = typeof genAvatar === 'function' ? genAvatar(emp && emp.name) : '';
   var sid = document.getElementById('sidebarAvatar'); if(sid) sid.src = avatar || sid.src;
   var tid = document.getElementById('topbarAvatar');  if(tid) tid.src = avatar || tid.src;
   var sn  = document.getElementById('sidebarName');   if(sn)  sn.textContent  = name;
@@ -30,7 +30,7 @@ function reqToUi(r) {
     id: r.id,
     name: emp.name || r.employeeId,
     code: emp.code || r.employeeId,
-    avatar: emp.avatar || genAvatar(emp.name),
+    avatar: genAvatar(emp.name),
     branch: emp.unit || '—',
     role: emp.roleId === 'manager' ? 'Quản lý' : 'Nhân viên',
     type: r.typeLabel || r.type,

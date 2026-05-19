@@ -10,7 +10,7 @@ const currentUser = _s.user;
   // Ưu tiên avatar từ settings (cập nhật real-time từ trang Cài đặt)
   var _sk = 'humi_user_settings_' + currentUser.id;
   var _st = {}; try { _st = JSON.parse(localStorage.getItem(_sk)) || {}; } catch(e) {}
-  var avatar = _st.avatar || (emp && emp.avatar) || '';
+  var avatar = typeof genAvatar === 'function' ? genAvatar(emp && emp.name) : '';
   var sid = document.getElementById('sidebarAvatar'); if(sid) sid.src = avatar || sid.src;
   var tid = document.getElementById('topbarAvatar');  if(tid) tid.src = avatar || tid.src;
   var sn  = document.getElementById('sidebarName');   if(sn)  sn.textContent  = name;
@@ -264,7 +264,7 @@ function renderCards() {
             <div class="shift-time">${s.start} – ${s.end}</div>
             <div class="shift-quota">Tối thiểu: <span style="color:#f59e0b;">${s.minQuota||1}</span> &nbsp;|&nbsp; Tối đa: <span style="color:var(--primary);">${s.quota}</span></div>
           </div>
-          <button class="btn-remove" title="Xóa ca này" onclick="removeShiftFromDay('${day.date}',${s.id})">
+          <button class="btn-remove" title="Xóa ca này" onclick="removeShiftFromDay('${day.date}','${s.id}')">
             <svg width="10" height="10" viewBox="0 0 24 24" fill="none" stroke="#ef4444" stroke-width="3"><line x1="5" y1="12" x2="19" y2="12"/></svg>
           </button>
         </div>`;
@@ -315,7 +315,7 @@ function openAddPopup(date, btn) {
     <div class="add-popup-body">
     ${unassigned.map(s => `
       <div class="add-popup-item">
-        <input type="checkbox" id="pop-chk-${date}-${s.id}" checked onclick="togglePopupInputs('${date}',${s.id})">
+        <input type="checkbox" id="pop-chk-${date}-${s.id}" data-shift="${s.id}" checked onclick="togglePopupInputs('${date}','${s.id}')">
         <div style="flex:1;min-width:0;">
           <div class="pop-name">${s.name}</div>
           <div class="pop-time">${s.start} – ${s.end}</div>
@@ -330,7 +330,7 @@ function openAddPopup(date, btn) {
     </div>
     <div class="add-popup-footer">
       <button class="pop-btn-cancel" onclick="closeAddPopup()">Hủy</button>
-      <button class="pop-btn-add" onclick="confirmAddPopup('${date}',[${unassigned.map(s=>s.id).join(',')}])">Thêm ca</button>
+      <button class="pop-btn-add" onclick="confirmAddPopup('${date}')">Thêm ca</button>
     </div>`;
 
   overlay.appendChild(popup);
@@ -349,15 +349,18 @@ function togglePopupInputs(date, id) {
   if (row) row.style.opacity = chk.checked ? '1' : '0.35';
 }
 
-function confirmAddPopup(date, ids) {
-  ids.forEach(id => {
-    const chk = document.getElementById(`pop-chk-${date}-${id}`);
-    if (!chk?.checked) return;
+function confirmAddPopup(date) {
+  const overlay = document.getElementById('addPopupOverlay');
+  if (!overlay) return;
+  const checks = overlay.querySelectorAll('.add-popup-item input[type="checkbox"]');
+  checks.forEach(chk => {
+    if (!chk.checked) return;
+    const id = chk.dataset.shift;
     assignState[`${date}-${id}`] = true;
     // Lưu min/max nếu người dùng nhập
     const minVal = parseInt(document.getElementById(`pop-min-${date}-${id}`)?.value);
     const maxVal = parseInt(document.getElementById(`pop-max-${date}-${id}`)?.value);
-    const s = shifts.find(x => x.id === id);
+    const s = shifts.find(x => String(x.id) === String(id));
     if (s) {
       if (!isNaN(minVal) && minVal >= 0) s.minQuota = minVal;
       if (!isNaN(maxVal) && maxVal >= 1) s.quota = maxVal;
